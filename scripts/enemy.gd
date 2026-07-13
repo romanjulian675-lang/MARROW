@@ -31,6 +31,17 @@ const LIMB_BONE_PICKUP_SCRIPT: Script = preload("res://scripts/limb_bone_pickup.
 @export var flee_speed_multiplier: float = 1.35
 @export var flee_recover_distance: float = 8.0
 @export_range(0.1, 1.0, 0.05) var crawl_speed_multiplier: float = 0.38
+@export_group("Gorilla Profile")
+@export_enum("Auto", "Always", "Never") var gorilla_profile_mode: String = "Auto"
+@export var gorilla_profile_min_health: int = 5
+@export var gorilla_profile_min_damage: int = 2
+@export_range(0.3, 1.0, 0.05) var gorilla_move_speed_multiplier: float = 0.68
+@export_range(1.0, 2.5, 0.05) var gorilla_attack_cooldown_multiplier: float = 1.25
+@export var gorilla_health_bonus: int = 2
+@export var gorilla_damage_bonus: int = 1
+@export var gorilla_attack_range_bonus: float = 0.25
+@export var gorilla_knockback_bonus: float = 1.5
+@export_group("")
 @export var return_home_stop_distance: float = 0.8
 @export var obstacle_probe_distance: float = 1.25
 @export_range(15.0, 85.0, 1.0) var obstacle_side_probe_angle_degrees: float = 48.0
@@ -85,6 +96,7 @@ var detached_limb_keys: Array[String] = []
 var last_hit_from_position: Vector3 = Vector3.ZERO
 var limb_pickup_spawned: bool = false
 var crawling_due_to_leg_loss: bool = false
+var gorilla_profile_active: bool = false
 
 # Tier 1D polish: one reusable tween so hit-squash, attack-lunge, and death-pop
 # never fight over the scale, plus a procedurally built placeholder "hit" sound.
@@ -114,6 +126,7 @@ func _ready() -> void:
 	spawn_facing_direction = _facing_from_rotation()
 	facing_direction = spawn_facing_direction
 	_apply_bone_identity()
+	_apply_gorilla_profile()
 	health = max_health
 	_roll_low_health_personality()
 	idle_wander_target = spawn_transform.origin
@@ -1116,6 +1129,8 @@ func _setup_procedural_character() -> void:
 	if animator == null or rig == null:
 		return
 
+	if gorilla_profile_active and rig.has_method("apply_gorilla_proportions"):
+		rig.apply_gorilla_proportions()
 	animator.rig = rig
 	animator.turn_target = null
 	if animator.has_method("set_crawl_mode"):
@@ -1164,6 +1179,29 @@ func _apply_bone_identity() -> void:
 	var enemy_scale := BoneDatabase.enemy_float_bonus(dropped_bone_id, "enemy_visual_scale", 1.0)
 	if visual_root != null:
 		visual_root.scale = Vector3.ONE * enemy_scale
+
+
+func _apply_gorilla_profile() -> void:
+	gorilla_profile_active = _should_use_gorilla_profile()
+	if not gorilla_profile_active:
+		return
+
+	move_speed *= gorilla_move_speed_multiplier
+	attack_cooldown *= gorilla_attack_cooldown_multiplier
+	max_health += gorilla_health_bonus
+	contact_damage += gorilla_damage_bonus
+	attack_range += gorilla_attack_range_bonus
+	knockback_strength += gorilla_knockback_bonus
+
+
+func _should_use_gorilla_profile() -> bool:
+	match gorilla_profile_mode:
+		"Always":
+			return true
+		"Never":
+			return false
+		_:
+			return max_health >= gorilla_profile_min_health or contact_damage >= gorilla_profile_min_damage
 
 
 func _roll_low_health_personality() -> void:
