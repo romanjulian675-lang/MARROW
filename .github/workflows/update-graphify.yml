@@ -38,7 +38,7 @@ jobs:
       - name: Rebuild graph from curated corpus
         run: |
           rm -rf graphify-out
-          graphify graphify-corpus
+          graphify graphify-corpus --code-only
 
       - name: Remove generated cache
         run: rm -rf graphify-out/cache

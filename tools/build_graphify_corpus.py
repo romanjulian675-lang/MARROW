@@ -181,6 +181,31 @@ def unique_edges(edges: list[tuple[str, str, str]]) -> list[tuple[str, str, str]
     return result
 
 
+def py_identifier(value: str, fallback: str = "GeneratedNode") -> str:
+    value = re.sub(r"[^A-Za-z0-9_]+", "_", value).strip("_")
+    if not value:
+        value = fallback
+    if value[0].isdigit():
+        value = f"_{value}"
+    return value
+
+
+def py_class_name(value: str, fallback: str = "GeneratedNode") -> str:
+    parts = re.split(r"[^A-Za-z0-9]+", value)
+    name = "".join(part[:1].upper() + part[1:] for part in parts if part)
+    return py_identifier(name, fallback)
+
+
+def unique_name(base: str, used: set[str]) -> str:
+    name = base
+    index = 2
+    while name in used:
+        name = f"{base}{index}"
+        index += 1
+    used.add(name)
+    return name
+
+
 def system_for_path(path: str) -> str:
     name = Path(path).name
     if "inventory" in name or "equipment" in name or "bone" in name:
@@ -214,6 +239,7 @@ def write_index(out_dir: Path, scripts: list[ScriptInfo], scenes: list[SceneInfo
         f"- Project/root files: {len(project_files)}\n",
         "\n",
         "## Generated Maps\n",
+        "- `architecture.py`: synthetic Python AST map used by Graphify code-only extraction.\n",
         "- `gdscript-api.md`: classes, functions, signals, exports, dependencies, input actions, and GameEvents usage.\n",
         "- `scene-map.md`: scenes, node names, and attached scripts.\n",
         "- `dependency-map.md`: inferred relationships between scripts and scenes.\n",
@@ -221,6 +247,106 @@ def write_index(out_dir: Path, scripts: list[ScriptInfo], scenes: list[SceneInfo
         "- `source-docs.md`: source documentation included in the graph.\n",
     ]
     (out_dir / "index.md").write_text("".join(lines), encoding="utf-8")
+
+
+def build_python_class_names(scripts: list[ScriptInfo], scenes: list[SceneInfo]) -> tuple[dict[str, str], dict[str, str]]:
+    used: set[str] = set()
+    script_names: dict[str, str] = {}
+    for info in scripts:
+        base = info.class_name or Path(info.rel).stem
+        script_names[info.rel] = unique_name(py_class_name(base, "ScriptNode"), used)
+
+    scene_names: dict[str, str] = {}
+    for scene in scenes:
+        base = f"Scene_{Path(scene.rel).stem}"
+        scene_names[scene.rel] = unique_name(py_class_name(base, "SceneNode"), used)
+    return script_names, scene_names
+
+
+def write_architecture_py(
+    out_dir: Path,
+    scripts: list[ScriptInfo],
+    scenes: list[SceneInfo],
+    script_edges: list[tuple[str, str, str]],
+    scene_edges: list[tuple[str, str, str]],
+) -> None:
+    script_names, scene_names = build_python_class_names(scripts, scenes)
+    target_by_source: dict[str, list[tuple[str, str]]] = {}
+    for source, target, reason in script_edges + scene_edges:
+        target_by_source.setdefault(source, []).append((target, reason))
+
+    lines = [
+        '"""Generated architecture map for Graphify code-only extraction.\n',
+        "\n",
+        "This file is generated from Godot GDScript, scenes, docs, and project metadata.\n",
+        "Do not edit by hand; run tools/build_graphify_corpus.py instead.\n",
+        '"""\n',
+        "\n",
+    ]
+
+    for info in scripts:
+        cls = script_names[info.rel]
+        lines.append(f"class {cls}:\n")
+        lines.append(f'    """Godot script: {info.rel}\n')
+        lines.append(f"    class_name: {info.class_name or 'none'}\n")
+        lines.append(f"    extends: {info.extends or 'unknown'}\n")
+        lines.append(f"    system: {system_for_path(info.rel)}\n")
+        lines.append('    """\n')
+        lines.append(f"    source_file = {info.rel!r}\n")
+        lines.append(f"    godot_class_name = {info.class_name!r}\n")
+        lines.append(f"    godot_extends = {info.extends!r}\n")
+        lines.append(f"    gameplay_system = {system_for_path(info.rel)!r}\n\n")
+
+        used_methods: set[str] = set()
+        for function in info.functions:
+            method = unique_name(py_identifier(f"gd_func_{function.split('(', 1)[0]}", "gd_func"), used_methods)
+            lines.append(f"    def {method}(self):\n")
+            lines.append(f"        \"\"\"GDScript function: {function}\"\"\"\n")
+            lines.append("        pass\n\n")
+
+        for signal in info.signals:
+            method = unique_name(py_identifier(f"signal_{signal.split('(', 1)[0]}", "signal"), used_methods)
+            lines.append(f"    def {method}(self):\n")
+            lines.append(f"        \"\"\"Godot signal: {signal}\"\"\"\n")
+            lines.append("        pass\n\n")
+
+        for event in info.game_events:
+            method = unique_name(py_identifier(f"uses_game_event_{event}", "uses_game_event"), used_methods)
+            lines.append(f"    def {method}(self):\n")
+            lines.append(f"        \"\"\"Uses GameEvents.{event}.\"\"\"\n")
+            lines.append("        pass\n\n")
+
+        for target, reason in target_by_source.get(info.rel, []):
+            target_cls = script_names.get(target) or scene_names.get(target)
+            if not target_cls:
+                continue
+            method = unique_name(py_identifier(f"depends_on_{target_cls}", "depends_on"), used_methods)
+            lines.append(f"    def {method}(self):\n")
+            lines.append(f"        \"\"\"Relationship: {reason}.\"\"\"\n")
+            lines.append(f"        return {target_cls}\n\n")
+
+        if not used_methods:
+            lines.append("    pass\n\n")
+
+    for scene in scenes:
+        cls = scene_names[scene.rel]
+        lines.append(f"class {cls}:\n")
+        lines.append(f'    """Godot scene: {scene.rel}"""\n')
+        lines.append(f"    source_file = {scene.rel!r}\n")
+        lines.append(f"    nodes = {scene.nodes!r}\n\n")
+        used_methods: set[str] = set()
+        for target, reason in target_by_source.get(scene.rel, []):
+            target_cls = script_names.get(target) or scene_names.get(target)
+            if not target_cls:
+                continue
+            method = unique_name(py_identifier(f"contains_{target_cls}", "contains"), used_methods)
+            lines.append(f"    def {method}(self):\n")
+            lines.append(f"        \"\"\"Scene relationship: {reason}.\"\"\"\n")
+            lines.append(f"        return {target_cls}\n\n")
+        if not used_methods:
+            lines.append("    pass\n\n")
+
+    (out_dir / "architecture.py").write_text("".join(lines), encoding="utf-8")
 
 
 def write_gdscript_api(out_dir: Path, scripts: list[ScriptInfo]) -> None:
@@ -320,6 +446,7 @@ def build(out_dir: Path) -> None:
     script_edges = infer_script_edges(scripts, class_lookup)
     scene_edges = infer_scene_edges(scenes)
     write_index(out_dir, scripts, scenes, docs, project_files)
+    write_architecture_py(out_dir, scripts, scenes, script_edges, scene_edges)
     write_gdscript_api(out_dir, scripts)
     write_scene_map(out_dir, scenes)
     write_dependency_map(out_dir, script_edges, scene_edges)
