@@ -6,7 +6,11 @@ this workspace, so this map mirrors the important script relationships.
 
 ## Runtime Entry
 
-`project.godot` runs `scenes/main.tscn`.
+`project.godot` runs `scenes/main_menu.tscn`.
+
+`scenes/main_menu.tscn` can open:
+- `scenes/main.tscn`
+- `scenes/testing_environment.tscn`
 
 `project.godot` autoloads `GameEvents` from `scripts/game_events.gd`.
 
@@ -18,11 +22,20 @@ Signals:
 - `bone_collected(bone_id, collector)`
 - `bone_equipped(bone_id, slot, player)`
 - `bone_unequipped(bone_id, slot, player)`
+- `inventory_changed(player, items, stats)`
+- `inventory_open_changed(player, is_open)`
+- `pickup_focus_changed(pickup, bone_id, player, in_range)`
+- `pickup_collected(bone_id, pickup, collector)`
+- `drop_spawned(bone_id, pickup, source)`
+- `enemy_defeated(enemy, dropped_bone_id)`
 - `player_died(player)`
 - `trial_completed(trial_id, trial_name)`
 - `exit_reached(player)`
 - `stage_entered(stage)`
 - `stage_exited(stage)`
+- `objective_updated(source, objective_id, title, body)`
+- `tutorial_hint_requested(source, hint_id, text, priority)`
+- `camp_state_changed(camp, unlocked, opened, remaining_enemies)`
 - `camp_chest_opened(camp, reward_bone_id, player)`
 
 Event relationships:

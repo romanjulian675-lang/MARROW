@@ -7,8 +7,10 @@ refactor pass.
 
 - `PlayerInventoryUI` owns inventory presentation, tabs, item tiles, details,
   settings, paper doll slots, and the character preview.
-- `Player` still owns inventory and equipment state through `bone_inventory` and
-  `equipped`.
+- `PlayerInventoryComponent` owns collected inventory state.
+- `PlayerEquipmentComponent` owns equipped state.
+- `Player` remains the gameplay orchestrator and exposes stable methods for UI,
+  pickups, gates, and tests.
 - Equipped copies are filtered out of the carried item grid, while duplicate
   bone ids can remain as separate inventory copies.
 - The character preview is rendered in an isolated `SubViewport` world with its
@@ -37,6 +39,15 @@ refactor pass.
   rock throws, limb detachment, crawling, respawn, and bone recovery.
 - Enemies can recover detached parts after a safe delay.
 - Enemy labels and drops use slot-aware bone names.
+- Lizard wall climb uses normal collision and upward climb velocity instead of
+  direct position movement through walls.
+
+## Testing
+
+- `scenes/testing_environment.tscn` is the unified sandbox for camera, enemies,
+  movement, animation, rig, drops, and equipment checks.
+- `scenes/main_menu.tscn` exposes both the playable demo and testing
+  environment.
 
 ## Rig
 
@@ -45,8 +56,7 @@ refactor pass.
   equipped bone data.
 - Crawl mode lowers the body and uses stronger arm pulls with tucked legs.
 
-## Next Refactor Boundary
+## Documentation Boundary
 
-The next architecture step should extract inventory and equipment ownership from
-`Player` into dedicated components while keeping the current public methods
-stable for UI, pickups, gates, and tests.
+All future functional changes should update the relevant flow file listed in
+`docs/flow_index.md`.
