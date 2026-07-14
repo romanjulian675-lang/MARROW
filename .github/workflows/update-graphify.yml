@@ -6,6 +6,7 @@ on:
       - "**"
     paths-ignore:
       - "graphify-out/**"
+      - "graphify-corpus/**"
   workflow_dispatch:
 
 permissions:
@@ -31,8 +32,13 @@ jobs:
       - name: Install Graphify
         run: uv tool install graphifyy
 
-      - name: Update graph
-        run: graphify update .
+      - name: Build Godot Graphify corpus
+        run: python3 tools/build_graphify_corpus.py
+
+      - name: Rebuild graph from curated corpus
+        run: |
+          rm -rf graphify-out
+          graphify graphify-corpus
 
       - name: Remove generated cache
         run: rm -rf graphify-out/cache
@@ -41,10 +47,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/project_graph_map.md graphify-out .gitignore
+          git add graphify-corpus graphify-out .gitignore tools/build_graphify_corpus.py .github/workflows/update-graphify.yml
           if git diff --cached --quiet; then
             echo "Graphify is already up to date."
             exit 0
           fi
-          git commit -m "chore: actualiza graphify"
+          git commit -m "chore: actualiza grafo de arquitectura"
           git push
