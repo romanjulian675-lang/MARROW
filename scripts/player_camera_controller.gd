@@ -19,6 +19,9 @@ extends Node3D
 @export_range(0.0, 1.0, 0.05) var spring_arm_margin: float = 0.25
 @export_flags_3d_physics var spring_arm_collision_mask: int = 1
 @export var capture_mouse_on_ready: bool = true
+@export var aim_ray_distance: float = 90.0
+@export var aim_left_shoulder_offset: float = -0.65
+@export var aim_shoulder_height_offset: float = 0.18
 
 var look_enabled: bool = true
 var yaw: float = 0.0
@@ -27,6 +30,8 @@ var target_zoom_distance: float = 4.5
 var camera: Camera3D = null
 var spring_arm: SpringArm3D = null
 var target: Node3D = null
+var aim_zoom_active: bool = false
+var pre_aim_zoom_distance: float = 4.5
 
 
 func _ready() -> void:
@@ -119,6 +124,19 @@ func set_look_enabled(enabled: bool) -> void:
 		release_mouse()
 
 
+func set_aim_zoom(enabled: bool, zoom_distance: float = 2.6) -> void:
+	if enabled:
+		if not aim_zoom_active:
+			pre_aim_zoom_distance = target_zoom_distance
+		aim_zoom_active = true
+		target_zoom_distance = clampf(zoom_distance, min_zoom_distance, max_zoom_distance)
+		return
+
+	if aim_zoom_active:
+		target_zoom_distance = clampf(pre_aim_zoom_distance, min_zoom_distance, max_zoom_distance)
+	aim_zoom_active = false
+
+
 func get_flat_forward() -> Vector3:
 	var forward := -global_transform.basis.z
 	forward.y = 0.0
@@ -135,6 +153,30 @@ func get_flat_right() -> Vector3:
 	return right.normalized()
 
 
+func get_center_aim_point(max_distance: float = 90.0, exclude: Array[RID] = []) -> Vector3:
+	if camera == null:
+		return global_position + -global_transform.basis.z * max_distance
+
+	var viewport: Viewport = camera.get_viewport()
+	if viewport == null:
+		return camera.global_position + -camera.global_transform.basis.z * max_distance
+
+	var screen_center: Vector2 = viewport.get_visible_rect().size * 0.5
+	var ray_origin: Vector3 = camera.project_ray_origin(screen_center)
+	var ray_direction: Vector3 = camera.project_ray_normal(screen_center).normalized()
+	var ray_end: Vector3 = ray_origin + ray_direction * max_distance
+
+	var space_state: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
+	var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(ray_origin, ray_end)
+	query.exclude = exclude
+	var result: Dictionary = space_state.intersect_ray(query)
+	if result.has("position"):
+		var hit_position: Vector3 = result["position"]
+		return hit_position
+
+	return ray_end
+
+
 func _apply_mouse_motion(relative: Vector2) -> void:
 	yaw -= relative.x * mouse_sensitivity
 	pitch -= relative.y * mouse_sensitivity
@@ -147,7 +189,14 @@ func _zoom(amount: float) -> void:
 
 
 func _target_pivot_position() -> Vector3:
-	return target.global_position + Vector3.UP * pivot_height
+	var pivot_position: Vector3 = target.global_position + Vector3.UP * pivot_height
+	if aim_zoom_active:
+		var shoulder_right: Vector3 = global_transform.basis.x
+		shoulder_right.y = 0.0
+		if shoulder_right.length() > 0.01:
+			pivot_position += shoulder_right.normalized() * aim_left_shoulder_offset
+		pivot_position += Vector3.UP * aim_shoulder_height_offset
+	return pivot_position
 
 
 func _apply_orbit_rotation() -> void:

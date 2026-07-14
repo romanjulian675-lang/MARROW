@@ -206,6 +206,7 @@ func _spawn_tutorial_enemy_packs() -> void:
 	_spawn_enemy("TutorialDummyEnemy", Vector3(2.0, 0.6, 24.0), "dummy_bone", {"max_health": 2, "move_speed": 2.0, "detection_range": 7.0})
 	_spawn_enemy("FirstFieldArmLookout", Vector3(-4.0, 0.6, 9.0), "arm_bone", {"vision_angle_degrees": 115.0, "detection_range": 12.0})
 	_spawn_enemy("ReachRidgeReachEnemy", Vector3(-36.0, 0.6, -10.0), "arm_bone", {"attack_range": 2.4, "detection_range": 13.0})
+	_spawn_enemy("ReachRidgeArcher", Vector3(-28.0, 0.6, -15.0), "arm_bone", {"ranged_attacker_enabled": true, "detection_range": 14.0, "vision_angle_degrees": 125.0})
 	_spawn_enemy("RibfenHybrid", Vector3(-35.0, 0.6, 7.0), "rib_bone", {"detection_range": 10.0})
 
 
@@ -245,6 +246,7 @@ func _build_enemy_camps(root: Node3D) -> void:
 		[
 			{"name": "ReachCampLookout", "offset": Vector3(-2.5, 0.6, -2.0), "bone": "arm_bone", "overrides": {"vision_angle_degrees": 125.0, "detection_range": 13.0}},
 			{"name": "ReachCampGuard", "offset": Vector3(2.8, 0.6, 1.7), "bone": "arm_bone", "overrides": {"attack_range": 2.5}},
+			{"name": "ReachCampArcher", "offset": Vector3(0.2, 0.6, 4.0), "bone": "arm_bone", "overrides": {"ranged_attacker_enabled": true, "detection_range": 14.0, "vision_angle_degrees": 130.0}},
 		]
 	)
 

@@ -60,6 +60,15 @@ extends Node3D
 @export var attack_torso_twist := 0.35      # radians the torso twists into the swing
 @export var attack_lunge := 0.22            # radians the body leans into the swing
 
+@export_group("Aim overlay")
+@export var aim_overlay_blend_speed := 14.0
+@export var aim_right_arm_forward := 0.82
+@export var aim_left_arm_forward := 1.18
+@export var aim_right_arm_draw := 0.38
+@export var aim_left_arm_brace := 0.26
+@export var aim_torso_lean := 0.12
+@export var aim_head_dip := 0.08
+
 # Foot placement is superseded by feet-follow-legs (feet are parented under the
 # legs now), so this is OFF by default. Turn on for independent ground planting.
 @export_group("Foot placement")
@@ -77,6 +86,8 @@ var total_equipped_weight := 1.0
 
 var _attack_timer := 0.0
 var _attack_blend := 0.0
+var _aim_requested := false
+var _aim_blend := 0.0
 
 var _rest_pos: Dictionary = {}
 var _rest_rot: Dictionary = {}
@@ -113,6 +124,8 @@ func update_from_player(delta: float, velocity: Vector3, max_speed: float, facin
 		_animate_limbs()
 		_animate_joints()
 	_animate_wobble()
+	_update_aim_overlay(delta)
+	_apply_aim_overlay()
 	_update_attack_overlay(delta)
 	_apply_attack_overlay()
 	_animate_facing(delta, facing_direction)
@@ -123,6 +136,10 @@ func update_from_player(delta: float, velocity: Vector3, max_speed: float, facin
 # The player calls this when an attack fires (Phase E).
 func trigger_attack() -> void:
 	_attack_timer = attack_overlay_duration
+
+
+func set_aiming(enabled: bool) -> void:
+	_aim_requested = enabled
 
 
 func set_crawl_mode(enabled: bool) -> void:
@@ -321,7 +338,35 @@ func _wobble_phase(key: String) -> float:
 		_: return 0.0
 
 
-# --- Phase E: attack overlay ---------------------------------------------------
+# --- Phase E: aim and attack overlays -----------------------------------------
+
+func _update_aim_overlay(delta: float) -> void:
+	var target: float = 1.0 if _aim_requested else 0.0
+	_aim_blend = lerp(_aim_blend, target, 1.0 - exp(-aim_overlay_blend_speed * delta))
+
+
+func _apply_aim_overlay() -> void:
+	if _aim_blend <= 0.001:
+		return
+
+	var right_arm: Node3D = rig.get_socket("right_arm")
+	if right_arm != null:
+		right_arm.rotation.x -= aim_right_arm_forward * _aim_blend
+		right_arm.rotation.z -= aim_right_arm_draw * _aim_blend
+
+	var left_arm: Node3D = rig.get_socket("left_arm")
+	if left_arm != null:
+		left_arm.rotation.x -= aim_left_arm_forward * _aim_blend
+		left_arm.rotation.z += aim_left_arm_brace * _aim_blend
+
+	var body: Node3D = rig.get_socket("body")
+	if body != null:
+		body.rotation.x -= aim_torso_lean * _aim_blend
+
+	var head: Node3D = rig.get_socket("head")
+	if head != null:
+		head.rotation.x -= aim_head_dip * _aim_blend
+
 
 func _update_attack_overlay(delta: float) -> void:
 	_attack_timer = max(_attack_timer - delta, 0.0)

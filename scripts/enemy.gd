@@ -4,6 +4,7 @@ extends CharacterBody3D
 const BONE_SCENE: PackedScene = preload("res://scenes/bone.tscn")
 const LIMB_BONE_PICKUP_SCRIPT: Script = preload("res://scripts/limb_bone_pickup.gd")
 const ROCK_PROJECTILE_SCRIPT: Script = preload("res://scripts/enemy_rock_projectile.gd")
+const ARROW_PROJECTILE_SCRIPT: Script = preload("res://scripts/arrow_projectile.gd")
 
 # --- Combat / AI tuning (all editable per-enemy in the Inspector) -------------
 @export var max_health: int = 3
@@ -26,6 +27,16 @@ const ROCK_PROJECTILE_SCRIPT: Script = preload("res://scripts/enemy_rock_project
 @export var idle_wander_interval: float = 2.4
 @export var hearing_investigation_time: float = 5.0
 @export var ally_alert_range: float = 7.0
+@export_group("Ranged Enemy")
+@export var ranged_attacker_enabled: bool = false
+@export var ranged_attack_min_range: float = 3.2
+@export var ranged_attack_range: float = 13.0
+@export var ranged_attack_cooldown: float = 2.2
+@export var ranged_attack_windup: float = 0.35
+@export var ranged_arrow_damage: int = 1
+@export var ranged_arrow_speed: float = 13.0
+@export var ranged_arrow_gravity: float = 5.0
+@export_group("")
 @export_range(0.0, 1.0, 0.05) var low_health_flee_chance: float = 0.45
 @export_range(0.05, 0.75, 0.05) var low_health_flee_ratio: float = 0.35
 @export var low_health_flee_duration: float = 4.0
@@ -71,6 +82,7 @@ const ROCK_PROJECTILE_SCRIPT: Script = preload("res://scripts/enemy_rock_project
 @export var detached_limb_lifetime: float = 8.0
 @export var death_limb_fall_spacing: float = 0.06
 @export_range(0.0, 1.0, 0.05) var limb_pickup_drop_chance: float = 0.35
+@export_range(3, 8, 1) var target_limb_loss_steps: int = 5
 @export var guarantee_limb_pickup_on_death: bool = true
 @export var stealth_finish_max_health: int = 3
 @export var stealth_finish_range: float = 2.2
@@ -121,9 +133,14 @@ var rock_throw_timer: float = 0.0
 var rock_throw_windup_timer: float = 0.0
 var rock_throw_target_position: Vector3 = Vector3.ZERO
 var held_rock_visual: MeshInstance3D = null
+var ranged_attack_timer: float = 0.0
+var ranged_attack_windup_timer: float = 0.0
+var ranged_attack_target_position: Vector3 = Vector3.ZERO
+var ranged_bow_visual: Node3D = null
 var bone_recovery_safe_timer: float = 0.0
 var recovering_limb_key: String = ""
 var detached_limb_bodies: Dictionary = {}
+var limb_detach_damage_progress: float = 0.0
 
 # Tier 1D polish: one reusable tween so hit-squash, attack-lunge, and death-pop
 # never fight over the scale, plus a procedurally built placeholder "hit" sound.
@@ -212,6 +229,8 @@ func _physics_process(delta: float) -> void:
 		attack_timer -= delta
 	if rock_throw_timer > 0.0:
 		rock_throw_timer = maxf(rock_throw_timer - delta, 0.0)
+	if ranged_attack_timer > 0.0:
+		ranged_attack_timer = maxf(ranged_attack_timer - delta, 0.0)
 
 	if vision_check_timer > 0.0:
 		vision_check_timer -= delta
@@ -260,7 +279,9 @@ func _physics_process(delta: float) -> void:
 			returning_to_spawn = false
 			_turn_toward(to_player.normalized())
 
-		if rock_throw_windup_timer > 0.0:
+		if ranged_attack_windup_timer > 0.0:
+			_update_ranged_attack_windup(delta, player)
+		elif rock_throw_windup_timer > 0.0:
 			_update_rock_throw_windup(delta, player)
 		elif fleeing_timer > 0.0:
 			move = _get_flee_move(player, dist)
@@ -269,6 +290,8 @@ func _physics_process(delta: float) -> void:
 			_try_attack_player(player)
 		elif _can_start_rock_throw(player, dist):
 			_start_rock_throw(player)
+		elif _can_start_ranged_attack(player, dist):
+			_start_ranged_attack(player)
 		elif _can_recover_bone_part():
 			move = _get_bone_recovery_move()
 		elif player_visible and dist <= detection_range and dist > 0.01:
@@ -283,6 +306,7 @@ func _physics_process(delta: float) -> void:
 	else:
 		_set_player_visible(false)
 		search_timer = 0.0
+		ranged_attack_windup_timer = 0.0
 		rock_throw_windup_timer = 0.0
 		_cancel_held_rock()
 		_update_bone_recovery_safety(delta, null, INF)
@@ -321,6 +345,67 @@ func _try_attack_player(player: Node) -> void:
 		animator.trigger_attack()
 	if player.has_method("take_player_damage"):
 		player.take_player_damage(contact_damage, global_position)
+
+
+func _can_start_ranged_attack(player: Node3D, distance_to_player: float) -> bool:
+	if not ranged_attacker_enabled:
+		return false
+	if player == null or not player_visible:
+		return false
+	if ranged_attack_timer > 0.0 or ranged_attack_windup_timer > 0.0:
+		return false
+	if distance_to_player < ranged_attack_min_range or distance_to_player > ranged_attack_range:
+		return false
+	if detached_limb_keys.has("right_arm") and detached_limb_keys.has("left_arm"):
+		return false
+	return true
+
+
+func _start_ranged_attack(player: Node3D) -> void:
+	ranged_attack_timer = ranged_attack_cooldown
+	ranged_attack_windup_timer = ranged_attack_windup
+	ranged_attack_target_position = player.global_position
+	var to_player: Vector3 = player.global_position - global_position
+	to_player.y = 0.0
+	if to_player.length() > 0.01:
+		_turn_toward(to_player.normalized())
+
+
+func _update_ranged_attack_windup(delta: float, player: Node3D) -> void:
+	if player != null and not _player_is_dead(player):
+		ranged_attack_target_position = player.global_position
+		var to_player: Vector3 = player.global_position - global_position
+		to_player.y = 0.0
+		if to_player.length() > 0.01:
+			_turn_toward(to_player.normalized())
+
+	ranged_attack_windup_timer = maxf(ranged_attack_windup_timer - delta, 0.0)
+	if ranged_attack_windup_timer <= 0.0:
+		_fire_enemy_arrow()
+
+
+func _fire_enemy_arrow() -> void:
+	var world: Node = get_parent()
+	if world == null:
+		return
+
+	var start_position: Vector3 = global_position + Vector3.UP * 0.85 + facing_direction.normalized() * 0.55
+	var target_position: Vector3 = ranged_attack_target_position + Vector3.UP * 0.65
+	var to_target: Vector3 = target_position - start_position
+	var horizontal: Vector3 = Vector3(to_target.x, 0.0, to_target.z)
+	if horizontal.length() < 0.1:
+		return
+
+	var travel_time: float = horizontal.length() / maxf(ranged_arrow_speed, 0.1)
+	var launch_velocity: Vector3 = horizontal.normalized() * ranged_arrow_speed
+	launch_velocity.y = (to_target.y / maxf(travel_time, 0.1)) + (ranged_arrow_gravity * 0.5 * travel_time)
+
+	var arrow: Area3D = ARROW_PROJECTILE_SCRIPT.new() as Area3D
+	if arrow == null:
+		return
+	if arrow.has_method("configure"):
+		arrow.call("configure", start_position, launch_velocity, ranged_arrow_damage, self, true, ranged_arrow_gravity)
+	world.add_child(arrow)
 
 
 func _can_start_rock_throw(player: Node3D, distance_to_player: float) -> bool:
@@ -958,7 +1043,7 @@ func take_hit(damage: int) -> void:
 	health = max(health - damage, 0)
 	_update_health_label()
 	_play_hit_sound()
-	_detach_limbs_for_damage(maxi(health_before - health, 1))
+	_detach_limbs_for_damage(maxi(health_before - health, 1), health <= 0)
 
 	if health <= 0:
 		die()
@@ -990,15 +1075,39 @@ func _maybe_start_low_health_flee() -> void:
 	_update_health_label()
 
 
-func _detach_limbs_for_damage(limbs_to_detach: int) -> void:
+func _detach_limbs_for_damage(damage_taken: int, killing_hit: bool = false) -> void:
 	if rig == null:
 		return
 
+	var limbs_to_detach: int = _limb_detach_count_for_damage(damage_taken, killing_hit)
 	for i in range(limbs_to_detach):
 		var limb_key := _next_attached_limb_key()
 		if limb_key == "":
 			return
 		_detach_limb_group(limb_key)
+
+
+func _limb_detach_count_for_damage(damage_taken: int, killing_hit: bool) -> int:
+	if killing_hit:
+		return 0
+
+	var damage_per_limb: float = maxf(1.0, float(max_health) / float(maxi(target_limb_loss_steps, 1)))
+	if gorilla_profile_active:
+		damage_per_limb *= 1.35
+
+	limb_detach_damage_progress += float(maxi(damage_taken, 1))
+	var detach_count: int = int(floor(limb_detach_damage_progress / damage_per_limb))
+	if detach_count > 0:
+		limb_detach_damage_progress -= float(detach_count) * damage_per_limb
+
+	var remaining_non_core: int = 0
+	for limb_key in DETACHABLE_LIMBS:
+		if CORE_FALL_ORDER.has(limb_key):
+			continue
+		if not detached_limb_keys.has(limb_key):
+			remaining_non_core += 1
+
+	return mini(detach_count, remaining_non_core)
 
 
 func _next_attached_limb_key() -> String:
@@ -1159,6 +1268,7 @@ func _restore_attached_limbs() -> void:
 	detached_limb_keys.clear()
 	last_hit_from_position = Vector3.ZERO
 	limb_pickup_spawned = false
+	limb_detach_damage_progress = 0.0
 	_update_crawl_state(true)
 
 
@@ -1186,6 +1296,7 @@ func die() -> void:
 	returning_to_spawn = false
 	avoidance_timer = 0.0
 	avoidance_direction = Vector3.ZERO
+	ranged_attack_windup_timer = 0.0
 	rock_throw_windup_timer = 0.0
 	_cancel_held_rock()
 	var respawn_delay := _get_respawn_delay()
@@ -1198,6 +1309,7 @@ func die() -> void:
 	returning_to_spawn = false
 	avoidance_timer = 0.0
 	avoidance_direction = Vector3.ZERO
+	ranged_attack_windup_timer = 0.0
 	rock_throw_windup_timer = 0.0
 	_cancel_held_rock()
 	_drop_bone()
@@ -1238,6 +1350,7 @@ func _hide_until_respawn() -> void:
 	avoidance_timer = 0.0
 	avoidance_direction = Vector3.ZERO
 	fleeing_timer = 0.0
+	ranged_attack_windup_timer = 0.0
 	rock_throw_windup_timer = 0.0
 	_cancel_held_rock()
 	set_physics_process(false)
@@ -1260,6 +1373,7 @@ func _respawn() -> void:
 	facing_direction = spawn_facing_direction
 	alive = true
 	health = max_health
+	limb_detach_damage_progress = 0.0
 	attack_timer = 0.0
 	hit_flash_time_remaining = 0.0
 	search_timer = 0.0
@@ -1268,6 +1382,8 @@ func _respawn() -> void:
 	avoidance_timer = 0.0
 	avoidance_direction = Vector3.ZERO
 	fleeing_timer = 0.0
+	ranged_attack_timer = 0.0
+	ranged_attack_windup_timer = 0.0
 	rock_throw_timer = 0.0
 	rock_throw_windup_timer = 0.0
 	_cancel_held_rock()
@@ -1476,6 +1592,7 @@ func _setup_procedural_character() -> void:
 	animator.turn_target = null
 	if animator.has_method("set_crawl_mode"):
 		animator.set_crawl_mode(crawling_due_to_leg_loss)
+	_setup_ranged_bow_visual()
 
 
 func _update_procedural_animation(delta: float) -> void:
@@ -1489,6 +1606,39 @@ func _get_effective_move_speed() -> float:
 	if crawling_due_to_leg_loss:
 		return move_speed * crawl_speed_multiplier
 	return move_speed
+
+
+func _setup_ranged_bow_visual() -> void:
+	if not ranged_attacker_enabled or rig == null or ranged_bow_visual != null:
+		return
+
+	var socket: Node3D = rig.get_socket("left_arm")
+	if socket == null:
+		return
+
+	ranged_bow_visual = Node3D.new()
+	ranged_bow_visual.name = "EnemyBow"
+	socket.add_child(ranged_bow_visual)
+	ranged_bow_visual.position = Vector3(-0.08, -0.22, 0.14)
+	ranged_bow_visual.rotation_degrees = Vector3(0.0, 0.0, -18.0)
+
+	ranged_bow_visual.add_child(_make_bow_piece("EnemyBowUpper", Vector3(0.05, 0.48, 0.05), Vector3(0.0, 0.2, 0.0), Color(0.38, 0.20, 0.08, 1.0)))
+	ranged_bow_visual.add_child(_make_bow_piece("EnemyBowLower", Vector3(0.05, 0.48, 0.05), Vector3(0.0, -0.2, 0.0), Color(0.38, 0.20, 0.08, 1.0)))
+	ranged_bow_visual.add_child(_make_bow_piece("EnemyBowString", Vector3(0.014, 0.92, 0.014), Vector3(0.06, 0.0, 0.0), Color(0.88, 0.82, 0.62, 1.0)))
+
+
+func _make_bow_piece(piece_name: String, size: Vector3, local_position: Vector3, color: Color) -> MeshInstance3D:
+	var mesh: BoxMesh = BoxMesh.new()
+	mesh.size = size
+	var piece: MeshInstance3D = MeshInstance3D.new()
+	piece.name = piece_name
+	piece.mesh = mesh
+	piece.position = local_position
+	var material: StandardMaterial3D = StandardMaterial3D.new()
+	material.albedo_color = color
+	material.roughness = 0.85
+	piece.material_override = material
+	return piece
 
 
 func _set_rig_color(new_color: Color) -> void:

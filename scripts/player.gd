@@ -5,6 +5,7 @@ const EQUIPPED_BONE_SCENE: PackedScene = preload("res://scenes/equipped_bone.tsc
 
 # Tier 1D: the short-lived, visible attack box we spawn in front of the player.
 const ATTACK_HITBOX_SCENE: PackedScene = preload("res://scenes/attack_hitbox.tscn")
+const ARROW_PROJECTILE_SCRIPT: Script = preload("res://scripts/arrow_projectile.gd")
 
 # These are the player's normal stats before any bones are equipped.
 # The @export tag means you can tune these values in the Godot editor later.
@@ -33,6 +34,27 @@ const ATTACK_HITBOX_SCENE: PackedScene = preload("res://scenes/attack_hitbox.tsc
 @export var attack_forward_offset: float = 1.15
 @export var attack_height: float = 0.65
 @export var stealth_prompt_scan_range: float = 3.0
+@export_group("Bow")
+@export var bow_enabled: bool = true
+@export var start_with_bow_equipped: bool = false
+@export var bow_damage: int = 1
+@export var bow_cooldown: float = 0.75
+@export var bow_arrow_speed: float = 18.0
+@export var bow_arrow_gravity: float = 4.0
+@export var bow_arrow_spawn_height: float = 0.85
+@export var bow_aim_zoom_distance: float = 2.6
+@export var bow_aim_ray_distance: float = 90.0
+@export var bow_hand_offset: Vector3 = Vector3(0.02, -0.58, -0.04)
+@export var bow_hand_rotation_degrees: Vector3 = Vector3(0.0, 0.0, 18.0)
+@export var bow_full_charge_time: float = 1.25
+@export var bow_min_charge_multiplier: float = 1.0
+@export var bow_max_charge_multiplier: float = 2.5
+@export_group("Finger Bones")
+@export var finger_bone_damage: int = 1
+@export var finger_bone_cooldown: float = 0.55
+@export var finger_bone_throw_speed: float = 12.0
+@export var finger_bone_throw_gravity: float = 8.0
+@export_group("")
 
 # These are the active stats the movement and attack code actually use.
 # They start from the base stats, then equipped bones can modify them.
@@ -64,8 +86,18 @@ var nearby_bone_pickups: int = 0
 # can_attack is flipped off during the cooldown, then back on when it ends.
 # last_facing_direction remembers where to aim the swing when standing still.
 var can_attack: bool = true
+var can_shoot_bow: bool = true
 var last_facing_direction: Vector3 = Vector3.FORWARD
 var current_move_direction: Vector3 = Vector3.ZERO
+var bow_visual: Node3D = null
+var bow_equipped: bool = false
+var bow_aiming: bool = false
+var bow_charge_time: float = 0.0
+var aim_reticle_layer: CanvasLayer = null
+var aim_reticle_root: Control = null
+var aim_reticle_dot: ColorRect = null
+var aim_reticle_bars: Array[ColorRect] = []
+var aim_reticle_charge_label: Label = null
 
 # Tier 1F: how many times a bone was equipped this run (shown on the win screen).
 var equip_swaps: int = 0
@@ -101,12 +133,15 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	base_max_health = max_health
 	health = max_health
+	bow_equipped = start_with_bow_equipped
 	_recalculate_stats()
 	inventory_ui = PlayerInventoryUI.new()
 	add_child(inventory_ui)
 	inventory_ui.setup(self)
 	_build_health_ui()
 	_build_stealth_ui()
+	_build_aim_reticle_ui()
+	_build_bow_visual()
 	inventory_ui.notify_inventory_changed()
 	_setup_procedural_character()
 	_update_mouse_mode()
@@ -137,12 +172,18 @@ func _physics_process(delta: float) -> void:
 	# While the inventory is open (paused) or the player is dead, stop here:
 	# no movement, no attacking.
 	if get_tree().paused or is_dead:
+		_cancel_bow_aim()
 		_set_stealth_prompt("")
 		return
 
 	_update_stealth_finish_prompt()
 	if Input.is_action_just_pressed("stealth_finish"):
 		_try_stealth_finish()
+	if Input.is_action_just_pressed("toggle_bow"):
+		_toggle_bow_equipped()
+	if bow_aiming:
+		bow_charge_time = minf(bow_charge_time + delta, maxf(bow_full_charge_time, 0.01))
+		_update_aim_reticle_ui()
 
 	# Count down the mercy window after taking a hit.
 	if invuln_timer > 0.0:
@@ -151,7 +192,14 @@ func _physics_process(delta: float) -> void:
 		noise_timer = maxf(noise_timer - delta, 0.0)
 
 	if Input.is_action_just_pressed("attack"):
-		_try_attack()
+		if bow_equipped:
+			_start_bow_aim()
+		else:
+			_try_attack()
+	if Input.is_action_just_released("attack") and bow_aiming:
+		_release_bow_shot()
+	if Input.is_action_just_pressed("ranged_attack") and not bow_equipped:
+		_try_bow_shot()
 
 	# Space gives the player a clean hop. The floor check prevents air-jumping.
 	if Input.is_action_just_pressed("jump") and is_on_floor():
@@ -177,7 +225,12 @@ func _physics_process(delta: float) -> void:
 
 	# Tier 1D: remember the last direction we actually moved, so an attack while
 	# standing still still swings the way we were last heading.
-	if direction.length() > 0.01:
+	if bow_aiming:
+		var aim_forward: Vector3 = _get_camera_forward_direction()
+		aim_forward.y = 0.0
+		if aim_forward.length() > 0.01:
+			last_facing_direction = aim_forward.normalized()
+	elif direction.length() > 0.01:
 		last_facing_direction = direction
 
 	var current_move_speed := move_speed
@@ -267,6 +320,127 @@ func _try_attack() -> void:
 	can_attack = true
 
 
+func _try_bow_shot(charge_multiplier: float = 1.0, charge_ratio: float = 0.0) -> void:
+	if not bow_enabled or not can_shoot_bow:
+		return
+
+	can_shoot_bow = false
+	noise_timer = maxf(noise_timer, 0.45)
+	if animator != null:
+		animator.trigger_attack()
+
+	var forward: Vector3 = _get_camera_forward_direction()
+	if not bow_equipped and current_move_direction.length() > 0.01:
+		forward = current_move_direction
+	forward.y = 0.0
+	if forward.length() <= 0.01:
+		forward = last_facing_direction
+	forward = forward.normalized()
+	last_facing_direction = forward
+
+	var shot_cooldown: float = bow_cooldown
+	if bow_equipped:
+		var charged_damage: int = maxi(1, int(round(float(bow_damage) * charge_multiplier)))
+		var charged_speed: float = bow_arrow_speed * lerpf(0.9, 1.15, clampf(charge_ratio, 0.0, 1.0))
+		_fire_player_projectile(forward, charged_damage, charged_speed, bow_arrow_gravity, "arrow")
+	else:
+		shot_cooldown = finger_bone_cooldown
+		_fire_player_projectile(forward, finger_bone_damage, finger_bone_throw_speed, finger_bone_throw_gravity, "finger_bone")
+
+	_flash_player_attack()
+	await get_tree().create_timer(shot_cooldown).timeout
+	can_shoot_bow = true
+
+
+func _start_bow_aim() -> void:
+	if not bow_enabled or not can_shoot_bow:
+		return
+
+	bow_aiming = true
+	bow_charge_time = 0.0
+	_set_aim_reticle_visible(true)
+	_update_aim_reticle_ui()
+	if animator != null and animator.has_method("set_aiming"):
+		animator.set_aiming(true)
+	if camera_controller != null and camera_controller.has_method("set_aim_zoom"):
+		camera_controller.set_aim_zoom(true, bow_aim_zoom_distance)
+
+
+func _release_bow_shot() -> void:
+	if not bow_aiming:
+		return
+
+	var charge_multiplier: float = _get_bow_charge_multiplier()
+	var charge_ratio: float = _get_bow_charge_ratio()
+	_cancel_bow_aim()
+	_try_bow_shot(charge_multiplier, charge_ratio)
+
+
+func _cancel_bow_aim() -> void:
+	if not bow_aiming:
+		return
+
+	bow_aiming = false
+	bow_charge_time = 0.0
+	_set_aim_reticle_visible(false)
+	if animator != null and animator.has_method("set_aiming"):
+		animator.set_aiming(false)
+	if camera_controller != null and camera_controller.has_method("set_aim_zoom"):
+		camera_controller.set_aim_zoom(false)
+
+
+func _toggle_bow_equipped() -> void:
+	if not bow_enabled:
+		return
+
+	_cancel_bow_aim()
+
+	bow_equipped = not bow_equipped
+	if bow_visual != null:
+		bow_visual.visible = bow_equipped
+
+
+func _fire_player_projectile(forward: Vector3, projectile_damage: int, projectile_speed: float, projectile_gravity: float, projectile_style: String) -> void:
+	var projectile: Area3D = ARROW_PROJECTILE_SCRIPT.new() as Area3D
+	if projectile == null or get_tree().current_scene == null:
+		return
+
+	var muzzle_forward: Vector3 = forward
+	muzzle_forward.y = 0.0
+	if muzzle_forward.length() <= 0.01:
+		muzzle_forward = last_facing_direction
+	muzzle_forward = muzzle_forward.normalized()
+
+	var start_position: Vector3 = global_position + Vector3.UP * bow_arrow_spawn_height + muzzle_forward * 0.7
+	if projectile_style == "arrow" and bow_equipped and bow_visual != null:
+		start_position = bow_visual.global_position
+	var launch_direction: Vector3 = forward.normalized()
+	if projectile_style == "arrow" and bow_equipped:
+		launch_direction = _get_pointer_aim_direction(start_position, muzzle_forward)
+	var launch_velocity: Vector3 = launch_direction * projectile_speed
+	if projectile_style != "arrow":
+		launch_velocity.y = 0.65
+	if projectile.has_method("configure"):
+		projectile.call("configure", start_position, launch_velocity, projectile_damage, self, false, projectile_gravity, projectile_style)
+	get_tree().current_scene.add_child(projectile)
+
+
+func _get_pointer_aim_direction(start_position: Vector3, fallback_direction: Vector3) -> Vector3:
+	if camera_controller != null and camera_controller.has_method("get_center_aim_point"):
+		var exclude: Array[RID] = []
+		var player_collision: CollisionObject3D = self as CollisionObject3D
+		if player_collision != null:
+			exclude.append(player_collision.get_rid())
+		var aim_point: Vector3 = camera_controller.get_center_aim_point(bow_aim_ray_distance, exclude)
+		var aim_direction: Vector3 = aim_point - start_position
+		if aim_direction.length() > 0.01:
+			return aim_direction.normalized()
+
+	if fallback_direction.length() > 0.01:
+		return fallback_direction.normalized()
+	return Vector3.FORWARD
+
+
 func _try_stealth_finish() -> void:
 	if stealth_target == null or not is_instance_valid(stealth_target):
 		return
@@ -314,6 +488,147 @@ func _setup_procedural_character() -> void:
 
 	animator.rig = rig
 	animator.turn_target = visual_root
+
+
+func _build_bow_visual() -> void:
+	if bow_visual != null:
+		return
+
+	var bow_parent: Node3D = _get_bow_visual_parent()
+	if bow_parent == null:
+		return
+
+	bow_visual = Node3D.new()
+	bow_visual.name = "DemoBow"
+	bow_parent.add_child(bow_visual)
+	bow_visual.position = bow_hand_offset
+	bow_visual.rotation_degrees = bow_hand_rotation_degrees
+
+	var upper: MeshInstance3D = _make_bow_piece("BowUpper", Vector3(0.055, 0.52, 0.055), Vector3(0.0, 0.22, 0.0), Color(0.45, 0.25, 0.08, 1.0))
+	var lower: MeshInstance3D = _make_bow_piece("BowLower", Vector3(0.055, 0.52, 0.055), Vector3(0.0, -0.22, 0.0), Color(0.45, 0.25, 0.08, 1.0))
+	var string_piece: MeshInstance3D = _make_bow_piece("BowString", Vector3(0.018, 1.0, 0.018), Vector3(0.07, 0.0, 0.0), Color(0.92, 0.86, 0.68, 1.0))
+	bow_visual.add_child(upper)
+	bow_visual.add_child(lower)
+	bow_visual.add_child(string_piece)
+	bow_visual.visible = bow_equipped
+
+
+func _get_bow_visual_parent() -> Node3D:
+	if rig != null:
+		var left_arm_socket: Node3D = rig.get_socket("left_arm")
+		if left_arm_socket != null:
+			return left_arm_socket
+	return socket_arm_left
+
+
+func _build_aim_reticle_ui() -> void:
+	if aim_reticle_layer != null:
+		return
+
+	aim_reticle_layer = CanvasLayer.new()
+	aim_reticle_layer.name = "AimReticleLayer"
+	add_child(aim_reticle_layer)
+
+	aim_reticle_root = Control.new()
+	aim_reticle_root.name = "AimReticle"
+	aim_reticle_root.anchor_right = 1.0
+	aim_reticle_root.anchor_bottom = 1.0
+	aim_reticle_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	aim_reticle_root.visible = false
+	aim_reticle_layer.add_child(aim_reticle_root)
+
+	aim_reticle_dot = _make_reticle_rect("Dot", -3.0, -3.0, 3.0, 3.0, Color(0.0, 0.9, 1.0, 0.95))
+	aim_reticle_root.add_child(aim_reticle_dot)
+	aim_reticle_bars.append(_make_reticle_rect("Left", -30.0, -1.5, -10.0, 1.5, Color.WHITE))
+	aim_reticle_bars.append(_make_reticle_rect("Right", 10.0, -1.5, 30.0, 1.5, Color.WHITE))
+	aim_reticle_bars.append(_make_reticle_rect("Top", -1.5, -30.0, 1.5, -10.0, Color.WHITE))
+	aim_reticle_bars.append(_make_reticle_rect("Bottom", -1.5, 10.0, 1.5, 30.0, Color.WHITE))
+	for bar_node in aim_reticle_bars:
+		var bar: ColorRect = bar_node as ColorRect
+		if bar == null:
+			continue
+		aim_reticle_root.add_child(bar)
+
+	aim_reticle_charge_label = Label.new()
+	aim_reticle_charge_label.name = "ChargeLabel"
+	aim_reticle_charge_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	aim_reticle_charge_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	aim_reticle_charge_label.add_theme_font_size_override("font_size", 16)
+	aim_reticle_charge_label.add_theme_color_override("font_color", Color(0.0, 0.85, 1.0, 0.9))
+	aim_reticle_charge_label.anchor_left = 0.5
+	aim_reticle_charge_label.anchor_right = 0.5
+	aim_reticle_charge_label.anchor_top = 0.5
+	aim_reticle_charge_label.anchor_bottom = 0.5
+	aim_reticle_charge_label.offset_left = -45.0
+	aim_reticle_charge_label.offset_right = 45.0
+	aim_reticle_charge_label.offset_top = 30.0
+	aim_reticle_charge_label.offset_bottom = 54.0
+	aim_reticle_root.add_child(aim_reticle_charge_label)
+
+
+func _make_reticle_rect(rect_name: String, left: float, top: float, right: float, bottom: float, color: Color) -> ColorRect:
+	var rect: ColorRect = ColorRect.new()
+	rect.name = rect_name
+	rect.color = color
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rect.anchor_left = 0.5
+	rect.anchor_right = 0.5
+	rect.anchor_top = 0.5
+	rect.anchor_bottom = 0.5
+	rect.offset_left = left
+	rect.offset_top = top
+	rect.offset_right = right
+	rect.offset_bottom = bottom
+	return rect
+
+
+func _set_aim_reticle_visible(visible: bool) -> void:
+	if aim_reticle_root != null:
+		aim_reticle_root.visible = visible
+
+
+func _update_aim_reticle_ui() -> void:
+	if aim_reticle_root == null:
+		return
+
+	var ratio: float = _get_bow_charge_ratio()
+	var reticle_color: Color = Color(0.0, 0.85, 1.0, 0.82).lerp(Color(1.0, 0.78, 0.18, 0.96), ratio)
+	if aim_reticle_dot != null:
+		aim_reticle_dot.color = reticle_color
+	for bar_node in aim_reticle_bars:
+		var bar: ColorRect = bar_node as ColorRect
+		if bar == null:
+			continue
+		bar.color = reticle_color
+	if aim_reticle_charge_label != null:
+		var multiplier: float = _get_bow_charge_multiplier()
+		aim_reticle_charge_label.text = "x%.1f" % multiplier
+		aim_reticle_charge_label.add_theme_color_override("font_color", reticle_color)
+
+
+func _get_bow_charge_ratio() -> float:
+	var full_charge_time: float = maxf(bow_full_charge_time, 0.01)
+	return clampf(bow_charge_time / full_charge_time, 0.0, 1.0)
+
+
+func _get_bow_charge_multiplier() -> float:
+	var min_multiplier: float = maxf(bow_min_charge_multiplier, 0.1)
+	var max_multiplier: float = maxf(bow_max_charge_multiplier, min_multiplier)
+	return lerpf(min_multiplier, max_multiplier, _get_bow_charge_ratio())
+
+
+func _make_bow_piece(piece_name: String, size: Vector3, local_position: Vector3, color: Color) -> MeshInstance3D:
+	var mesh: BoxMesh = BoxMesh.new()
+	mesh.size = size
+	var piece: MeshInstance3D = MeshInstance3D.new()
+	piece.name = piece_name
+	piece.mesh = mesh
+	piece.position = local_position
+	var material: StandardMaterial3D = StandardMaterial3D.new()
+	material.albedo_color = color
+	material.roughness = 0.85
+	piece.material_override = material
+	return piece
 
 
 func _update_procedural_animation(delta: float, max_speed: float) -> void:
@@ -563,6 +878,8 @@ func _recalculate_stats() -> void:
 	if old_max_health > 0 and max_health > old_max_health:
 		health += max_health - old_max_health
 	health = clampi(health, 0, max_health)
+	if bow_visual != null:
+		bow_visual.visible = bow_equipped
 	_update_health_ui()
 
 

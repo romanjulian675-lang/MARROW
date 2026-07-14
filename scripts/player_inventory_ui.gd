@@ -11,6 +11,8 @@ const CONTROL_BINDINGS: Array = [
 	{"action": "jump", "label": "Jump"},
 	{"action": "sprint", "label": "Sprint"},
 	{"action": "attack", "label": "Attack"},
+	{"action": "toggle_bow", "label": "Equip Bow"},
+	{"action": "ranged_attack", "label": "Bow / Arrow"},
 	{"action": "inventory", "label": "Inventory"},
 	{"action": "interact", "label": "Interact"},
 	{"action": "equip", "label": "Equip Next"},
@@ -1147,6 +1149,8 @@ func _reset_control_defaults() -> void:
 	_set_default_control_key("jump", KEY_SPACE)
 	_set_default_control_key("sprint", KEY_SHIFT)
 	_set_default_control_mouse("attack", MOUSE_BUTTON_LEFT)
+	_set_default_control_key("toggle_bow", KEY_1)
+	_set_default_control_mouse("ranged_attack", MOUSE_BUTTON_RIGHT)
 	_set_default_control_key("inventory", KEY_TAB)
 	_set_default_control_key("interact", KEY_E)
 	_set_default_control_key("equip", KEY_Q)
