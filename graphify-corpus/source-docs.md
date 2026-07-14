@@ -491,8 +491,8 @@ Vision:
 
 Stats por hueso:
 - La forma editable nueva es `BoneDefinition.enemy_*`.
-- Durante la migracion, `BoneDataCatalog` crea `BoneDefinition` desde sus datos
-  internos.
+- `BoneDataCatalog` carga `BoneDefinition` desde `data/bones/*.tres` primero y
+  usa sus datos internos solo como fallback temporal.
 - `BoneDatabase` los normaliza a campos planos como
   `enemy_move_speed_bonus`, `enemy_contact_damage_bonus`,
   `enemy_max_health_bonus`, `enemy_detection_range_bonus`,
@@ -542,6 +542,8 @@ En `TESTING ENVIRONMENT`:
   usados por combate y perfiles enemigos.
 - 2026-07-14: Se agrego `BoneDefinition` como `Resource`; combate sigue leyendo
   perfiles normalizados mediante `BoneRulesService`.
+- 2026-07-14: Los stats de huesos hechos a mano ya pueden venir de Resources
+  `.tres` en `data/bones/` sin cambiar `Enemy`.
 
 ## docs/current_system_status.md
 
@@ -592,8 +594,9 @@ refactor pass.
 ## Bone Data
 
 - `BoneDefinition` is the Godot `Resource` type for one hand-authored bone.
-- `BoneDataCatalog` currently creates `BoneDefinition` objects from its clean
-  in-code data while the project prepares for `.tres` assets.
+- Initial hand-authored bones now live as `.tres` assets in `data/bones/`.
+- `BoneDataCatalog` loads `.tres` Resources first and uses its in-code
+  dictionaries only as temporary fallback during gradual migration.
 - `BoneDatabase` remains the compatibility layer that normalizes catalog data
   into the flat fields current systems expect.
 - Gameplay consumers should still use `BoneRulesService`, `EquipmentRulesService`
@@ -681,8 +684,9 @@ Reglas actuales:
 
 Los drops hechos a mano siguen usando ids como `arm_bone` o `heavy_bone`.
 Esos ids deben poder resolverse como `BoneDefinition` mediante
-`BoneDataCatalog`; `BoneDatabase` los convierte al formato plano que leen
-pickups, labels, camp chests e inventario.
+`BoneDataCatalog`, preferiblemente desde `data/bones/*.tres`. `BoneDatabase`
+los convierte al formato plano que leen pickups, labels, camp chests e
+inventario.
 
 ## Flujo de muerte
 
@@ -749,6 +753,8 @@ En `TESTING ENVIRONMENT`:
   a mano, manteniendo `BoneDatabase` como compatibilidad para pickups actuales.
 - 2026-07-14: Se agrego `BoneDefinition` como tipo Resource para que los drops
   hechos a mano puedan migrar a assets editables.
+- 2026-07-14: Los drops hechos a mano iniciales (`arm_bone`, `leg_bone`,
+  `heavy_bone`, `dummy_bone`, `rib_bone`) ya tienen Resources en `data/bones/`.
 
 ## docs/equipment_flow.md
 
@@ -832,12 +838,11 @@ Cada id generado contiene:
 - escala visual
 - bonuses de jugador
 
-Los huesos hechos a mano (`arm_bone`, `leg_bone`, `heavy_bone`, etc.) se pueden
-representar como `BoneDefinition` Resources con identidad, stats de jugador,
-stats de enemigo y datos visuales. Durante esta etapa, `BoneDataCatalog` crea
-esos Resources desde sus datos internos y `BoneDatabase` los transforma al
-formato plano que todavia consumen `BoneRulesService`, `EquipmentRulesService`,
-stats, rig e inventario.
+Los huesos hechos a mano (`arm_bone`, `leg_bone`, `heavy_bone`, etc.) viven
+como `BoneDefinition` Resources en `data/bones/`. `BoneDataCatalog` carga esos
+assets primero y solo usa sus diccionarios internos como fallback temporal.
+`BoneDatabase` transforma cada Resource al formato plano que todavia consumen
+`BoneRulesService`, `EquipmentRulesService`, stats, rig e inventario.
 
 ## Responsabilidades
 
@@ -867,9 +872,9 @@ stats, rig e inventario.
   - este documento
 - Si un hueso cambia visualmente el cuerpo, la preview del inventario debe
   mostrarlo tambien.
-- Al editar datos de huesos hechos a mano ahora se debe respetar la forma de
-  `BoneDefinition`. Solo tocar `BoneDatabase` si se necesita cambiar la
-  conversion o compatibilidad.
+- Al editar datos de huesos hechos a mano, cambiar el `.tres` correspondiente
+  en `data/bones/`. Solo tocar `BoneDataCatalog` si se agrega un id nuevo o se
+  necesita fallback; solo tocar `BoneDatabase` si cambia la compatibilidad.
 
 ## Como probar
 
@@ -890,6 +895,9 @@ En `TESTING ENVIRONMENT`:
   `BoneDataCatalog`, manteniendo intactos los consumidores actuales.
 - 2026-07-14: Se agrego `BoneDefinition` como `Resource` de Godot y
   `BoneDataCatalog` ahora puede convertir cada definicion a ese tipo.
+- 2026-07-14: Se movieron los huesos hechos a mano iniciales a
+  `data/bones/*.tres`. La migracion sigue siendo gradual porque el diccionario
+  queda como fallback.
 
 ## docs/flow_index.md
 
@@ -1067,17 +1075,16 @@ modificar controles desde la seccion de settings.
 
 El inventario debe seguir leyendo nombres, colores, descripciones y textos de
 stats mediante `BoneRulesService`. Internamente, `BoneDatabase` normaliza
-`BoneDefinition` Resources creados desde `BoneDataCatalog`, que usa una
-estructura mas limpia:
+`BoneDefinition` Resources cargados por `BoneDataCatalog`.
 
-- `identity`: nombre, rareza, color, slot, tags y descripcion.
-- `player_stats`: bonuses que ve el jugador al equipar.
-- `enemy_stats`: bonuses que usan enemigos y perfiles de combate.
-- `visual`: datos opcionales para escala/peso visual.
+La ruta actual es:
+- primero cargar `.tres` desde `data/bones/`.
+- si falta un Resource, usar el diccionario temporal de `BoneDataCatalog`.
+- convertir el `BoneDefinition` al formato plano que ya espera la UI.
 
-No conectar la UI directamente a `BoneDefinition` ni `BoneDataCatalog` todavia.
-Esa capa existe para preparar una migracion futura a `.tres`, JSON o una tabla
-exportada.
+No conectar la UI directamente a `BoneDefinition` ni `BoneDataCatalog`. La UI
+debe seguir usando `BoneRulesService` para que los assets `.tres`, los fallbacks
+y los huesos generados sigan una sola ruta.
 
 ## Puntos delicados
 
@@ -1108,6 +1115,9 @@ En `TESTING ENVIRONMENT`:
   formato compatible.
 - 2026-07-14: Se creo `BoneDefinition` como `Resource` de Godot para que los
   huesos puedan convertirse luego a assets editables sin cambiar la UI.
+- 2026-07-14: Se migraron los huesos hechos a mano a `.tres` en `data/bones/`.
+  `BoneDataCatalog` carga Resources primero y conserva diccionarios como
+  fallback gradual.
 
 ## docs/open_world_map_layout.md
 
@@ -1280,8 +1290,11 @@ Player relationships:
 `scripts/bone_definition.gd` defines `BoneDefinition`, the Godot `Resource`
 type for one hand-authored bone.
 
-`scripts/bone_data_catalog.gd` is the current clean in-code source for
-hand-authored bone definitions. It can create `BoneDefinition` objects by id.
+`data/bones/*.tres` contains the current hand-authored bone assets.
+
+`scripts/bone_data_catalog.gd` resolves bone ids. It loads `.tres`
+`BoneDefinition` assets first and falls back to its temporary in-code dictionary
+only when an asset is missing.
 
 `scripts/bone_database.gd` is the compatibility API. It normalizes catalog data
 into the flat fields current gameplay systems still expect.
@@ -1311,6 +1324,10 @@ Rule: gameplay and UI should not read `BoneDefinition` or `BoneDataCatalog`
 directly yet. Use `BoneRulesService`, `EquipmentRulesService`,
 `DropPickupRulesService` or `BoneDatabase` so generated limb bones and
 hand-authored bones stay compatible.
+
+Migration rule: when adding a new hand-authored bone, create a `.tres` in
+`data/bones/`, add its id/path to `BoneDataCatalog.RESOURCE_PATHS`, and keep
+dictionary entries only as temporary fallback.
 
 ## Inventory UI
 

@@ -278,12 +278,17 @@
 - none
 
 ### Constants
+- `RESOURCE_PATHS`
 - `DEFINITIONS`
 
 ### Key Variables
+- `ids`
+- `clean_id`
 - `resource`
 - `definition`
 - `result`
+- `path`
+- `loaded`
 
 ### Functions
 - none
