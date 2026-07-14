@@ -171,9 +171,6 @@ var _scale_tween: Tween = null
 var _hit_sound: AudioStreamWAV = null
 
 const HIT_COLOR: Color = Color(1, 0.95, 0.45, 1)
-const DETACHABLE_LIMBS: Array[String] = ["right_arm", "left_arm", "right_leg", "left_leg", "body", "head"]
-const PICKUP_ELIGIBLE_LIMBS: Array[String] = ["right_arm", "left_arm", "right_leg", "left_leg", "body", "head"]
-const CORE_FALL_ORDER: Array[String] = ["body", "head"]
 
 @onready var mesh_instance: MeshInstance3D = $MeshInstance3D
 @onready var collision_shape: CollisionShape3D = $CollisionShape3D
@@ -1263,8 +1260,8 @@ func _limb_detach_count_for_damage(damage_taken: int, killing_hit: bool) -> int:
 		limb_detach_damage_progress -= float(detach_count) * damage_per_limb
 
 	var remaining_non_core: int = 0
-	for limb_key in DETACHABLE_LIMBS:
-		if CORE_FALL_ORDER.has(limb_key):
+	for limb_key in DropPickupRulesService.detachable_limb_keys():
+		if DropPickupRulesService.is_core_limb(limb_key):
 			continue
 		if not detached_limb_keys.has(limb_key):
 			remaining_non_core += 1
@@ -1280,7 +1277,7 @@ func _next_attached_limb_key() -> String:
 
 
 func _preferred_detach_keys() -> Array[String]:
-	return BoneRulesService.detachable_priority_for_bone(dropped_bone_id, DETACHABLE_LIMBS, CORE_FALL_ORDER)
+	return DropPickupRulesService.detachable_priority_for_bone(dropped_bone_id)
 
 
 func _detach_limb_group(limb_key: String, force_pickup: bool = false) -> void:
@@ -1345,7 +1342,7 @@ func _spawn_detached_limb_piece(limb_key: String, force_pickup: bool = false) ->
 	body.angular_velocity = Vector3(randf_range(-4.0, 4.0), randf_range(-6.0, 6.0), randf_range(-4.0, 4.0))
 
 	var pickup_bone_id: String = _pickup_bone_id_for_limb(limb_key)
-	var can_be_pickup := PICKUP_ELIGIBLE_LIMBS.has(limb_key) and pickup_bone_id != ""
+	var can_be_pickup := DropPickupRulesService.is_pickup_eligible_limb(limb_key) and pickup_bone_id != ""
 	var should_be_pickup := force_pickup or randf() <= limb_pickup_drop_chance
 	if not limb_pickup_spawned and can_be_pickup and should_be_pickup:
 		_attach_pickup_to_detached_limb(body, pickup_bone_id)
@@ -1388,7 +1385,7 @@ func _attach_pickup_to_detached_limb(body: RigidBody3D, pickup_bone_id: String) 
 
 
 func _pickup_bone_id_for_limb(limb_key: String) -> String:
-	return BoneRulesService.pickup_bone_id_for_limb(limb_key, _pickup_source_profile())
+	return DropPickupRulesService.pickup_bone_id_for_limb(limb_key, _pickup_source_profile())
 
 
 func _pickup_source_profile() -> String:
@@ -1655,7 +1652,7 @@ func _drop_bone() -> void:
 	if rig != null and guarantee_limb_pickup_on_death:
 		return
 
-	var drop_slot: String = BoneRulesService.slot_for(dropped_bone_id)
+	var drop_slot: String = EquipmentRulesService.slot_for_bone(dropped_bone_id)
 	if drop_slot == "body" and not detached_limb_keys.has("body"):
 		return
 
@@ -1696,12 +1693,7 @@ func _force_limb_pickup_drop() -> bool:
 
 
 func _next_pickup_limb_key() -> String:
-	var candidates: Array[String] = PICKUP_ELIGIBLE_LIMBS.duplicate()
-
-	for limb_key in candidates:
-		if not detached_limb_keys.has(limb_key) and _pickup_bone_id_for_limb(limb_key) != "":
-			return limb_key
-	return ""
+	return DropPickupRulesService.first_available_pickup_limb(detached_limb_keys, _pickup_source_profile())
 
 
 func _drop_remaining_limbs_on_death() -> void:
@@ -1719,23 +1711,7 @@ func _drop_remaining_limbs_on_death() -> void:
 
 
 func _choose_death_pickup_limb_key() -> String:
-	var candidates: Array[String] = []
-	for limb_key in _preferred_detach_keys():
-		if detached_limb_keys.has(limb_key):
-			continue
-		if not PICKUP_ELIGIBLE_LIMBS.has(limb_key):
-			continue
-		if _pickup_bone_id_for_limb(limb_key) == "":
-			continue
-		candidates.append(limb_key)
-
-	if candidates.is_empty():
-		return ""
-	return str(candidates[randi_range(0, candidates.size() - 1)])
-
-
-func _drop_slot_matches_limb(limb_key: String) -> bool:
-	return BoneRulesService.drop_slot_matches_limb(dropped_bone_id, limb_key)
+	return DropPickupRulesService.choose_death_pickup_limb(_preferred_detach_keys(), detached_limb_keys, _pickup_source_profile())
 
 
 # This updates the floating HP text above the enemy.

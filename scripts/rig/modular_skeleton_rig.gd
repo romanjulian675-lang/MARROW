@@ -37,15 +37,6 @@ static var LIMB_GEO := {
 	"left_foot": {"size": Vector3(0.2, 0.12, 0.34), "offset": Vector3(0.0, 0.0, 0.05)},
 }
 
-# Which physical sockets a gameplay slot maps to (a "legs" bone shows on both legs).
-static var SLOT_TO_SOCKETS := {
-	"right_arm": ["right_arm"],
-	"left_arm": ["left_arm"],
-	"legs": ["left_leg", "right_leg"],
-	"body": ["body"],
-	"head": ["head"],
-}
-
 # Per-part placement for the rigged model's limb meshes: which socket, and the
 # local scale + rotation to line each part up. Feet are smaller and turned
 # forward (they came in big + sideways). Tune these values as needed.
@@ -369,7 +360,7 @@ func _make_limb(socket_key: String, color: Color, extra_scale: Vector3) -> MeshI
 # part. bone_def comes from BoneRulesService.definition_for(bone_id).
 func equip_bone(bone_id: String, bone_def: Dictionary) -> void:
 	var slot_id: String = bone_def.get("slot", "")
-	var socket_keys: Array = SLOT_TO_SOCKETS.get(slot_id, [])
+	var socket_keys: Array = EquipmentRulesService.socket_keys_for_slot(slot_id)
 	if socket_keys.is_empty():
 		push_warning("ModularSkeletonRig: no sockets for slot '" + slot_id + "'")
 		return
@@ -409,7 +400,7 @@ func unequip_slot(slot_id: String) -> void:
 	equipped_ids.erase(slot_id)
 
 	# Show the grey base again for that slot's sockets.
-	for key in SLOT_TO_SOCKETS.get(slot_id, []):
+	for key in EquipmentRulesService.socket_keys_for_slot(slot_id):
 		if base_visuals.has(key):
 			base_visuals[key].visible = true
 
