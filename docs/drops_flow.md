@@ -71,6 +71,8 @@ Rareza:
 - `quality_drop_percent` permite expresar una intencion de ajuste porcentual por
   calidad. No modifica drops automaticamente hasta que exista una regla clara en
   `DropRulesService`.
+- Rarezas canonicas para drops: `comun`, `corrupto`, `maldito`, `especial`,
+  `legendario`. No usar labels legacy como `Common`, `Uncommon` o `Rare`.
 - Rareza no debe mezclarse con calidad. Calidad describe condicion/valor de la
   pieza; rareza describe probabilidad o categoria de obtencion.
 

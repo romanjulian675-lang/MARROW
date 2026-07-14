@@ -96,7 +96,7 @@ static func quality_color_for(bone_id: String, fallback: Color = UNKNOWN_COLOR) 
 static func rarity_for(bone_id: String) -> String:
 	var definition: Dictionary = EquipmentRulesService.generated_limb_definition_for(bone_id)
 	if not definition.is_empty():
-		return str(definition.get("rarity", "Common"))
+		return str(definition.get("rarity", BoneDefinition.RARITY_COMMON))
 	return BoneDatabase.rarity(bone_id)
 
 

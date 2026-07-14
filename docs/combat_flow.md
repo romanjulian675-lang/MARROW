@@ -105,6 +105,8 @@ Mutacion:
 - Los campos `mutation_id`, `mutation_family`, `mutation_stage`,
   `mutation_intensity` y `mutation_tags` viajan por `BoneDefinition` y
   `BoneDatabase`.
+- Familias canonicas actuales: vacio, `corrupto`, `maldito`, `especial`,
+  `hibrido`.
 - Mutacion no cambia combate automaticamente todavia. Debe activarse desde una
   regla explicita para evitar que un dato de authoring cambie balance sin querer.
 - Los limbs generados de gorilla/lizard ya exponen familias de mutacion para

@@ -196,7 +196,7 @@ static func quality_color(id: String, fallback: Color = UNKNOWN_COLOR) -> Color:
 
 static func rarity(id: String) -> String:
 	if _bones().has(id):
-		return str(_bones()[id].get("rarity", "Common"))
+		return str(_bones()[id].get("rarity", BoneDefinition.RARITY_COMMON))
 	return "Unknown"
 
 

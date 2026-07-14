@@ -152,9 +152,11 @@ Each definition can include:
   Canonical quality ids are `chatarra`, `fragil`, `comun`, `fuerte` and
   `legendario`.
 - `BoneDefinition.rarity_*` fields: loot rarity metadata and optional drop
-  weighting.
+  weighting. Canonical ids are `comun`, `corrupto`, `maldito`, `especial` and
+  `legendario`.
 - `BoneDefinition.mutation_*` fields: mutation family, stage, intensity and
-  tags for future visual, rig, AI or combat hooks.
+  tags for future visual, rig, AI or combat hooks. Canonical families are empty,
+  `corrupto`, `maldito`, `especial` and `hibrido`.
 - `BoneDefinition.attack_*` and `BoneDefinition.combo_*` fields: passive attack
   and combo authoring metadata for future combat chains.
 - `BoneDefinition.weight*` fields: legacy animation weight plus weight class,

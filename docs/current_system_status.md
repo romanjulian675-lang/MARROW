@@ -58,6 +58,9 @@ refactor pass.
   `legendario`; UI can localize display text separately.
 - Quality percentage modifiers are stored as passive metadata for damage, speed,
   health, drop and weight tuning; no automatic formula consumes them yet.
+- Canonical rarity ids are `comun`, `corrupto`, `maldito`, `especial` and
+  `legendario`; canonical mutation families are empty, `corrupto`, `maldito`,
+  `especial` and `hibrido`.
 - Bone attack/combo fields are present as passive metadata for future combat
   chains; current attacks still come from the existing player/enemy combat code.
 - Bone weight fields now distinguish animation weight, physical weight,

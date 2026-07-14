@@ -120,6 +120,10 @@ Campos de rareza:
 - `rarity_rank` permite ordenar o filtrar por rareza.
 - `rarity_color` permite mostrar rareza sin cambiar el color fisico del hueso.
 - `rarity_drop_weight` queda disponible para futuras reglas de drops.
+- Rarezas canonicas: `comun`, `corrupto`, `maldito`, `especial`,
+  `legendario`.
+- Mutaciones canonicas actuales: vacio, `corrupto`, `maldito`, `especial`,
+  `hibrido`.
 
 Campos de peso:
 - `weight` se mantiene como campo legacy para animacion procedural.

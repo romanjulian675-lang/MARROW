@@ -13,6 +13,16 @@ const QUALITY_FRAGILE := "fragil"
 const QUALITY_COMMON := "comun"
 const QUALITY_STRONG := "fuerte"
 const QUALITY_LEGENDARY := "legendario"
+const RARITY_COMMON := "comun"
+const RARITY_CORRUPT := "corrupto"
+const RARITY_CURSED := "maldito"
+const RARITY_SPECIAL := "especial"
+const RARITY_LEGENDARY := "legendario"
+const MUTATION_NONE := ""
+const MUTATION_CORRUPT := "corrupto"
+const MUTATION_CURSED := "maldito"
+const MUTATION_SPECIAL := "especial"
+const MUTATION_HYBRID := "hibrido"
 
 @export_group("Identity")
 @export var bone_id: String = ""
@@ -27,7 +37,7 @@ const QUALITY_LEGENDARY := "legendario"
 @export var quality_health_percent: float = 0.0
 @export var quality_drop_percent: float = 0.0
 @export var quality_weight_percent: float = 0.0
-@export var rarity: String = "Common"
+@export var rarity: String = RARITY_COMMON
 @export var rarity_rank: int = 1
 @export var rarity_color: Color = DEFAULT_COLOR
 @export var rarity_drop_weight: float = 1.0
@@ -393,6 +403,74 @@ static func default_quality_color(quality_id: String) -> Color:
 			return Color(1.0, 0.7, 0.15, 1.0)
 		_:
 			return DEFAULT_COLOR
+
+
+static func defined_rarities() -> Array[String]:
+	return [
+		RARITY_COMMON,
+		RARITY_CORRUPT,
+		RARITY_CURSED,
+		RARITY_SPECIAL,
+		RARITY_LEGENDARY,
+	]
+
+
+static func defined_mutation_families() -> Array[String]:
+	return [
+		MUTATION_NONE,
+		MUTATION_CORRUPT,
+		MUTATION_CURSED,
+		MUTATION_SPECIAL,
+		MUTATION_HYBRID,
+	]
+
+
+static func default_rarity_rank(rarity_id: String) -> int:
+	match rarity_id:
+		RARITY_COMMON:
+			return 1
+		RARITY_CORRUPT:
+			return 2
+		RARITY_CURSED:
+			return 3
+		RARITY_SPECIAL:
+			return 4
+		RARITY_LEGENDARY:
+			return 5
+		_:
+			return 1
+
+
+static func default_rarity_color(rarity_id: String) -> Color:
+	match rarity_id:
+		RARITY_COMMON:
+			return DEFAULT_COLOR
+		RARITY_CORRUPT:
+			return Color(0.25, 0.95, 0.55, 1.0)
+		RARITY_CURSED:
+			return Color(0.65, 0.35, 1.0, 1.0)
+		RARITY_SPECIAL:
+			return Color(0.35, 0.85, 0.95, 1.0)
+		RARITY_LEGENDARY:
+			return Color(1.0, 0.7, 0.15, 1.0)
+		_:
+			return DEFAULT_COLOR
+
+
+static func default_rarity_drop_weight(rarity_id: String) -> float:
+	match rarity_id:
+		RARITY_COMMON:
+			return 1.0
+		RARITY_CORRUPT:
+			return 0.7
+		RARITY_CURSED:
+			return 0.5
+		RARITY_SPECIAL:
+			return 0.4
+		RARITY_LEGENDARY:
+			return 0.15
+		_:
+			return 1.0
 
 
 static func _dictionary(source: Dictionary, key: String) -> Dictionary:

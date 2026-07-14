@@ -266,35 +266,23 @@ static func _generated_limb_quality_color(source_profile: String) -> Color:
 static func _generated_limb_rarity(source_profile: String) -> String:
 	match source_profile:
 		"gorilla":
-			return "Uncommon"
+			return BoneDefinition.RARITY_SPECIAL
 		"lizard":
-			return "Uncommon"
+			return BoneDefinition.RARITY_CORRUPT
 		_:
-			return "Common"
+			return BoneDefinition.RARITY_COMMON
 
 
 static func _generated_limb_rarity_rank(source_profile: String) -> int:
-	match source_profile:
-		"gorilla", "lizard":
-			return 2
-		_:
-			return 1
+	return BoneDefinition.default_rarity_rank(_generated_limb_rarity(source_profile))
 
 
 static func _generated_limb_rarity_color(source_profile: String) -> Color:
-	match source_profile:
-		"gorilla", "lizard":
-			return Color(0.35, 0.85, 0.95, 1.0)
-		_:
-			return UNKNOWN_COLOR
+	return BoneDefinition.default_rarity_color(_generated_limb_rarity(source_profile))
 
 
 static func _generated_limb_rarity_drop_weight(source_profile: String) -> float:
-	match source_profile:
-		"gorilla", "lizard":
-			return 0.65
-		_:
-			return 1.0
+	return BoneDefinition.default_rarity_drop_weight(_generated_limb_rarity(source_profile))
 
 
 static func _generated_limb_mutation_id(source_profile: String, limb_key: String) -> String:
@@ -306,11 +294,11 @@ static func _generated_limb_mutation_id(source_profile: String, limb_key: String
 static func _generated_limb_mutation_family(source_profile: String) -> String:
 	match source_profile:
 		"gorilla":
-			return "primal_mass"
+			return BoneDefinition.MUTATION_SPECIAL
 		"lizard":
-			return "reptile_adaptation"
+			return BoneDefinition.MUTATION_CORRUPT
 		_:
-			return ""
+			return BoneDefinition.MUTATION_NONE
 
 
 static func _generated_limb_mutation_stage(source_profile: String) -> int:
