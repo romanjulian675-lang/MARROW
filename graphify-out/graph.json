@@ -8490,7 +8490,7 @@
       "source_location": "L3642",
       "_origin": "ast",
       "id": "architecture_boneitemtile_gd_func_make_tile_style",
-      "community": 19,
+      "community": 3,
       "norm_label": ".gd_func__make_tile_style()"
     },
     {
@@ -8510,7 +8510,7 @@
       "source_location": "L3650",
       "_origin": "ast",
       "id": "architecture_boneitemtile_gd_func_drop_data",
-      "community": 3,
+      "community": 19,
       "norm_label": ".gd_func__drop_data()"
     },
     {
@@ -8610,7 +8610,7 @@
       "source_location": "L3697",
       "_origin": "ast",
       "id": "architecture_boneslotwidget_gd_func_drop_data",
-      "community": 3,
+      "community": 19,
       "norm_label": ".gd_func__drop_data()"
     },
     {
@@ -8630,7 +8630,7 @@
       "source_location": "L3705",
       "_origin": "ast",
       "id": "architecture_boneslotwidget_gd_func_make_slot_style",
-      "community": 19,
+      "community": 3,
       "norm_label": ".gd_func__make_slot_style()"
     },
     {
@@ -8700,7 +8700,7 @@
       "source_location": "L3740",
       "_origin": "ast",
       "id": "architecture_inventoryemptyslot_gd_func_drop_data",
-      "community": 3,
+      "community": 19,
       "norm_label": ".gd_func__drop_data()"
     },
     {
@@ -8710,7 +8710,7 @@
       "source_location": "L3744",
       "_origin": "ast",
       "id": "architecture_inventoryemptyslot_gd_func_make_slot_style",
-      "community": 19,
+      "community": 3,
       "norm_label": ".gd_func__make_slot_style()"
     },
     {
@@ -15060,7 +15060,7 @@
       "source_location": "L3643",
       "_origin": "ast",
       "id": "architecture_rationale_3643",
-      "community": 19,
+      "community": 3,
       "norm_label": "gdscript function: _make_tile_style(bg: color, border: color, border_width: int)"
     },
     {
@@ -15080,7 +15080,7 @@
       "source_location": "L3651",
       "_origin": "ast",
       "id": "architecture_rationale_3651",
-      "community": 3,
+      "community": 19,
       "norm_label": "gdscript function: _drop_data(_at_position: vector2, data: variant) -> void"
     },
     {
@@ -36994,5 +36994,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "4e577255dfe9185c3f03f9e1e3bf7aa91b0af670"
+  "built_at_commit": "bf59bdd4b39ffa41e306d4227135b60dd3bec07d"
 }
