@@ -76,6 +76,7 @@
 - `scripts/rig/rig_test_player.gd` depends on `scripts/rig/procedural_player_animator.gd` because it references class ProceduralPlayerAnimator.
 - `scripts/testing_environment.gd` depends on `scenes/player.tscn` because it loads resource.
 - `scripts/testing_environment.gd` depends on `scenes/enemy.tscn` because it loads resource.
+- `scripts/testing_environment.gd` depends on `scripts/equipment_rules_service.gd` because it references class EquipmentRulesService.
 - `scripts/tutorial_island_builder.gd` depends on `scenes/enemy.tscn` because it loads resource.
 - `scripts/tutorial_island_builder.gd` depends on `scenes/bone.tscn` because it loads resource.
 - `scripts/tutorial_island_builder.gd` depends on `scripts/demo_enemy_camp.gd` because it loads resource.

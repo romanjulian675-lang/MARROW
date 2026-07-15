@@ -2316,6 +2316,7 @@
 - `_clear_damage_hitbox_groups(area: Area3D) -> void`
 - `_build_socket_markers() -> void`
 - `_make_socket_marker(socket_key: String) -> MeshInstance3D`
+- `_socket_layout_for(socket_key: String) -> Vector3`
 - `_limb_geo_for(socket_key: String) -> Dictionary`
 - `_split_limbs_active() -> bool`
 - `_foot_parent_key(leg_key: String) -> String`
@@ -2730,6 +2731,8 @@
 - `MAIN_MENU_PATH`
 - `PLAYER_SCENE`
 - `ENEMY_SCENE`
+- `NORMAL_LIMB_BONES`
+- `EXTRA_TESTING_BONES`
 
 ### Key Variables
 - `player`

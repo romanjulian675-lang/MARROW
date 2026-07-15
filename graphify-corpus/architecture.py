@@ -2930,6 +2930,10 @@ class ModularSkeletonRig:
         """GDScript function: _make_socket_marker(socket_key: String) -> MeshInstance3D"""
         pass
 
+    def gd_func__socket_layout_for(self):
+        """GDScript function: _socket_layout_for(socket_key: String) -> Vector3"""
+        pass
+
     def gd_func__limb_geo_for(self):
         """GDScript function: _limb_geo_for(socket_key: String) -> Dictionary"""
         pass
@@ -3561,6 +3565,10 @@ class TestingEnvironment:
     def depends_on_SceneEnemy(self):
         """Relationship: loads resource."""
         return SceneEnemy
+
+    def depends_on_EquipmentRulesService(self):
+        """Relationship: references class EquipmentRulesService."""
+        return EquipmentRulesService
 
 class TutorialIslandBuilder:
     """Godot script: scripts/tutorial_island_builder.gd
