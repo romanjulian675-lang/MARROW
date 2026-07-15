@@ -42,6 +42,22 @@ func equip_bone(bone_id: String) -> void:
 	print("Equipped ", BoneRulesService.display_name_with_slot(bone_id), " in slot ", slot)
 
 
+func restore_detached_body(bone_id: String) -> void:
+	if EquipmentRulesService.slot_for_bone(bone_id) != CORE_TORSO_SLOT:
+		return
+	if not _equip_bone_in_slot(bone_id, true):
+		return
+
+	var rig: ModularSkeletonRig = _get_player_rig()
+	if rig != null:
+		rig.equip_bone(bone_id, BoneRulesService.definition_for(bone_id))
+
+	_recalculate_owner_stats()
+	_notify_equipment_changed()
+	GameEvents.bone_equipped.emit(bone_id, CORE_TORSO_SLOT, owner_player)
+	print("Reattached detached torso ", BoneRulesService.display_name_with_slot(bone_id))
+
+
 func unequip_slot(slot: String) -> void:
 	if not equipped.has(slot):
 		return
@@ -130,6 +146,11 @@ func _can_equip_slot(slot: String, bone_id: String) -> bool:
 	if TORSO_REQUIRED_SLOTS.has(slot) and not equipped.has(CORE_TORSO_SLOT):
 		print("Equip a torso before attaching limbs.")
 		_emit_equipment_hint("torso_required", "Recover a torso first. Arms and legs cannot attach to a head alone.")
+		return false
+
+	if slot == CORE_TORSO_SLOT and owner_player != null and owner_player.has_method("is_head_detached_from_torso") and bool(owner_player.call("is_head_detached_from_torso")):
+		print("Return to the torso you left behind before equipping another torso.")
+		_emit_equipment_hint("detached_torso_required", "Your head is detached. Return to your left-behind torso and hold Interact to reattach.")
 		return false
 
 	if slot == CORE_TORSO_SLOT and bone_id == "":

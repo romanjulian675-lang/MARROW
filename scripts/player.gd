@@ -35,6 +35,9 @@ const ARROW_PROJECTILE_SCRIPT: Script = preload("res://scripts/arrow_projectile.
 @export var head_only_attack_hitbox_radius: float = 0.28
 @export var head_only_attack_hitbox_size: Vector3 = Vector3(0.56, 0.56, 0.56)
 @export var torso_head_attack_hitbox_lifetime: float = 0.62
+@export var detached_head_reattach_range: float = 1.45
+@export var detached_head_reattach_hold_time: float = 0.8
+@export var detached_head_fallback_launch_distance: float = 1.05
 @export var stealth_prompt_scan_range: float = 3.0
 @export_group("Bow")
 @export var bow_enabled: bool = true
@@ -106,6 +109,12 @@ var noise_timer: float = 0.0
 var sprinting_this_frame: bool = false
 var fallback_input_previous: Dictionary = {}
 var fallback_input_current: Dictionary = {}
+var head_detached_from_torso: bool = false
+var detached_torso_bone_id: String = ""
+var detached_torso_marker: Node3D = null
+var detached_torso_reattach_progress: float = 0.0
+var detached_camera_offset_carry: Vector3 = Vector3.ZERO
+var detached_camera_offset_carry_timer: float = 0.0
 
 # Sockets are empty Node3D children on the player, one per equip slot.
 # Adding a visible bone as a child of a socket makes it move with the player.
@@ -187,7 +196,10 @@ func _physics_process(delta: float) -> void:
 		_set_stealth_prompt("")
 		return
 
-	_update_stealth_finish_prompt()
+	if _update_detached_torso_reattach(delta):
+		pass
+	else:
+		_update_stealth_finish_prompt()
 	if _input_just_pressed("stealth_finish"):
 		_try_stealth_finish()
 	if _input_just_pressed("toggle_bow"):
@@ -205,6 +217,8 @@ func _physics_process(delta: float) -> void:
 		combo_animation_timer = maxf(combo_animation_timer - delta, 0.0)
 	elif combo_animation_step != 0:
 		combo_animation_step = 0
+	if detached_camera_offset_carry_timer > 0.0:
+		detached_camera_offset_carry_timer = maxf(detached_camera_offset_carry_timer - delta, 0.0)
 
 	if _input_just_pressed("attack"):
 		if bow_equipped:
@@ -303,6 +317,7 @@ func _read_fallback_input_state() -> Dictionary:
 		"toggle_bow": Input.is_key_pressed(KEY_1),
 		"inventory": Input.is_key_pressed(KEY_TAB),
 		"equip": Input.is_key_pressed(KEY_Q),
+		"interact": Input.is_key_pressed(KEY_E),
 		"stealth_finish": Input.is_key_pressed(KEY_F),
 	}
 
@@ -787,6 +802,14 @@ func _update_procedural_animation(delta: float, max_speed: float) -> void:
 		return
 
 	animator.update_from_player(delta, velocity, max_speed, last_facing_direction, rig.get_equipped_bone_defs())
+	if (
+		animator.has_method("has_torso_head_miss_detach_request")
+		and bool(animator.call("has_torso_head_miss_detach_request"))
+		and animator.has_method("consume_torso_head_miss_detach_offset")
+	):
+		var detach_offset_value: Variant = animator.call("consume_torso_head_miss_detach_offset")
+		if detach_offset_value is Vector3:
+			_detach_head_from_torso_after_miss(detach_offset_value)
 	_update_camera_animation_follow_offset()
 
 
@@ -812,6 +835,9 @@ func _update_camera_animation_follow_offset() -> void:
 		if follow_direction.length() > 0.01:
 			follow_direction = follow_direction.normalized()
 		animation_offset = follow_direction * forward_offset
+	if detached_camera_offset_carry_timer > 0.0:
+		var carry_t: float = clampf(detached_camera_offset_carry_timer / 0.16, 0.0, 1.0)
+		animation_offset = animation_offset.lerp(detached_camera_offset_carry, carry_t)
 	if camera_controller.has_method("set_animation_follow_offset"):
 		camera_controller.set_animation_follow_offset(animation_offset)
 
@@ -1019,6 +1045,160 @@ func _update_stealth_finish_prompt() -> void:
 		_set_stealth_prompt(str(stealth_target.call("get_stealth_prompt_text")))
 	else:
 		_set_stealth_prompt("F: Stealth finish")
+
+
+func is_head_detached_from_torso() -> bool:
+	return head_detached_from_torso
+
+
+func _detach_head_from_torso_after_miss(detach_offset: Vector3) -> void:
+	if head_detached_from_torso or equipment_component == null:
+		return
+	if not _is_torso_only_combat_mode():
+		return
+
+	var body_bone_id: String = equipment_component.get_equipped_bone_for_slot("body")
+	if body_bone_id == "":
+		return
+
+	var launch_offset := Vector3(detach_offset.x, 0.0, detach_offset.z)
+	if launch_offset.length() <= 0.01:
+		var fallback_direction := last_facing_direction
+		fallback_direction.y = 0.0
+		if fallback_direction.length() <= 0.01:
+			fallback_direction = _get_camera_forward_direction()
+		fallback_direction.y = 0.0
+		if fallback_direction.length() > 0.01:
+			launch_offset = fallback_direction.normalized() * detached_head_fallback_launch_distance
+
+	detached_torso_bone_id = body_bone_id
+	head_detached_from_torso = true
+	detached_torso_reattach_progress = 0.0
+	detached_camera_offset_carry = launch_offset
+	detached_camera_offset_carry_timer = 0.16
+	_spawn_detached_torso_marker(body_bone_id)
+	equipment_component.unequip_slot("body")
+	global_position += launch_offset
+	if animator != null and animator.has_method("enter_detached_head_state"):
+		var head_ground_position := _detached_head_ground_local_position(launch_offset)
+		animator.call("enter_detached_head_state", head_ground_position, true)
+	_set_stealth_prompt("Head detached. Hold E near your torso to reattach.")
+
+
+func _detached_head_ground_local_position(launch_offset: Vector3) -> Vector3:
+	if rig == null:
+		return Vector3.ZERO
+	var head_socket := rig.get_socket("head")
+	if head_socket == null:
+		return Vector3.ZERO
+	var world_position := head_socket.global_position
+	world_position.y = global_position.y + head_socket.position.y
+	return rig.to_local(world_position - launch_offset)
+
+
+func _spawn_detached_torso_marker(body_bone_id: String) -> void:
+	_clear_detached_torso_marker()
+	var marker := Node3D.new()
+	marker.name = "DetachedTorsoMarker"
+	var marker_position := global_position
+	if rig != null and rig.has_method("get_socket"):
+		var body_socket := rig.get_socket("body")
+		if body_socket != null:
+			marker_position = body_socket.global_position
+	marker.global_position = marker_position
+
+	var definition: Dictionary = BoneRulesService.definition_for(body_bone_id)
+	var color: Color = definition.get("color", Color(0.82, 0.92, 1.0, 1.0))
+	var visual_scale: Vector3 = _as_vector3(definition.get("visual_scale", Vector3.ONE), Vector3.ONE)
+
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(0.5, 0.7, 0.28) * visual_scale
+	var body_mesh := MeshInstance3D.new()
+	body_mesh.name = "DetachedTorsoMesh"
+	body_mesh.mesh = mesh
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.emission_enabled = true
+	material.emission = color
+	material.emission_energy_multiplier = 0.12
+	body_mesh.material_override = material
+	marker.add_child(body_mesh)
+
+	var label := Label3D.new()
+	label.name = "DetachedTorsoPrompt"
+	label.text = "Hold E to reattach head"
+	label.position = Vector3(0.0, 0.72, 0.0)
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.font_size = 28
+	label.visible = false
+	marker.add_child(label)
+
+	get_tree().current_scene.add_child(marker)
+	detached_torso_marker = marker
+
+
+func _update_detached_torso_reattach(delta: float) -> bool:
+	if not head_detached_from_torso:
+		return false
+	if detached_torso_marker == null or not is_instance_valid(detached_torso_marker):
+		_set_stealth_prompt("Find your torso to reattach.")
+		return true
+
+	var to_torso: Vector3 = detached_torso_marker.global_position - global_position
+	to_torso.y = 0.0
+	var in_range := to_torso.length() <= detached_head_reattach_range
+	_set_detached_torso_marker_prompt_visible(in_range)
+	if not in_range:
+		detached_torso_reattach_progress = 0.0
+		_set_stealth_prompt("Return to your torso to reattach your head.")
+		return true
+
+	var holding := _input_pressed("interact")
+	detached_torso_reattach_progress = DropPickupRulesService.next_pickup_hold_progress(detached_torso_reattach_progress, delta, holding)
+	if holding:
+		var percent := int((detached_torso_reattach_progress / maxf(detached_head_reattach_hold_time, 0.01)) * 100.0)
+		_set_stealth_prompt("Reattaching head... " + str(clampi(percent, 0, 100)) + "%")
+		if DropPickupRulesService.pickup_hold_is_complete(detached_torso_reattach_progress, detached_head_reattach_hold_time):
+			_reattach_head_to_detached_torso()
+	else:
+		_set_stealth_prompt("Hold E to reattach your head.")
+	return true
+
+
+func _reattach_head_to_detached_torso() -> void:
+	if not head_detached_from_torso or equipment_component == null:
+		return
+	if detached_torso_bone_id != "":
+		if equipment_component.has_method("restore_detached_body"):
+			equipment_component.call("restore_detached_body", detached_torso_bone_id)
+		else:
+			equipment_component.equip_bone(detached_torso_bone_id)
+	head_detached_from_torso = false
+	detached_torso_bone_id = ""
+	detached_torso_reattach_progress = 0.0
+	_clear_detached_torso_marker()
+	_set_stealth_prompt("")
+
+
+func _clear_detached_torso_marker() -> void:
+	if detached_torso_marker != null and is_instance_valid(detached_torso_marker):
+		detached_torso_marker.queue_free()
+	detached_torso_marker = null
+
+
+func _set_detached_torso_marker_prompt_visible(is_visible: bool) -> void:
+	if detached_torso_marker == null or not is_instance_valid(detached_torso_marker):
+		return
+	var label := detached_torso_marker.get_node_or_null("DetachedTorsoPrompt") as Label3D
+	if label != null:
+		label.visible = is_visible
+
+
+func _as_vector3(value: Variant, fallback: Vector3) -> Vector3:
+	if value is Vector3:
+		var vector_value: Vector3 = value
+		return vector_value
+	return fallback
 
 
 func _find_stealth_target() -> Node3D:

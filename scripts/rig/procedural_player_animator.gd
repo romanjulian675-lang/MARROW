@@ -38,8 +38,9 @@ extends Node3D
 @export var lizard_wall_climb_head_lift := 0.16
 @export var lizard_wall_climb_limb_reach := 0.34
 @export var head_only_hop_amount := 0.0
-@export var head_only_roll_amount := 0.42
+@export var head_only_roll_amount := 0.24
 @export var head_only_roll_radius := 0.16
+@export var head_only_roll_speed_scale := 0.42
 @export var head_only_ground_socket_y := -0.85
 @export var torso_spring_hop_amount := 0.34
 @export var torso_spring_compress_amount := 0.16
@@ -99,6 +100,10 @@ extends Node3D
 @export var torso_head_attack_recoil_arc := 1.25
 @export var torso_head_attack_recoil_pullback := 0.18
 @export var torso_head_attack_roll := 1.15
+@export var detached_head_landing_duration := 0.18
+@export var detached_head_landing_bounce := 0.03
+@export var detached_head_landing_roll := 0.25
+@export var detached_head_mode_blend_duration := 0.08
 @export var combo_left_arm_forward := 1.0
 @export var combo_finisher_arm_forward := 0.85
 @export var combo_finisher_torso_twist := 0.5
@@ -152,6 +157,17 @@ var _torso_head_recoil_start_local_position := Vector3.ZERO
 var _torso_head_recoil_end_local_position := Vector3.ZERO
 var _torso_head_socket_local_position := Vector3.ZERO
 var _torso_head_socket_offset := Vector3(0.0, 0.42, 0.0)
+var _torso_head_miss_detach_requested := false
+var _torso_head_detach_world_offset := Vector3.ZERO
+var _torso_head_miss_fall_active := false
+var _torso_head_miss_fall_timer := 0.0
+var _torso_head_miss_fall_start_position := Vector3.ZERO
+var _torso_head_miss_fall_start_rotation := Vector3.ZERO
+var _torso_head_miss_fall_start_scale := Vector3.ONE
+var _detached_head_landing_timer := 0.0
+var _detached_head_landing_start_position := Vector3.ZERO
+var _detached_head_landing_start_rotation := Vector3.ZERO
+var _detached_head_landing_start_scale := Vector3.ONE
 var _aim_requested := false
 var _aim_blend := 0.0
 var _lizard_wall_climb_blend := 0.0
@@ -181,7 +197,11 @@ func update_from_player(delta: float, velocity: Vector3, max_speed: float, facin
 	speed_ratio = lerp(speed_ratio, target_ratio, 1.0 - exp(-speed_smoothing * delta))
 	if _is_head_only():
 		var roll_radius: float = maxf(head_only_roll_radius, 0.01)
-		_head_only_roll_angle += horizontal.length() * delta / roll_radius
+		_head_only_roll_angle += (horizontal.length() * delta / roll_radius) * head_only_roll_speed_scale
+	if _detached_head_landing_timer > 0.0:
+		_detached_head_landing_timer = maxf(_detached_head_landing_timer - delta, 0.0)
+	if _torso_head_miss_fall_timer > 0.0:
+		_torso_head_miss_fall_timer = maxf(_torso_head_miss_fall_timer - delta, 0.0)
 
 	total_equipped_weight = _calculate_weight(equipped_defs)
 	_update_torso_head_socket_offset(equipped_defs)
@@ -224,6 +244,9 @@ func trigger_attack(combo_step: int = 0) -> void:
 		_torso_head_attack_contacted = true
 		_torso_head_attack_landed = true
 		_torso_head_recoil_timer = 0.0
+		_torso_head_miss_detach_requested = false
+		_torso_head_miss_fall_active = false
+		_torso_head_miss_fall_timer = 0.0
 	elif _is_torso_spring_only():
 		_attack_duration_current = torso_head_attack_duration
 		_head_only_attack_contacted = true
@@ -233,6 +256,10 @@ func trigger_attack(combo_step: int = 0) -> void:
 		_torso_head_attack_landed = false
 		_torso_head_attack_direction = _head_only_last_facing_direction
 		_torso_head_recoil_timer = 0.0
+		_torso_head_miss_detach_requested = false
+		_torso_head_detach_world_offset = Vector3.ZERO
+		_torso_head_miss_fall_active = false
+		_torso_head_miss_fall_timer = 0.0
 	else:
 		_attack_duration_current = attack_overlay_duration
 		_head_only_attack_contacted = true
@@ -241,6 +268,9 @@ func trigger_attack(combo_step: int = 0) -> void:
 		_torso_head_attack_contacted = true
 		_torso_head_attack_landed = true
 		_torso_head_recoil_timer = 0.0
+		_torso_head_miss_detach_requested = false
+		_torso_head_miss_fall_active = false
+		_torso_head_miss_fall_timer = 0.0
 	if _attack_combo_step == 3 and not _is_head_only() and not _is_torso_spring_only():
 		_attack_duration_current *= 1.15
 	_attack_timer = _attack_duration_current
@@ -263,6 +293,9 @@ func confirm_head_only_attack_contact() -> void:
 	elif _is_torso_spring_only() and _attack_blend > 0.001:
 		_torso_head_attack_contacted = true
 		_torso_head_attack_landed = true
+		_torso_head_miss_detach_requested = false
+		_torso_head_miss_fall_active = false
+		_torso_head_miss_fall_timer = 0.0
 		_torso_head_recoil_start_local_position = _capture_socket_local_position("head")
 		_torso_head_recoil_end_local_position = _torso_head_socket_local_position
 		_torso_head_recoil_timer = torso_head_attack_recoil_duration
@@ -286,6 +319,47 @@ func get_head_launch_attack_world_offset() -> Vector3:
 	if _is_torso_spring_only():
 		return _torso_head_attack_world_offset
 	return Vector3.ZERO
+
+
+func has_torso_head_miss_detach_request() -> bool:
+	return _torso_head_miss_detach_requested
+
+
+func consume_torso_head_miss_detach_offset() -> Vector3:
+	if not _torso_head_miss_detach_requested:
+		return Vector3.ZERO
+	_torso_head_miss_detach_requested = false
+	return _torso_head_detach_world_offset
+
+
+func enter_detached_head_state(start_local_position: Vector3 = Vector3.ZERO, use_start_position: bool = false) -> void:
+	_attack_timer = 0.0
+	_attack_blend = 0.0
+	_head_only_attack_contacted = true
+	_head_only_attack_landed = true
+	_head_only_base_world_offset = Vector3.ZERO
+	_head_only_attack_world_offset = Vector3.ZERO
+	_head_only_hit_recoil_timer = 0.0
+	_torso_head_attack_contacted = true
+	_torso_head_attack_landed = true
+	_torso_head_attack_world_offset = Vector3.ZERO
+	_torso_head_recoil_timer = 0.0
+	_torso_head_miss_detach_requested = false
+	_torso_head_detach_world_offset = Vector3.ZERO
+	_torso_head_miss_fall_active = false
+	_torso_head_miss_fall_timer = 0.0
+	if use_start_position:
+		_detached_head_landing_start_position = start_local_position
+		_detached_head_landing_start_rotation = _capture_socket_local_rotation("head")
+		_detached_head_landing_start_scale = _capture_socket_local_scale("head")
+		var head: Node3D = null
+		if rig != null:
+			head = rig.get_socket("head")
+		if head != null:
+			head.position = start_local_position
+		_detached_head_landing_timer = maxf(detached_head_mode_blend_duration, 0.01)
+	else:
+		_detached_head_landing_timer = 0.0
 
 
 func _update_head_only_facing_direction(facing_direction: Vector3) -> void:
@@ -317,6 +391,22 @@ func _capture_socket_local_position(socket_key: String) -> Vector3:
 		if socket != null:
 			return socket.position
 	return _get_rest_pos(socket_key)
+
+
+func _capture_socket_local_rotation(socket_key: String) -> Vector3:
+	if rig != null:
+		var socket: Node3D = rig.get_socket(socket_key)
+		if socket != null:
+			return socket.rotation
+	return _get_rest_rot(socket_key)
+
+
+func _capture_socket_local_scale(socket_key: String) -> Vector3:
+	if rig != null:
+		var socket: Node3D = rig.get_socket(socket_key)
+		if socket != null:
+			return socket.scale
+	return Vector3.ONE
 
 
 func _get_head_only_grounded_local_position() -> Vector3:
@@ -440,9 +530,19 @@ func _animate_head_only(sway: float, breath: float) -> void:
 	var hop: float = absf(sin(walk_time)) * head_only_hop_amount * speed_ratio
 	var rest: Vector3 = _get_rest_pos("head")
 	var base_local_offset: Vector3 = _world_horizontal_offset_to_local(_head_only_base_world_offset)
+	var target_position := Vector3(rest.x + sway * 0.8, head_only_ground_socket_y + hop, rest.z) + base_local_offset
+	var target_rotation := _get_rest_rot("head") + Vector3(_head_only_roll_angle, 0.0, sway * head_only_roll_amount)
 	head.scale = Vector3.ONE
-	head.position = Vector3(rest.x + sway * 0.8, head_only_ground_socket_y + hop, rest.z) + base_local_offset
-	head.rotation = _get_rest_rot("head") + Vector3(_head_only_roll_angle, 0.0, sway * head_only_roll_amount)
+	if _detached_head_landing_timer > 0.0:
+		var duration: float = maxf(detached_head_mode_blend_duration, 0.01)
+		var t: float = 1.0 - clampf(_detached_head_landing_timer / duration, 0.0, 1.0)
+		var eased: float = 1.0 - pow(1.0 - t, 1.65)
+		head.position = _detached_head_landing_start_position.lerp(target_position, eased)
+		head.rotation = _detached_head_landing_start_rotation.lerp(target_rotation, eased)
+		head.scale = _detached_head_landing_start_scale.lerp(Vector3.ONE, eased)
+		return
+	head.position = target_position
+	head.rotation = target_rotation
 
 
 func _animate_torso_spring(sway: float, breath: float) -> void:
@@ -710,6 +810,10 @@ func _update_attack_overlay(delta: float) -> void:
 	if _torso_head_recoil_timer > 0.0:
 		_torso_head_recoil_timer = maxf(_torso_head_recoil_timer - delta, 0.0)
 		target = 1.0
+	if _torso_head_miss_fall_active:
+		target = 1.0
+	if _torso_head_miss_detach_requested:
+		target = 1.0
 	if _is_head_only() and not _head_only_attack_contacted:
 		target = 1.0
 	if _is_torso_spring_only() and not _torso_head_attack_contacted:
@@ -853,6 +957,16 @@ func _apply_torso_head_attack_pose() -> void:
 		_apply_torso_head_recoil_pose(body, head)
 		return
 
+	if _torso_head_miss_fall_active:
+		_apply_torso_head_miss_fall_pose(head)
+		return
+
+	if _torso_head_miss_detach_requested:
+		head.position = _future_head_only_ground_position()
+		head.rotation = _get_rest_rot("head")
+		head.scale = Vector3.ONE
+		return
+
 	if _torso_head_attack_landed:
 		_torso_head_attack_world_offset = Vector3.ZERO
 		head.position = _torso_head_socket_local_position
@@ -889,12 +1003,43 @@ func _apply_torso_head_attack_pose() -> void:
 	body.scale = Vector3(1.0 - arc * 0.04, 1.0 + arc * 0.08, 1.0 - arc * 0.03)
 
 	if phase >= 0.999 and not _torso_head_attack_landed:
-		_torso_head_attack_world_offset = Vector3.ZERO
+		_torso_head_detach_world_offset = _torso_head_attack_direction * torso_head_attack_lunge
+		_torso_head_attack_world_offset = _torso_head_detach_world_offset
 		_torso_head_attack_landed = true
 		_torso_head_attack_contacted = true
-		head.position = _torso_head_socket_local_position
-		head.rotation = _get_rest_rot("head")
+		_torso_head_miss_fall_active = true
+		_torso_head_miss_fall_timer = maxf(detached_head_landing_duration, 0.01)
+		_torso_head_miss_fall_start_position = _capture_socket_local_position("head")
+		_torso_head_miss_fall_start_rotation = _capture_socket_local_rotation("head")
+		_torso_head_miss_fall_start_scale = _capture_socket_local_scale("head")
+
+
+func _apply_torso_head_miss_fall_pose(head: Node3D) -> void:
+	var duration: float = maxf(detached_head_landing_duration, 0.01)
+	var t: float = 1.0 - clampf(_torso_head_miss_fall_timer / duration, 0.0, 1.0)
+	var eased: float = 1.0 - pow(1.0 - t, 1.45)
+	var target_position: Vector3 = _future_head_only_ground_position()
+	var target_rotation: Vector3 = _get_rest_rot("head")
+	var bounce: float = sin(t * PI) * detached_head_landing_bounce * (1.0 - t)
+	head.position = _torso_head_miss_fall_start_position.lerp(target_position, eased) + Vector3(0.0, bounce, 0.0)
+	head.rotation = _torso_head_miss_fall_start_rotation.lerp(target_rotation, eased)
+	head.rotation.x += detached_head_landing_roll * sin(t * PI) * (1.0 - t * 0.35)
+	head.scale = _torso_head_miss_fall_start_scale.lerp(Vector3.ONE, eased)
+	_torso_head_attack_world_offset = _torso_head_detach_world_offset
+
+	if t >= 0.999:
+		head.position = target_position
+		head.rotation = target_rotation
 		head.scale = Vector3.ONE
+		_torso_head_miss_fall_active = false
+		_torso_head_miss_fall_timer = 0.0
+		_torso_head_miss_detach_requested = true
+
+
+func _future_head_only_ground_position() -> Vector3:
+	var rest: Vector3 = _get_rest_pos("head")
+	var launch_local_offset: Vector3 = _world_horizontal_offset_to_local(_torso_head_detach_world_offset)
+	return Vector3(rest.x, head_only_ground_socket_y, rest.z) + launch_local_offset
 
 
 func _apply_torso_head_recoil_pose(body: Node3D, head: Node3D) -> void:

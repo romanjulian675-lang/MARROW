@@ -325,3 +325,24 @@ En `TESTING ENVIRONMENT`:
 - 2026-07-15: Los torsos pueden definir `head_socket_offset`; el ataque
   torso-solo usa ese socket vivo para lanzar y regresar la cabeza segun la
   forma del torso equipado.
+- 2026-07-15: Si el ataque torso-solo lanza la cabeza y no contacta ningun
+  enemigo, hurtbox u obstaculo valido, la cabeza se separa del torso. El player
+  pasa a movimiento head-only, el torso equipado queda como marcador en el
+  mundo, y solo se puede recuperar manteniendo `Interact` cerca de ese mismo
+  torso.
+- 2026-07-15: La separacion cabeza/torso ahora conserva la posicion visual de
+  la cabeza lanzada y la interpola hasta el suelo con una breve caida, evitando
+  el teleport antes de entrar al movimiento head-only.
+- 2026-07-15: Se suavizo la caida detached-head: menos bounce, easing continuo
+  sin pausa a media caida, menor roll extra y rotacion head-only amortiguada con
+  `head_only_roll_speed_scale`.
+- 2026-07-15: La transicion detached-head ahora cambia a modo head-only solo
+  cuando la cabeza toca el suelo. El animator conserva el punto futuro de
+  head-only para que el cambio de modo use la ultima ubicacion de la cabeza y no
+  teleporte.
+- 2026-07-15: Se acelero la caida detached-head (`detached_head_landing_duration`
+  0.18) y `Player` conserva brevemente el offset de camara de la cabeza durante
+  el cambio de modo para evitar que la camara salte al torso y vuelva.
+- 2026-07-15: El cambio final a modo head-only ahora pasa la posicion local
+  aterrizada a `enter_detached_head_state()` y hace un micro-blend de 0.08s hacia
+  la pose normal de rodar, evitando el pequeno teleport al tocar suelo.

@@ -169,6 +169,10 @@ assets primero y solo usa sus diccionarios internos como fallback temporal.
   lee ese valor desde el hueso equipado en `body` para colocar el origen de la
   cabeza segun la forma del torso. Esto permite que un torso pesado, largo o
   lizard-like cambie la altura/profundidad de la cabeza sin tocar el player.
+- Cuando la cabeza se separa por fallar un ataque torso-solo, el slot `body`
+  queda bloqueado para nuevos equips. `PlayerEquipmentComponent` solo permite
+  restaurar el torso abandonado mediante `restore_detached_body()` cuando el
+  player vuelve al marcador y mantiene `Interact`.
 - El mismo contrato de `hitbox_*` aplica para jugador y enemigos. La diferencia
   vive en el grupo de dano (`player_body_hurtboxes` o `enemy_body_hurtboxes`),
   no en datos duplicados. Los enemigos aplican un recorte adicional de precision

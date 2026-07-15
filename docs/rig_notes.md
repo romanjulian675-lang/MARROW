@@ -125,6 +125,23 @@ Combo overlay:
   recoils high into the air and returns to the live torso socket position. Once
   landed, the overlay pins the head to that socket so it cannot replay the launch
   branch during blend-out.
+- If the torso-only launch finishes without a confirmed contact, the animator
+  exposes a detach request instead of snapping the head back. `Player` consumes
+  that request, moves the character capsule to the launched head position,
+  unequips the body slot, and leaves a simple detached torso marker in the
+  world. The animator keeps the player in torso-attack mode until the launched
+  skull reaches the future head-only ground position, then requests the actual
+  detach. That lets head-only movement start at the exact location where the
+  skull touched down. The landing uses a short
+  `detached_head_landing_duration` with a continuous fall ease and only a small
+  fading bounce; head-only rolling is damped by `head_only_roll_speed_scale` so
+  the skull does not over-rotate. After the capsule moves to the landed head,
+  `enter_detached_head_state()` receives that grounded local position and uses a
+  tiny `detached_head_mode_blend_duration` handoff into normal rolling sway,
+  avoiding the last ground-level pop. `Player` also carries the camera's
+  head-launch offset briefly during the detach handoff, preventing a one-frame
+  jump back to torso view. Holding `Interact` near that marker restores only the
+  abandoned torso.
 - Enemies use `ProceduralEnemyAnimator`, a thin subclass that keeps player body
   progression disabled. This prevents enemies without player equipment records
   from being treated as head-only bodies.
