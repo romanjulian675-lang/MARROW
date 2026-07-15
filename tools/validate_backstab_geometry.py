@@ -70,11 +70,13 @@ def main() -> int:
     args = parser.parse_args()
 
     root = args.root.resolve()
+    player_path = root / "scripts" / "player.gd"
     enemy_path = root / "scripts" / "enemy.gd"
     service_path = root / "scripts" / "backstab_rules_service.gd"
     threshold = parse_stealth_behind_dot(enemy_path)
     verify_backstab_service_shape(service_path)
     verify_enemy_uses_backstab_service(enemy_path)
+    verify_backstab_execution_contract(player_path, enemy_path)
 
     results = [run_case(case, threshold) for case in build_cases()]
     failures = [result for result in results if result.actual != result.case.expected]
@@ -140,6 +142,36 @@ def verify_enemy_uses_backstab_service(enemy_path: Path) -> None:
         print("WARNING: Enemy backstab service call shape changed:")
         for snippet in missing:
             print(f"- missing snippet: {snippet}")
+
+
+def verify_backstab_execution_contract(player_path: Path, enemy_path: Path) -> None:
+    player_text = player_path.read_text(encoding="utf-8")
+    enemy_text = enemy_path.read_text(encoding="utf-8")
+
+    player_required = [
+        "backstab_execution_target",
+        "backstab_execution_impact_timer",
+        "backstab_execution_damage_applied",
+        "func _update_backstab_execution(delta: float) -> void:",
+        '"apply_stealth_finish_impact"',
+        "func _is_backstab_executing() -> bool:",
+        "not _is_backstab_executing()",
+    ]
+    enemy_required = [
+        "stealth_execution_player",
+        "stealth_execution_impact_applied",
+        "func apply_stealth_finish_impact(",
+        "if stealth_execution_impact_applied:",
+        "func finish_stealth_execution(",
+        "func cancel_stealth_execution(",
+        "func _update_stealth_execution_hold() -> bool:",
+    ]
+    missing = [f"Player missing: {snippet}" for snippet in player_required if snippet not in player_text]
+    missing += [f"Enemy missing: {snippet}" for snippet in enemy_required if snippet not in enemy_text]
+    if missing:
+        print("WARNING: Backstab execution contract shape changed:")
+        for snippet in missing:
+            print(f"- {snippet}")
 
 
 def build_cases() -> list[Case]:
