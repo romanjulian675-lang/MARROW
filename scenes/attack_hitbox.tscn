@@ -19,5 +19,6 @@ script = ExtResource("1_attack")
 shape = SubResource("BoxShape3D_attack")
 
 [node name="Visual" type="MeshInstance3D" parent="."]
+visible = false
 mesh = SubResource("BoxMesh_attack")
 material_override = SubResource("StandardMaterial3D_attack")

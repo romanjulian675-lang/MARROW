@@ -59,9 +59,17 @@ Combo overlay:
   stored as a world-horizontal vector and converted into rig-local space each
   frame, so turning or strafing sideways does not rotate the old landing offset
   and teleport the head.
+- The landing frame applies the newly accumulated landed offset immediately,
+  instead of waiting for the next animation tick. This prevents a one-frame
+  snap/ghost where the head briefly appears at the previous start point.
 - During that head-only attack, the animator exposes
   `get_head_only_attack_world_offset()` so the camera can follow the accumulated
   horizontal motion directly. The vertical arc stays visual on the head socket.
+- `ModularSkeletonRig.set_head_only_visual_guard` runs during head-only movement
+  to keep the equipped/core head mesh as the only visible mesh under the head
+  socket. `Player` also calls the guard immediately when head-only melee starts,
+  before spawning the attack hitbox, so the fallback grey head cannot overlap
+  for the first rendered frame.
 - This is visual only; melee damage and hitbox behavior are unchanged.
 
 ## Current player body progression

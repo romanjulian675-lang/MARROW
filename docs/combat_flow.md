@@ -135,7 +135,11 @@ Ataque/combo por hueso:
   horizontal acumulado. La camara no sigue el arco vertical de la cabeza.
 - En modo solo cabeza, `AttackHitbox` mantiene colision/dano pero apaga su mesh
   visual para que el flash del hitbox no parezca una segunda cabeza durante el
-  salto.
+  salto. El mesh `Visual` del hitbox esta oculto por defecto en la escena y el
+  script solo lo enciende para ataques normales, evitando un flash de un frame.
+- El player tambien omite `_flash_player_attack` en modo solo cabeza, y el rig
+  fuerza que solo el mesh de cabeza equipado sea visible bajo el socket de
+  cabeza.
 - Estos campos no cambian cooldown, hitbox, dano ni input automaticamente. Para
   activar combos con gameplay real se debe crear una regla de combate explicita
   y probarla en `TESTING ENVIRONMENT`.

@@ -21,7 +21,9 @@ var owner_player: Node = null
 var already_hit: Dictionary = {}
 var contact_confirmed := false
 
-# The translucent box mesh we fade out over the attack's lifetime.
+# The translucent box mesh we fade out over the attack's lifetime. It starts
+# hidden in the scene so head-only attacks cannot flash it for one frame before
+# this script receives `visual_enabled`.
 @onready var _visual: MeshInstance3D = $Visual
 
 func _ready() -> void:

@@ -322,6 +322,8 @@ func _animate_head_only(sway: float, breath: float) -> void:
 	var head := rig.get_socket("head")
 	if head == null or not _rest_pos.has("head"):
 		return
+	if rig.has_method("set_head_only_visual_guard"):
+		rig.call("set_head_only_visual_guard", true)
 
 	var hop: float = absf(sin(walk_time)) * head_only_hop_amount * speed_ratio
 	var rest: Vector3 = _get_rest_pos("head")
@@ -636,6 +638,9 @@ func _apply_head_only_attack_pose() -> void:
 		_head_only_attack_world_offset = Vector3.ZERO
 		_head_only_attack_landed = true
 		_head_only_attack_contacted = true
+		var rest: Vector3 = _get_rest_pos("head")
+		var landed_local_offset: Vector3 = _world_horizontal_offset_to_local(_head_only_base_world_offset)
+		head.position = Vector3(rest.x, head_only_ground_socket_y, rest.z) + landed_local_offset
 		head.scale = Vector3.ONE
 		return
 	if _head_only_attack_landed:

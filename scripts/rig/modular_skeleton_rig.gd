@@ -378,6 +378,33 @@ func set_body_part_hitbox_enabled(socket_key: String, enabled: bool) -> void:
 	shape_node.disabled = not enabled
 
 
+func set_head_only_visual_guard(enabled: bool) -> void:
+	var head_socket: Node3D = sockets.get("head") as Node3D
+	if head_socket == null:
+		return
+
+	var equipped_head_parts: Array = equipped_parts.get("head", [])
+	var has_equipped_head := equipped_ids.has("head") and not equipped_head_parts.is_empty()
+	for child in head_socket.get_children():
+		var child_node := child as Node
+		if child_node == null:
+			continue
+		if enabled and has_equipped_head:
+			_set_mesh_visibility_recursive(child_node, equipped_head_parts.has(child_node))
+		elif child_node == base_visuals.get("head"):
+			_set_mesh_visibility_recursive(child_node, _base_socket_should_show("head"))
+
+
+func _set_mesh_visibility_recursive(root: Node, is_visible: bool) -> void:
+	if root is MeshInstance3D:
+		var mesh_node := root as MeshInstance3D
+		mesh_node.visible = is_visible
+	for child in root.get_children():
+		var child_node := child as Node
+		if child_node != null:
+			_set_mesh_visibility_recursive(child_node, is_visible)
+
+
 func has_equipped_slot(slot_id: String) -> bool:
 	return equipped_ids.has(slot_id)
 
@@ -476,6 +503,8 @@ func _refresh_body_progression_visibility() -> void:
 		if visual == null:
 			continue
 		visual.visible = _base_socket_should_show(socket_key)
+	if equipped_ids.has("head") and not equipped_ids.has("body"):
+		set_head_only_visual_guard(true)
 	_refresh_body_hitbox_enabled()
 
 

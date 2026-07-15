@@ -352,6 +352,8 @@ func _try_attack() -> void:
 		return
 	can_attack = false
 	noise_timer = maxf(noise_timer, 0.55)
+	if _is_head_only_combat_mode():
+		_force_head_only_single_visual()
 	var combo_step: int = _next_combo_animation_step()
 	if animator != null:
 		animator.trigger_attack(combo_step)
@@ -389,7 +391,8 @@ func _try_attack() -> void:
 	hitbox.scale = Vector3.ONE * reach_ratio
 
 	# A quick flash on the player body so it's obvious YOU just attacked.
-	_flash_player_attack()
+	if not _is_head_only_combat_mode():
+		_flash_player_attack()
 
 	# Wait out the cooldown, then allow attacking again.
 	await get_tree().create_timer(attack_cooldown).timeout
@@ -403,6 +406,11 @@ func _on_attack_hit_confirmed(_target: Node) -> void:
 
 func _is_head_only_combat_mode() -> bool:
 	return rig != null and rig.has_method("has_equipped_slot") and not bool(rig.call("has_equipped_slot", "body"))
+
+
+func _force_head_only_single_visual() -> void:
+	if rig != null and rig.has_method("set_head_only_visual_guard"):
+		rig.call("set_head_only_visual_guard", true)
 
 
 func _try_bow_shot(charge_multiplier: float = 1.0, charge_ratio: float = 0.0) -> void:
