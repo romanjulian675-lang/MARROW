@@ -40,12 +40,25 @@ turn_smoothing 12.0 · idle_breath_amount 0.025 · heavy_weight_swing_slowdown 0
 attack_overlay_duration 0.16 · attack_overlay_blend_speed 18 · attack_arm_forward 1.1 ·
 attack_torso_twist 0.35 · foot_raycast_up/down 0.6/1.4 · foot_lift 0.06 ·
 foot_smoothing 14 · foot_align_to_normal true (uncheck foot_placement_enabled to disable).
+Head-only attack tuning: `head_only_attack_duration`,
+`head_only_attack_charge_portion`, `head_only_attack_lunge`,
+`head_only_attack_arc`, `head_only_attack_charge_squash` and
+`head_only_attack_roll`.
 
 Combo overlay:
 - `Player` passes a combo step into `ProceduralPlayerAnimator.trigger_attack`.
 - Step 1 uses right arm + torso twist.
 - Step 2 uses left arm + opposite torso twist.
 - Step 3 uses both arms, deeper lunge, and a small head dip.
+- If the player is only a head, combo arm poses are skipped. The head instead
+  squashes backward to charge, jumps forward/up toward the target direction,
+  reaches roughly mid-torso height, and only falls back to its original rolling
+  position after the melee hitbox confirms contact with another body or enemy
+  hurtbox. The launch uses the rig's positive local Z direction so it moves
+  forward in game view. Misses hold the launched pose instead of snapping home.
+- During that head-only attack, the animator exposes
+  `get_head_only_attack_forward_offset()` so the camera can follow only the
+  horizontal forward motion. The vertical arc stays visual on the head socket.
 - This is visual only; melee damage and hitbox behavior are unchanged.
 
 ## Current player body progression

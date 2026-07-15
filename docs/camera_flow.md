@@ -27,6 +27,8 @@ un punto de disparo consistente desde el centro de pantalla.
 - Controla zoom con rueda.
 - Usa `SpringArm3D` para collision de camara.
 - Cambia a aim zoom.
+- Aplica `set_animation_follow_offset` para seguir offsets visuales horizontales
+  de animacion sin mover verticalmente la camara.
 - Expone `get_flat_forward`, `get_flat_right`.
 - Expone `get_center_aim_point`.
 
@@ -53,6 +55,18 @@ un punto de disparo consistente desde el centro de pantalla.
 5. El raycast desde centro de pantalla devuelve punto de impacto o punto lejano.
 6. El proyectil se dispara hacia ese punto.
 7. `set_aim_zoom(false)` vuelve al zoom normal.
+
+## Flujo de camara por animacion
+
+1. `ProceduralPlayerAnimator` calcula el offset hacia adelante del ataque cuando
+   el jugador sigue siendo solo cabeza.
+2. `Player._update_procedural_animation` lee
+   `get_head_only_attack_forward_offset`.
+3. `Player` lo convierte a mundo usando `last_facing_direction`, con Y en cero.
+4. `PlayerCameraController.set_animation_follow_offset` suaviza ese offset en
+   el pivot de camara.
+5. La camara sigue solo la distancia horizontal del salto; el arco vertical se
+   queda en la animacion del socket de cabeza.
 
 ## Flujo de mouse
 
@@ -95,3 +109,5 @@ En `TESTING ENVIRONMENT`:
 - 2026-07-14: Se documento el flujo actual de camara.
 - 2026-07-14: Se agrego `TESTING ENVIRONMENT` como escena unica para probar
   camara, enemigos, movimiento, animaciones y rig.
+- 2026-07-14: La camara ahora puede seguir offsets horizontales de animacion;
+  se usa para acompanar el ataque de cabeza sin copiar su salto vertical.

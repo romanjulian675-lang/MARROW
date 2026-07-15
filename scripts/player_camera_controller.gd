@@ -19,6 +19,7 @@ extends Node3D
 @export_range(0.0, 1.0, 0.05) var spring_arm_margin: float = 0.25
 @export_flags_3d_physics var spring_arm_collision_mask: int = 1
 @export var capture_mouse_on_ready: bool = true
+@export_range(1.0, 30.0, 0.5) var animation_follow_smoothing: float = 18.0
 @export var aim_ray_distance: float = 90.0
 @export var aim_left_shoulder_offset: float = -0.65
 @export var aim_shoulder_height_offset: float = 0.18
@@ -32,6 +33,8 @@ var spring_arm: SpringArm3D = null
 var target: Node3D = null
 var aim_zoom_active: bool = false
 var pre_aim_zoom_distance: float = 4.5
+var animation_follow_offset: Vector3 = Vector3.ZERO
+var target_animation_follow_offset: Vector3 = Vector3.ZERO
 
 
 func _ready() -> void:
@@ -69,6 +72,9 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	var animation_alpha := 1.0 - exp(-animation_follow_smoothing * delta)
+	animation_follow_offset = animation_follow_offset.lerp(target_animation_follow_offset, animation_alpha)
+
 	if target != null:
 		var follow_alpha := 1.0 - exp(-follow_smoothing * delta)
 		global_position = global_position.lerp(_target_pivot_position(), follow_alpha)
@@ -137,6 +143,10 @@ func set_aim_zoom(enabled: bool, zoom_distance: float = 2.6) -> void:
 	aim_zoom_active = false
 
 
+func set_animation_follow_offset(offset: Vector3) -> void:
+	target_animation_follow_offset = Vector3(offset.x, 0.0, offset.z)
+
+
 func get_flat_forward() -> Vector3:
 	var forward := -global_transform.basis.z
 	forward.y = 0.0
@@ -189,7 +199,7 @@ func _zoom(amount: float) -> void:
 
 
 func _target_pivot_position() -> Vector3:
-	var pivot_position: Vector3 = target.global_position + Vector3.UP * pivot_height
+	var pivot_position: Vector3 = target.global_position + Vector3.UP * pivot_height + animation_follow_offset
 	if aim_zoom_active:
 		var shoulder_right: Vector3 = global_transform.basis.x
 		shoulder_right.y = 0.0

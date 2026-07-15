@@ -121,6 +121,16 @@ Ataque/combo por hueso:
   animacion simple si el jugador vuelve a atacar a tiempo.
 - `ProceduralPlayerAnimator.trigger_attack(combo_step)` alterna tres poses:
   golpe derecho, golpe izquierdo y finisher con ambos brazos/torso.
+- Si el jugador sigue solo como cabeza, `trigger_attack` usa una duracion visual
+  propia y reemplaza las poses de brazos por un salto de cabeza: primero
+  comprime/carga hacia atras, luego salta hacia adelante y arriba hasta una
+  altura cercana a medio torso. La cabeza solo vuelve visualmente a la posicion
+  original cuando `AttackHitbox` confirma contacto con otro cuerpo o hurtbox
+  enemigo; si falla, mantiene la pose lanzada. El salto usa Z local positivo
+  porque esa es la direccion visual hacia adelante del rig del jugador.
+- Mientras ese ataque esta activo, `Player` lee
+  `get_head_only_attack_forward_offset()` y se lo pasa a la camara como offset
+  horizontal. La camara no sigue el arco vertical de la cabeza.
 - Estos campos no cambian cooldown, hitbox, dano ni input automaticamente. Para
   activar combos con gameplay real se debe crear una regla de combate explicita
   y probarla en `TESTING ENVIRONMENT`.
@@ -224,3 +234,6 @@ En `TESTING ENVIRONMENT`:
   parte del cuerpo de enemigos mediante `enemy_body_hurtboxes`.
 - 2026-07-14: Se limpio el ruteo de hurtboxes en melee/proyectiles con helpers
   pequenos para evitar duplicacion entre jugador y enemigos.
+- 2026-07-14: La cabeza sola ahora tiene overlay de ataque propio: carga,
+  salto hacia el enemigo y regreso visual al ciclo base. No cambia dano ni
+  hitbox.

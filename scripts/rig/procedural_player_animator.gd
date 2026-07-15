@@ -77,6 +77,12 @@ extends Node3D
 @export var attack_arm_forward := 1.1       # radians the right arm swings forward
 @export var attack_torso_twist := 0.35      # radians the torso twists into the swing
 @export var attack_lunge := 0.22            # radians the body leans into the swing
+@export var head_only_attack_duration := 0.34
+@export var head_only_attack_charge_portion := 0.28
+@export var head_only_attack_lunge := 0.85
+@export var head_only_attack_arc := 0.68
+@export var head_only_attack_charge_squash := 0.22
+@export var head_only_attack_roll := 1.4
 @export var combo_left_arm_forward := 1.0
 @export var combo_finisher_arm_forward := 0.85
 @export var combo_finisher_torso_twist := 0.5
@@ -110,6 +116,8 @@ var _attack_timer := 0.0
 var _attack_blend := 0.0
 var _attack_duration_current := 0.16
 var _attack_combo_step := 1
+var _head_only_attack_contacted := true
+var _head_only_attack_forward_offset := 0.0
 var _aim_requested := false
 var _aim_blend := 0.0
 var _lizard_wall_climb_blend := 0.0
@@ -157,6 +165,7 @@ func update_from_player(delta: float, velocity: Vector3, max_speed: float, facin
 	_update_aim_overlay(delta)
 	_apply_aim_overlay()
 	_update_attack_overlay(delta)
+	_head_only_attack_forward_offset = 0.0
 	_apply_attack_overlay()
 	_animate_facing(delta, facing_direction)
 	if foot_placement_enabled:
@@ -169,8 +178,13 @@ func trigger_attack(combo_step: int = 0) -> void:
 		_attack_combo_step = (_attack_combo_step % 3) + 1
 	else:
 		_attack_combo_step = clampi(combo_step, 1, 3)
-	_attack_duration_current = attack_overlay_duration
-	if _attack_combo_step == 3:
+	if _is_head_only():
+		_attack_duration_current = head_only_attack_duration
+		_head_only_attack_contacted = false
+	else:
+		_attack_duration_current = attack_overlay_duration
+		_head_only_attack_contacted = true
+	if _attack_combo_step == 3 and not _is_head_only():
 		_attack_duration_current *= 1.15
 	_attack_timer = _attack_duration_current
 	_attack_blend = maxf(_attack_blend, 0.25)
@@ -178,6 +192,15 @@ func trigger_attack(combo_step: int = 0) -> void:
 
 func set_aiming(enabled: bool) -> void:
 	_aim_requested = enabled
+
+
+func confirm_head_only_attack_contact() -> void:
+	if _is_head_only() and _attack_blend > 0.001:
+		_head_only_attack_contacted = true
+
+
+func get_head_only_attack_forward_offset() -> float:
+	return _head_only_attack_forward_offset
 
 
 func set_crawl_mode(enabled: bool) -> void:
@@ -271,6 +294,7 @@ func _animate_head_only(sway: float, breath: float) -> void:
 
 	var hop: float = absf(sin(walk_time)) * head_only_hop_amount * speed_ratio
 	var rest: Vector3 = _get_rest_pos("head")
+	head.scale = Vector3.ONE
 	head.position = Vector3(rest.x + sway * 0.8, head_only_ground_socket_y + hop, rest.z)
 	head.rotation = _get_rest_rot("head") + Vector3(_head_only_roll_angle, 0.0, sway * head_only_roll_amount)
 
@@ -532,6 +556,8 @@ func _apply_aim_overlay() -> void:
 func _update_attack_overlay(delta: float) -> void:
 	_attack_timer = max(_attack_timer - delta, 0.0)
 	var target := 1.0 if _attack_timer > 0.0 else 0.0
+	if _is_head_only() and not _head_only_attack_contacted:
+		target = 1.0
 	_attack_blend = lerp(_attack_blend, target, 1.0 - exp(-attack_overlay_blend_speed * delta))
 
 
@@ -539,6 +565,9 @@ func _update_attack_overlay(delta: float) -> void:
 # or moving.
 func _apply_attack_overlay() -> void:
 	if _attack_blend <= 0.001:
+		return
+	if _is_head_only():
+		_apply_head_only_attack_pose()
 		return
 	var punch: float = _attack_pose_strength()
 	match _attack_combo_step:
@@ -553,9 +582,46 @@ func _apply_attack_overlay() -> void:
 func _attack_pose_strength() -> float:
 	if _attack_duration_current <= 0.001:
 		return _attack_blend
-	var phase: float = 1.0 - clampf(_attack_timer / _attack_duration_current, 0.0, 1.0)
+	var phase: float = _attack_phase()
 	var snap: float = sin(phase * PI)
 	return maxf(_attack_blend * 0.35, snap * _attack_blend)
+
+
+func _attack_phase() -> float:
+	if _attack_duration_current <= 0.001:
+		return 1.0
+	return 1.0 - clampf(_attack_timer / _attack_duration_current, 0.0, 1.0)
+
+
+func _apply_head_only_attack_pose() -> void:
+	var head := rig.get_socket("head")
+	if head == null:
+		return
+
+	var phase: float = _attack_phase()
+	var charge_end: float = clampf(head_only_attack_charge_portion, 0.05, 0.75)
+	if phase < charge_end:
+		var charge_t: float = phase / charge_end
+		var charge: float = sin(charge_t * PI * 0.5) * _attack_blend
+		head.position.y -= head_only_attack_charge_squash * charge
+		head.position.z -= head_only_attack_lunge * 0.14 * charge
+		head.rotation.x -= head_only_attack_roll * 0.22 * charge
+		head.scale = Vector3(
+			1.0 + head_only_attack_charge_squash * 0.55 * charge,
+			1.0 - head_only_attack_charge_squash * 0.75 * charge,
+			1.0 + head_only_attack_charge_squash * 0.45 * charge
+		)
+		return
+
+	var jump_t: float = (phase - charge_end) / maxf(1.0 - charge_end, 0.001)
+	var arc: float = sin(jump_t * PI) * _attack_blend
+	var commit: float = sin(jump_t * PI * 0.5) * _attack_blend
+	_head_only_attack_forward_offset = head_only_attack_lunge * commit
+	head.position.z += head_only_attack_lunge * commit
+	head.position.y += head_only_attack_arc * arc
+	head.rotation.x += head_only_attack_roll * commit
+	var stretch: float = arc * 0.12
+	head.scale = Vector3(1.0 - stretch * 0.5, 1.0 + stretch, 1.0 - stretch * 0.35)
 
 
 func _apply_right_combo_pose(strength: float) -> void:

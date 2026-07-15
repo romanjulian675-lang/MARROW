@@ -368,6 +368,8 @@ func _try_attack() -> void:
 	var hitbox := ATTACK_HITBOX_SCENE.instantiate()
 	hitbox.damage = attack_damage
 	hitbox.owner_player = self
+	if hitbox.has_signal("hit_confirmed"):
+		hitbox.hit_confirmed.connect(_on_attack_hit_confirmed)
 
 	# Add it to the world (not as a child of the player) so it stays where it was
 	# swung and cleans itself up after its brief lifetime.
@@ -391,6 +393,11 @@ func _try_attack() -> void:
 	# Wait out the cooldown, then allow attacking again.
 	await get_tree().create_timer(attack_cooldown).timeout
 	can_attack = true
+
+
+func _on_attack_hit_confirmed(_target: Node) -> void:
+	if animator != null and animator.has_method("confirm_head_only_attack_contact"):
+		animator.confirm_head_only_attack_contact()
 
 
 func _try_bow_shot(charge_multiplier: float = 1.0, charge_ratio: float = 0.0) -> void:
@@ -732,6 +739,24 @@ func _update_procedural_animation(delta: float, max_speed: float) -> void:
 		return
 
 	animator.update_from_player(delta, velocity, max_speed, last_facing_direction, rig.get_equipped_bone_defs())
+	_update_camera_animation_follow_offset()
+
+
+func _update_camera_animation_follow_offset() -> void:
+	if camera_controller == null or animator == null:
+		return
+	var forward_offset := 0.0
+	if animator.has_method("get_head_only_attack_forward_offset"):
+		forward_offset = float(animator.call("get_head_only_attack_forward_offset"))
+	var follow_direction := last_facing_direction
+	follow_direction.y = 0.0
+	if follow_direction.length() < 0.01:
+		follow_direction = _get_camera_forward_direction()
+	follow_direction.y = 0.0
+	if follow_direction.length() > 0.01:
+		follow_direction = follow_direction.normalized()
+	if camera_controller.has_method("set_animation_follow_offset"):
+		camera_controller.set_animation_follow_offset(follow_direction * forward_offset)
 
 
 # Bone pickups call this when the player walks into them.

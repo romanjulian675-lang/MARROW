@@ -1,5 +1,7 @@
 extends Area3D
 
+signal hit_confirmed(target: Node)
+
 # Tier 1D: short-lived visible attack area.
 # This node is spawned by the player when left click is pressed.
 # It checks which enemies overlap it, damages them once, then deletes itself.
@@ -16,6 +18,7 @@ var owner_player: Node = null
 # Stores enemies already hit by this one attack.
 # This prevents one attack flash from damaging the same enemy multiple times.
 var already_hit: Dictionary = {}
+var contact_confirmed := false
 
 # The translucent box mesh we fade out over the attack's lifetime.
 @onready var _visual: MeshInstance3D = $Visual
@@ -71,6 +74,8 @@ func _try_hit_body(body: Node) -> void:
 	if body.has_method("has_body_part_hitboxes") and bool(body.call("has_body_part_hitboxes")):
 		return
 
+	_confirm_contact(body)
+
 	# Never hit the same body twice with this same attack flash.
 	if already_hit.has(body):
 		return
@@ -90,6 +95,7 @@ func _try_hit_enemy_area(area: Area3D) -> void:
 		return
 	if already_hit.has(damage_owner):
 		return
+	_confirm_contact(damage_owner)
 	if damage_owner.has_method("take_enemy_body_part_damage"):
 		already_hit[damage_owner] = true
 		damage_owner.call(
@@ -108,3 +114,10 @@ func _damage_owner_for_area(area: Area3D) -> Node:
 
 func _body_part_for_area(area: Area3D) -> String:
 	return str(area.get_meta("body_part", ""))
+
+
+func _confirm_contact(target: Node) -> void:
+	if contact_confirmed:
+		return
+	contact_confirmed = true
+	hit_confirmed.emit(target)
