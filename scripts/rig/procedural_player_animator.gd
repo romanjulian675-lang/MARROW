@@ -571,12 +571,18 @@ func _update_head_launch_attack_aim() -> void:
 
 
 # The player calls this when an attack fires (Phase E).
-func trigger_attack(combo_step: int = 0) -> void:
+#
+# allow_head_launch = false plays the plain overlay instead of throwing the head
+# off the body. Ranged shots and stealth finishers need this: they only want
+# attack FEEDBACK, and a head that leaps 0.85 m forward to fire a projectile both
+# reads wrong and (via the body catch-up) physically displaces the player. In
+# torso-only it is worse, because a launch that misses detaches the head.
+func trigger_attack(combo_step: int = 0, allow_head_launch: bool = true) -> void:
 	if combo_step <= 0:
 		_attack_combo_step = (_attack_combo_step % 3) + 1
 	else:
 		_attack_combo_step = clampi(combo_step, 1, 3)
-	if _is_head_only():
+	if _is_head_only() and allow_head_launch:
 		_attack_duration_current = head_only_attack_duration
 		_head_only_attack_contacted = false
 		_head_only_attack_landed = false
@@ -589,7 +595,7 @@ func trigger_attack(combo_step: int = 0) -> void:
 		_torso_head_miss_fall_active = false
 		_torso_head_miss_fall_timer = 0.0
 		_torso_head_miss_body_hold_transform_ready = false
-	elif _is_torso_spring_only():
+	elif _is_torso_spring_only() and allow_head_launch:
 		_attack_duration_current = torso_head_attack_duration
 		_head_only_attack_contacted = true
 		_head_only_attack_landed = true

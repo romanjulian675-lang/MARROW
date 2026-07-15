@@ -40,12 +40,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_ESCAPE:
 				get_tree().change_scene_to_file(MAIN_MENU_PATH)
 			KEY_1:
-				if dummy_only_mode:
-					_spawn_enemy_at_next_marker("dummy")
-				else:
+				if not dummy_only_mode:
 					_spawn_enemy_at_next_marker("normal")
 			KEY_2:
-				if not dummy_only_mode:
+				if dummy_only_mode:
+					_try_spawn_dummy()
+				else:
 					_spawn_enemy_at_next_marker("gorilla")
 			KEY_3:
 				if not dummy_only_mode:
@@ -54,7 +54,10 @@ func _unhandled_input(event: InputEvent) -> void:
 				if not dummy_only_mode:
 					_spawn_enemy_at_next_marker("ranged")
 			KEY_5:
-				_spawn_enemy_at_next_marker("dummy")
+				if dummy_only_mode:
+					_try_spawn_dummy()
+				else:
+					_spawn_enemy_at_next_marker("dummy")
 			KEY_BACKSPACE:
 				_remove_latest_enemy()
 			KEY_R:
@@ -257,6 +260,27 @@ func _bone_for_profile(profile: String) -> String:
 			return "dummy_bone"
 
 
+# The dummy room is meant to hold exactly one target, so a respawn while the
+# current dummy is still alive is refused instead of stacking a second one on the
+# same marker. Once it is killed or removed with Backspace, respawning works again.
+func _try_spawn_dummy() -> void:
+	if _has_live_dummy():
+		_update_status()
+		return
+	_spawn_enemy_at_next_marker("dummy")
+
+
+func _has_live_dummy() -> bool:
+	for enemy in live_enemies:
+		if enemy == null or not is_instance_valid(enemy):
+			continue
+		if not bool(enemy.get("alive")):
+			continue
+		if bool(enemy.get("dummy_target_enabled")):
+			return true
+	return false
+
+
 func _remove_latest_enemy() -> void:
 	while not live_enemies.is_empty():
 		var enemy := live_enemies.pop_back() as Node
@@ -312,7 +336,10 @@ func _update_status() -> void:
 		status_label.text += "Camera, movement, enemy AI, animations, drops, and rig sandbox.\n\n"
 	status_label.text += "Enemies active: " + str(alive_count) + "\n"
 	if dummy_only_mode:
-		status_label.text += "1 or 5: spawn dummy target only\n"
+		if _has_live_dummy():
+			status_label.text += "2 or 5: respawn dummy (blocked, dummy already up)\n"
+		else:
+			status_label.text += "2 or 5: respawn dummy target\n"
 	else:
 		status_label.text += "1 Normal   2 Gorilla   3 Lizard   4 Ranged   5 Dummy\n"
 	status_label.text += "Backspace: remove latest enemy   R: reset scene   Esc: menu\n"

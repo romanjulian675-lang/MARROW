@@ -399,7 +399,7 @@ func _try_attack() -> void:
 		return
 	# Head-launch jumps outlast attack_cooldown, so they get their own gate: the
 	# previous jump must finish and recover before another can start.
-	if _is_head_launch_combat_mode() and _is_head_launch_attack_blocked():
+	if _head_launch_attack_input_blocked():
 		return
 	can_attack = false
 	noise_timer = maxf(noise_timer, 0.55)
@@ -556,6 +556,14 @@ func _is_head_launch_attack_blocked() -> bool:
 	return _is_head_launch_attack_busy() or head_launch_recovery_timer > 0.0
 
 
+# Single gate for every path that fires an attack animation. A launch in flight
+# owns the head socket: triggering anything else would snap it back to the ground
+# mid-air. Every trigger_attack() caller goes through this, so a future change to
+# one cooldown (attack_cooldown, bow_cooldown) cannot reopen the stacking hole.
+func _head_launch_attack_input_blocked() -> bool:
+	return _is_head_launch_combat_mode() and _is_head_launch_attack_blocked()
+
+
 # Held at full while the jump is resolving, then counts down. Keeping the reset
 # here (rather than starting a timer on landing) means a miss, a hit recoil and a
 # clean landing all get the same recovery without tracking how the attack ended.
@@ -596,6 +604,8 @@ func _force_head_only_single_visual() -> void:
 func _try_bow_shot(charge_multiplier: float = 1.0, charge_ratio: float = 0.0) -> void:
 	if not bow_enabled or not can_shoot_bow:
 		return
+	if _head_launch_attack_input_blocked():
+		return
 	if bow_equipped and not _can_use_bow():
 		_set_bow_equipped(false)
 		_set_stealth_prompt("Attach both arms before using the bow.")
@@ -604,7 +614,8 @@ func _try_bow_shot(charge_multiplier: float = 1.0, charge_ratio: float = 0.0) ->
 	can_shoot_bow = false
 	noise_timer = maxf(noise_timer, 0.45)
 	if animator != null:
-		animator.trigger_attack(0)
+		# Feedback only: a ranged shot must not throw the head off the body.
+		animator.trigger_attack(0, false)
 
 	var forward: Vector3 = _get_camera_forward_direction()
 	if not bow_equipped and current_move_direction.length() > 0.01:
@@ -741,13 +752,16 @@ func _try_stealth_finish() -> void:
 		return
 	if not can_attack:
 		return
+	if _head_launch_attack_input_blocked():
+		return
 	if not stealth_target.has_method("try_stealth_finish"):
 		return
 
 	can_attack = false
 	noise_timer = maxf(noise_timer, 0.35)
 	if animator != null:
-		animator.trigger_attack(3)
+		# Feedback only: the finisher must not throw the head off the body.
+		animator.trigger_attack(3, false)
 	_flash_player_attack()
 	var finished := bool(stealth_target.call("try_stealth_finish", self, attack_damage, global_position))
 	if not finished:
