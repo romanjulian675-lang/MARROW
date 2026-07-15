@@ -131,8 +131,19 @@ Combo overlay:
   unequips the body slot, and leaves a simple detached torso marker in the
   world. The animator keeps the player in torso-attack mode until the launched
   skull reaches the future head-only ground position, then requests the actual
-  detach. That lets head-only movement start at the exact location where the
-  skull touched down. The landing uses a short
+  detach. During that miss-fall window, the body stays in player/rig space
+  instead of being pinned to a cached world transform. The abandoned torso marker
+  is spawned from the player's current `VisualRoot` plus the rig origin before
+  the capsule moves to the launched skull. The animator's stored transform is
+  only a fallback; marker placement should follow where the player actually
+  detached, not a stale pose from a previous location. After the X/Z anchor is
+  chosen, `Player` raycasts downward and lifts the marker by half the torso mesh
+  height so the abandoned torso rests on the surface instead of floating at
+  capsule height. This uses a plain `intended_marker_transform` and applies it
+  after the marker is added to the scene, avoiding reads from a temporary
+  unparented node's `global_position`.
+  That lets head-only movement start at the exact location where the skull
+  touched down. The landing uses a short
   `detached_head_landing_duration` with a continuous fall ease and only a small
   fading bounce; head-only rolling is damped by `head_only_roll_speed_scale` so
   the skull does not over-rotate. After the capsule moves to the landed head,
@@ -142,6 +153,26 @@ Combo overlay:
   head-launch offset briefly during the detach handoff, preventing a one-frame
   jump back to torso view. Holding `Interact` near that marker restores only the
   abandoned torso.
+- Reattaching the abandoned torso uses the `Interact` hold as the animation
+  timeline. `Player` keeps the character root where the skull currently is, then
+  `set_detached_head_reattach_tornado_progress()` orbits the skull diagonally
+  around the torso marker toward the future head socket. Releasing `Interact`
+  before completion calls `cancel_detached_head_reattach_tornado_to_ground()`,
+  making the skull fall back to the head-only ground pose instead of restoring
+  the torso. Combat/movement input is paused only while the hold animation is
+  actively being pressed.
+- The tornado target uses the detached torso marker rotation plus the torso
+  bone's `head_socket_offset` / `head_origin_offset`, instead of a fixed height.
+  When the hold completes, `Player` captures the head's current world position,
+  aligns the player rig's stable body pose and yaw to the detached torso marker,
+  then reapplies the captured head position before restoring the torso. That
+  means normal body animation resumes from the marker instead of moving or
+  rotating the body after the head has attached. `play_detached_head_reattach_finish_blend()`
+  only blends the head back into the normal full-body pose.
+- Reattach only aligns the player root at completion, after the head has reached
+  the torso marker. That alignment uses the current detached marker, not cached
+  attack data, so the restored body remains in place instead of popping after
+  the attachment finishes.
 - Enemies use `ProceduralEnemyAnimator`, a thin subclass that keeps player body
   progression disabled. This prevents enemies without player equipment records
   from being treated as head-only bodies.

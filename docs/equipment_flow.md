@@ -173,6 +173,38 @@ assets primero y solo usa sus diccionarios internos como fallback temporal.
   queda bloqueado para nuevos equips. `PlayerEquipmentComponent` solo permite
   restaurar el torso abandonado mediante `restore_detached_body()` cuando el
   player vuelve al marcador y mantiene `Interact`.
+- El marcador del torso abandonado se coloca desde el `VisualRoot` actual del
+  player mas el origen del rig antes de mover la capsula hacia la cabeza. No
+  debe depender primero de un transform global cacheado por el animator, porque
+  ese cache puede quedarse viejo y mandar el torso siempre al mismo sitio.
+- Despues de elegir ese X/Z, `Player` hace un raycast hacia abajo y sube el
+  marcador por media altura del mesh del torso. Asi el torso abandonado queda
+  apoyado en el piso o plataforma, no flotando a la altura de la capsula. El
+  transform final se calcula antes y se aplica despues de agregar el marker a la
+  escena, para no leer `global_position` desde un nodo temporal sin parent.
+- Mientras se mantiene `Interact`, el progreso del hold controla
+  `ProceduralPlayerAnimator.set_detached_head_reattach_tornado_progress()`.
+  La cabeza sube en espiral diagonal alrededor del marcador del torso hasta el
+  socket de cabeza. Si se suelta `Interact` antes de completar el hold,
+  `cancel_detached_head_reattach_tornado_to_ground()` cancela la espiral y deja
+  caer la cabeza al modo head-only. Solo al llegar al 100% se llama
+  `restore_detached_body()` para volver a equipar el torso abandonado.
+- El punto final de la espiral usa la rotacion del marcador del torso mas
+  `head_socket_offset` / `head_origin_offset` del torso que se esta restaurando.
+  Al completarse el hold, `Player` captura la posicion global actual de la
+  cabeza, alinea la pose estable del cuerpo y el yaw del rig al marcador del
+  torso, y luego vuelve a aplicar esa posicion capturada a la cabeza antes de
+  restaurar el torso. Asi la animacion normal vuelve desde el marcador y el
+  cuerpo no se mueve ni rota despues de que la cabeza ya se acoplo.
+  Despues de `restore_detached_body()`,
+  `play_detached_head_reattach_finish_blend()` solo mezcla la cabeza hacia la
+  pose normal del rig. No fija el socket del torso al marcador abandonado,
+  porque eso puede crear un teleport visible cuando la animacion normal vuelve a
+  controlar el cuerpo.
+- Reattach solo alinea el root del jugador al completarse, despues de que la
+  cabeza llega al marcador del torso. Esa alineacion usa el marcador actual, no
+  datos cacheados del ataque, para que el cuerpo restaurado se quede quieto
+  despues de terminar el acople.
 - El bow depende de brazos equipados. `Player._can_use_bow()` revisa el estado
   de equipamiento y exige `right_arm` y `left_arm`; si falta cualquiera de los
   dos brazos, el bow se oculta, se cancela aim y no puede disparar flechas.
