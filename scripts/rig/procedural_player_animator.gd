@@ -41,6 +41,14 @@ extends Node3D
 @export var head_only_roll_amount := 0.42
 @export var head_only_roll_radius := 0.16
 @export var head_only_ground_socket_y := -0.85
+@export var torso_spring_hop_amount := 0.34
+@export var torso_spring_compress_amount := 0.16
+@export var torso_spring_forward_offset := 0.18
+@export var torso_spring_tilt_amount := 0.24
+@export var torso_spring_ground_socket_y := -0.58
+@export var torso_spring_head_offset := Vector3(0.0, 0.42, 0.0)
+@export var torso_spring_head_pop_amount := 0.28
+@export var torso_spring_head_pop_delay := 0.38
 
 # Bend at the limb mid-joint (elbow/knee) so limbs flex instead of staying stiff.
 @export var joint_bend_base := 0.12    # radians always bent a little (never a stick)
@@ -225,9 +233,13 @@ func _animate_body() -> void:
 	if _is_head_only():
 		_animate_head_only(sway, breath)
 		return
+	if _is_torso_spring_only():
+		_animate_torso_spring(sway, breath)
+		return
 
 	var body := rig.get_socket("body")
 	if body != null and _rest_pos.has("body"):
+		body.scale = Vector3.ONE
 		body.position = _get_rest_pos("body") + Vector3(sway, bob + breath + lizard_wall_climb_lift * _lizard_wall_climb_blend, -0.08 * _lizard_wall_climb_blend)
 		body.rotation = _get_rest_rot("body") + Vector3(torso_lean_amount * speed_ratio + lizard_wall_climb_pitch * _lizard_wall_climb_blend, 0.0, -sway * 0.6)
 
@@ -242,6 +254,16 @@ func _is_head_only() -> bool:
 	return player_body_progression_enabled and rig != null and rig.has_method("has_equipped_slot") and not bool(rig.call("has_equipped_slot", "body"))
 
 
+func _is_torso_spring_only() -> bool:
+	return (
+		player_body_progression_enabled
+		and rig != null
+		and rig.has_method("has_equipped_slot")
+		and bool(rig.call("has_equipped_slot", "body"))
+		and not bool(rig.call("has_equipped_slot", "legs"))
+	)
+
+
 func _animate_head_only(sway: float, breath: float) -> void:
 	var head := rig.get_socket("head")
 	if head == null or not _rest_pos.has("head"):
@@ -251,6 +273,32 @@ func _animate_head_only(sway: float, breath: float) -> void:
 	var rest: Vector3 = _get_rest_pos("head")
 	head.position = Vector3(rest.x + sway * 0.8, head_only_ground_socket_y + hop, rest.z)
 	head.rotation = _get_rest_rot("head") + Vector3(_head_only_roll_angle, 0.0, sway * head_only_roll_amount)
+
+
+func _animate_torso_spring(sway: float, breath: float) -> void:
+	var body := rig.get_socket("body")
+	var head := rig.get_socket("head")
+	if body == null or not _rest_pos.has("body"):
+		return
+
+	var phase := fposmod(walk_time, TAU)
+	var airborne: float = maxf(sin(phase), 0.0) * speed_ratio
+	var contact: float = pow(1.0 - airborne, 2.0) * speed_ratio
+	var hop: float = airborne * torso_spring_hop_amount
+	var compression: float = contact * torso_spring_compress_amount
+	var forward_shove: float = airborne * torso_spring_forward_offset
+	var spring_tilt: float = sin(phase) * torso_spring_tilt_amount * speed_ratio
+
+	var body_rest: Vector3 = _get_rest_pos("body")
+	body.position = Vector3(body_rest.x + sway * 0.45, torso_spring_ground_socket_y + hop + breath - compression * 0.45, body_rest.z - forward_shove)
+	body.rotation = _get_rest_rot("body") + Vector3(torso_lean_amount * 0.35 * speed_ratio + spring_tilt, 0.0, -sway * 0.45)
+	body.scale = Vector3(1.0 + compression * 0.45 - airborne * 0.04, 1.0 - compression + airborne * 0.10, 1.0 + compression * 0.35 - airborne * 0.04)
+
+	if head != null and _rest_pos.has("head"):
+		var head_phase := fposmod(phase - torso_spring_head_pop_delay, TAU)
+		var head_pop: float = maxf(sin(head_phase), 0.0) * torso_spring_head_pop_amount * speed_ratio
+		head.position = body.position + torso_spring_head_offset + Vector3(sway * 0.38, compression * 0.32 + head_pop, forward_shove * 0.45)
+		head.rotation = _get_rest_rot("head") + Vector3(-spring_tilt * 0.55, 0.0, sway * 0.42)
 
 
 func _animate_limbs() -> void:
@@ -271,6 +319,7 @@ func _animate_crawl_body() -> void:
 
 	var body := rig.get_socket("body")
 	if body != null and _rest_pos.has("body"):
+		body.scale = Vector3.ONE
 		body.position = _get_rest_pos("body") + Vector3(pull * body_sway_amount * 0.65 * speed_ratio, -crawl_body_drop + shove + breath + lizard_wall_climb_lift * _lizard_wall_climb_blend, -forward_shove - 0.08 * _lizard_wall_climb_blend)
 		body.rotation = _get_rest_rot("body") + Vector3(crawl_body_pitch + lizard_wall_climb_pitch * 0.45 * _lizard_wall_climb_blend, pull * 0.10 * speed_ratio, -pull * 0.16 * speed_ratio)
 
@@ -407,7 +456,7 @@ func _animate_wobble() -> void:
 		return
 
 	for key in ["right_arm", "left_arm", "right_leg", "left_leg", "left_foot", "right_foot", "head"]:
-		if _is_head_only() and key == "head":
+		if (_is_head_only() or _is_torso_spring_only()) and key == "head":
 			continue
 
 		var s := rig.get_socket(key)
