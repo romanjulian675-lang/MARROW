@@ -1694,6 +1694,14 @@ class Player:
         """GDScript function: _toggle_bow_equipped() -> void"""
         pass
 
+    def gd_func__set_bow_equipped(self):
+        """GDScript function: _set_bow_equipped(enabled: bool) -> void"""
+        pass
+
+    def gd_func__can_use_bow(self):
+        """GDScript function: _can_use_bow() -> bool"""
+        pass
+
     def gd_func__fire_player_projectile(self):
         """GDScript function: _fire_player_projectile(forward: Vector3, projectile_damage: int, projectile_speed: float, projectile_gravity: float, projectile_style: String) -> void"""
         pass

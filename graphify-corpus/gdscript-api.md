@@ -1584,6 +1584,8 @@
 - `_release_bow_shot() -> void`
 - `_cancel_bow_aim() -> void`
 - `_toggle_bow_equipped() -> void`
+- `_set_bow_equipped(enabled: bool) -> void`
+- `_can_use_bow() -> bool`
 - `_fire_player_projectile(forward: Vector3, projectile_damage: int, projectile_speed: float, projectile_gravity: float, projectile_style: String) -> void`
 - `_get_pointer_aim_direction(start_position: Vector3, fallback_direction: Vector3) -> Vector3`
 - `_try_stealth_finish() -> void`

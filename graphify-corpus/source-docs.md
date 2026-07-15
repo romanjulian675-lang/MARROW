@@ -1005,6 +1005,10 @@ En `TESTING ENVIRONMENT`:
 - 2026-07-15: El cambio final a modo head-only ahora pasa la posicion local
   aterrizada a `enter_detached_head_state()` y hace un micro-blend de 0.08s hacia
   la pose normal de rodar, evitando el pequeno teleport al tocar suelo.
+- 2026-07-15: El bow solo puede equiparse, mostrarse, apuntarse y dispararse si
+  el player tiene ambos brazos equipados (`right_arm` y `left_arm`). Si falta
+  cualquier brazo, el bow se apaga y el player conserva el fallback de finger
+  bones.
 
 ## docs/current_system_status.md
 
@@ -1447,6 +1451,10 @@ assets primero y solo usa sus diccionarios internos como fallback temporal.
   queda bloqueado para nuevos equips. `PlayerEquipmentComponent` solo permite
   restaurar el torso abandonado mediante `restore_detached_body()` cuando el
   player vuelve al marcador y mantiene `Interact`.
+- El bow depende de brazos equipados. `Player._can_use_bow()` revisa el estado
+  de equipamiento y exige `right_arm` y `left_arm`; si falta cualquiera de los
+  dos brazos, el bow se oculta, se cancela aim y no puede disparar flechas.
+  Finger bones siguen siendo el fallback sin bow.
 - El mismo contrato de `hitbox_*` aplica para jugador y enemigos. La diferencia
   vive en el grupo de dano (`player_body_hurtboxes` o `enemy_body_hurtboxes`),
   no en datos duplicados. Los enemigos aplican un recorte adicional de precision
