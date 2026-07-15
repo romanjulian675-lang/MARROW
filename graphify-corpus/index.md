@@ -5,7 +5,7 @@ It is derived from source files and should be rebuilt before Graphify runs.
 
 ## Included Source
 - GDScript files: 37
-- Godot scenes: 13
+- Godot scenes: 14
 - Documentation files: 14
 - Project/root files: 3
 

@@ -42,6 +42,19 @@
 - `CollisionShape3D`
 - `GateLabel`
 
+## scenes/dummy_testing_environment.tscn
+
+### Attached Scripts
+- `scripts/testing_environment.gd`
+
+### Instanced Scenes
+- none
+
+### Nodes
+- `DummyTestingEnvironment`
+- `EnemySpawnPoints`
+- `DummySpawn`
+
 ## scenes/enemy.tscn
 
 ### Attached Scripts
@@ -248,4 +261,5 @@
 - `GorillaSpawn`
 - `LizardSpawn`
 - `RangedSpawn`
+- `DummySpawn`
 

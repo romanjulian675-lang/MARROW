@@ -84,6 +84,7 @@
 - `scenes/attack_hitbox.tscn` uses script `scripts/attack_hitbox.gd`.
 - `scenes/bone.tscn` uses script `scripts/bone.gd`.
 - `scenes/bone_trial_gate.tscn` uses script `scripts/bone_trial_gate.gd`.
+- `scenes/dummy_testing_environment.tscn` uses script `scripts/testing_environment.gd`.
 - `scenes/enemy.tscn` uses script `scripts/enemy.gd`.
 - `scenes/enemy.tscn` uses script `scripts/rig/modular_skeleton_rig.gd`.
 - `scenes/enemy.tscn` uses script `scripts/rig/procedural_enemy_animator.gd`.

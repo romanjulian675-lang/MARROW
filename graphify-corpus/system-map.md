@@ -66,6 +66,7 @@
 - `scenes/attack_hitbox.tscn` composes `scripts/attack_hitbox.gd`.
 - `scenes/bone.tscn` composes `scripts/bone.gd`.
 - `scenes/bone_trial_gate.tscn` composes `scripts/bone_trial_gate.gd`.
+- `scenes/dummy_testing_environment.tscn` composes `scripts/testing_environment.gd`.
 - `scenes/enemy.tscn` composes `scripts/enemy.gd`, `scripts/rig/modular_skeleton_rig.gd`, `scripts/rig/procedural_enemy_animator.gd`.
 - `scenes/exit_portal.tscn` composes `scripts/exit_portal.gd`.
 - `scenes/guide_wisp.tscn` composes `scripts/guide_wisp.gd`.

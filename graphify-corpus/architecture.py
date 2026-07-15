@@ -280,6 +280,18 @@ class AttackHitbox:
         """GDScript function: _ready() -> void"""
         pass
 
+    def gd_func__physics_process(self):
+        """GDScript function: _physics_process(_delta: float) -> void"""
+        pass
+
+    def gd_func__apply_shape_override(self):
+        """GDScript function: _apply_shape_override() -> void"""
+        pass
+
+    def gd_func__update_follow_position(self):
+        """GDScript function: _update_follow_position() -> void"""
+        pass
+
     def gd_func__apply_visual_state(self):
         """GDScript function: _apply_visual_state() -> void"""
         pass
@@ -302,6 +314,14 @@ class AttackHitbox:
 
     def gd_func__try_hit_body(self):
         """GDScript function: _try_hit_body(body: Node) -> void"""
+        pass
+
+    def gd_func__body_should_confirm_contact(self):
+        """GDScript function: _body_should_confirm_contact(body: Node) -> bool"""
+        pass
+
+    def gd_func__is_ground_like_body(self):
+        """GDScript function: _is_ground_like_body(body: Node) -> bool"""
         pass
 
     def gd_func__try_hit_enemy_area(self):
@@ -689,6 +709,10 @@ class Enemy:
 
     def gd_func__player_is_dead(self):
         """GDScript function: _player_is_dead(player: Node) -> bool"""
+        pass
+
+    def gd_func__update_dummy_target_physics(self):
+        """GDScript function: _update_dummy_target_physics(delta: float) -> void"""
         pass
 
     def gd_func__apply_enemy_movement(self):
@@ -1111,6 +1135,18 @@ class Enemy:
         """GDScript function: _apply_gorilla_profile() -> void"""
         pass
 
+    def gd_func__apply_profile_collision_shape(self):
+        """GDScript function: _apply_profile_collision_shape() -> void"""
+        pass
+
+    def gd_func__apply_box_collision_shape(self):
+        """GDScript function: _apply_box_collision_shape(size_value: Vector3, offset_value: Vector3) -> void"""
+        pass
+
+    def gd_func__apply_dummy_target_profile(self):
+        """GDScript function: _apply_dummy_target_profile() -> void"""
+        pass
+
     def gd_func__should_use_gorilla_profile(self):
         """GDScript function: _should_use_gorilla_profile() -> bool"""
         pass
@@ -1496,6 +1532,10 @@ class MainMenu:
         """GDScript function: _open_testing_environment() -> void"""
         pass
 
+    def gd_func__open_dummy_testing_environment(self):
+        """GDScript function: _open_dummy_testing_environment() -> void"""
+        pass
+
 class OpenWorldStage:
     """Godot script: scripts/open_world_stage.gd
     class_name: none
@@ -1612,6 +1652,10 @@ class Player:
 
     def gd_func__on_attack_hit_confirmed(self):
         """GDScript function: _on_attack_hit_confirmed(_target: Node) -> void"""
+        pass
+
+    def gd_func__get_head_only_hitbox_follow_target(self):
+        """GDScript function: _get_head_only_hitbox_follow_target() -> Node3D"""
         pass
 
     def gd_func__is_head_only_combat_mode(self):
@@ -2564,6 +2608,10 @@ class ModularSkeletonRig:
         """GDScript function: _set_base_limb_shape(limb_key: String, new_size: Vector3, new_offset: Vector3) -> void"""
         pass
 
+    def gd_func__apply_gorilla_body_hitboxes(self):
+        """GDScript function: _apply_gorilla_body_hitboxes() -> void"""
+        pass
+
     def gd_func__apply_skeleton_model(self):
         """GDScript function: _apply_skeleton_model() -> void"""
         pass
@@ -2770,6 +2818,14 @@ class ProceduralPlayerAnimator:
         """GDScript function: _world_horizontal_offset_to_local(world_offset: Vector3) -> Vector3"""
         pass
 
+    def gd_func__capture_head_only_recoil_start_local_position(self):
+        """GDScript function: _capture_head_only_recoil_start_local_position() -> Vector3"""
+        pass
+
+    def gd_func__get_head_only_grounded_local_position(self):
+        """GDScript function: _get_head_only_grounded_local_position() -> Vector3"""
+        pass
+
     def gd_func_set_crawl_mode(self):
         """GDScript function: set_crawl_mode(enabled: bool) -> void"""
         pass
@@ -2884,6 +2940,10 @@ class ProceduralPlayerAnimator:
 
     def gd_func__apply_head_only_attack_pose(self):
         """GDScript function: _apply_head_only_attack_pose() -> void"""
+        pass
+
+    def gd_func__apply_head_only_hit_recoil_pose(self):
+        """GDScript function: _apply_head_only_hit_recoil_pose(head: Node3D) -> void"""
         pass
 
     def gd_func__apply_right_combo_pose(self):
@@ -3410,6 +3470,15 @@ class SceneBoneTrialGate:
         """Scene relationship: uses script."""
         return BoneTrialGate
 
+class SceneDummyTestingEnvironment:
+    """Godot scene: scenes/dummy_testing_environment.tscn"""
+    source_file = 'scenes/dummy_testing_environment.tscn'
+    nodes = ['DummyTestingEnvironment', 'EnemySpawnPoints', 'DummySpawn']
+
+    def contains_TestingEnvironment(self):
+        """Scene relationship: uses script."""
+        return TestingEnvironment
+
 class SceneEnemy:
     """Godot scene: scenes/enemy.tscn"""
     source_file = 'scenes/enemy.tscn'
@@ -3552,7 +3621,7 @@ class SceneRigTest:
 class SceneTestingEnvironment:
     """Godot scene: scenes/testing_environment.tscn"""
     source_file = 'scenes/testing_environment.tscn'
-    nodes = ['TestingEnvironment', 'EnemySpawnPoints', 'NormalSpawn', 'GorillaSpawn', 'LizardSpawn', 'RangedSpawn']
+    nodes = ['TestingEnvironment', 'EnemySpawnPoints', 'NormalSpawn', 'GorillaSpawn', 'LizardSpawn', 'RangedSpawn', 'DummySpawn']
 
     def contains_TestingEnvironment(self):
         """Scene relationship: uses script."""

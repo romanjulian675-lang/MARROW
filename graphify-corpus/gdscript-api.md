@@ -215,27 +215,46 @@
 - `damage`
 - `lifetime`
 - `visual_enabled`
+- `override_shape_size`
 
 ### Constants
 - `ENEMY_BODY_HURTBOX_GROUP`
 
 ### Key Variables
 - `owner_player`
+- `follow_target`
+- `follow_offset_provider`
+- `follow_offset_method`
+- `follow_direction`
+- `follow_forward_offset`
+- `follow_height`
 - `already_hit`
 - `contact_confirmed`
+- `shape_node`
+- `box`
+- `box_mesh`
+- `offset`
+- `offset_value`
+- `flat_direction`
 - `base_material`
 - `material`
 - `tween`
+- `body_name`
 - `damage_owner`
 
 ### Functions
 - `_ready() -> void`
+- `_physics_process(_delta: float) -> void`
+- `_apply_shape_override() -> void`
+- `_update_follow_position() -> void`
 - `_apply_visual_state() -> void`
 - `_start_fade() -> void`
 - `_hit_current_overlaps() -> void`
 - `_on_body_entered(body: Node) -> void`
 - `_on_area_entered(area: Area3D) -> void`
 - `_try_hit_body(body: Node) -> void`
+- `_body_should_confirm_contact(body: Node) -> bool`
+- `_is_ground_like_body(body: Node) -> bool`
 - `_try_hit_enemy_area(area: Area3D) -> void`
 - `_damage_owner_for_area(area: Area3D) -> Node`
 - `_body_part_for_area(area: Area3D) -> String`
@@ -251,7 +270,7 @@
 - none
 
 ### Node Path Lookups
-- none
+- `CollisionShape3D`
 
 ## bone
 
@@ -759,6 +778,7 @@
 - `attack_range`
 - `contact_damage`
 - `attack_cooldown`
+- `dummy_target_enabled`
 - `search_duration`
 - `search_stop_distance`
 - `search_turn_speed`
@@ -903,6 +923,7 @@
 - `_physics_process(delta: float) -> void`
 - `_get_player() -> Node3D`
 - `_player_is_dead(player: Node) -> bool`
+- `_update_dummy_target_physics(delta: float) -> void`
 - `_apply_enemy_movement() -> void`
 - `_is_lizard_wall_climb_enabled() -> bool`
 - `_apply_lizard_wall_climb_velocity() -> void`
@@ -1008,6 +1029,9 @@
 - `_apply_bone_identity() -> void`
 - `_apply_lizard_profile() -> void`
 - `_apply_gorilla_profile() -> void`
+- `_apply_profile_collision_shape() -> void`
+- `_apply_box_collision_shape(size_value: Vector3, offset_value: Vector3) -> void`
+- `_apply_dummy_target_profile() -> void`
 - `_should_use_gorilla_profile() -> bool`
 - `_should_use_lizard_profile() -> bool`
 - `_roll_low_health_personality() -> void`
@@ -1352,6 +1376,7 @@
 ### Constants
 - `DEMO_SCENE_PATH`
 - `TESTING_SCENE_PATH`
+- `DUMMY_TESTING_SCENE_PATH`
 
 ### Key Variables
 - `backdrop`
@@ -1369,6 +1394,7 @@
 - `_make_menu_button(text: String, callback: Callable) -> Button`
 - `_open_demo() -> void`
 - `_open_testing_environment() -> void`
+- `_open_dummy_testing_environment() -> void`
 
 ### Resource Dependencies
 - none
@@ -1454,6 +1480,9 @@
 - `attack_cooldown`
 - `attack_forward_offset`
 - `attack_height`
+- `head_only_attack_hitbox_lifetime`
+- `head_only_attack_hitbox_height`
+- `head_only_attack_hitbox_size`
 - `stealth_prompt_scan_range`
 - `bow_enabled`
 - `start_with_bow_equipped`
@@ -1535,6 +1564,7 @@
 - `_get_camera_forward_direction() -> Vector3`
 - `_try_attack() -> void`
 - `_on_attack_hit_confirmed(_target: Node) -> void`
+- `_get_head_only_hitbox_follow_target() -> Node3D`
 - `_is_head_only_combat_mode() -> bool`
 - `_force_head_only_single_visual() -> void`
 - `_try_bow_shot(charge_multiplier: float = 1.0, charge_ratio: float = 0.0) -> void`
@@ -2093,6 +2123,7 @@
 - `_ensure_lizard_torso_block(block_name: String, size: Vector3, local_position: Vector3) -> void`
 - `_set_socket_position(socket_key: String, new_position: Vector3) -> void`
 - `_set_base_limb_shape(limb_key: String, new_size: Vector3, new_offset: Vector3) -> void`
+- `_apply_gorilla_body_hitboxes() -> void`
 - `_apply_skeleton_model() -> void`
 - `_apply_rigged_limbs() -> void`
 - `_find_skeleton(n: Node) -> Skeleton3D`
@@ -2245,6 +2276,13 @@
 - `head_only_attack_arc`
 - `head_only_attack_charge_squash`
 - `head_only_attack_roll`
+- `head_only_hit_recoil_duration`
+- `head_only_hit_recoil_hold`
+- `head_only_hit_recoil_arc`
+- `head_only_hit_recoil_lift`
+- `head_only_hit_recoil_horizontal_push`
+- `head_only_hit_recoil_roll`
+- `head_only_hit_recoil_settle`
 - `combo_left_arm_forward`
 - `combo_finisher_arm_forward`
 - `combo_finisher_torso_twist`
@@ -2282,6 +2320,11 @@
 - `_head_only_attack_world_offset`
 - `_head_only_attack_direction`
 - `_head_only_last_facing_direction`
+- `_head_only_hit_recoil_timer`
+- `_head_only_hit_recoil_start_offset`
+- `_head_only_hit_recoil_end_offset`
+- `_head_only_hit_recoil_start_local_position`
+- `_head_only_hit_recoil_end_local_position`
 - `_aim_requested`
 - `_aim_blend`
 - `_lizard_wall_climb_blend`
@@ -2296,18 +2339,13 @@
 - `weight_slowdown`
 - `flat`
 - `local_offset`
+- `head`
+- `rest`
+- `base_local_offset`
 - `s`
 - `value`
 - `w`
 - `sway`
-- `bob`
-- `breath`
-- `body`
-- `head`
-- `hop`
-- `rest`
-- `base_local_offset`
-- `phase`
 
 ### Functions
 - `update_from_player(delta: float, velocity: Vector3, max_speed: float, facing_direction: Vector3, equipped_defs: Array) -> void`
@@ -2318,6 +2356,8 @@
 - `get_head_only_attack_world_offset() -> Vector3`
 - `_update_head_only_facing_direction(facing_direction: Vector3) -> void`
 - `_world_horizontal_offset_to_local(world_offset: Vector3) -> Vector3`
+- `_capture_head_only_recoil_start_local_position() -> Vector3`
+- `_get_head_only_grounded_local_position() -> Vector3`
 - `set_crawl_mode(enabled: bool) -> void`
 - `set_lizard_wall_climb_blend(blend: float) -> void`
 - `set_player_body_progression_enabled(enabled: bool) -> void`
@@ -2347,6 +2387,7 @@
 - `_attack_pose_strength() -> float`
 - `_attack_phase() -> float`
 - `_apply_head_only_attack_pose() -> void`
+- `_apply_head_only_hit_recoil_pose(head: Node3D) -> void`
 - `_apply_right_combo_pose(strength: float) -> void`
 - `_apply_left_combo_pose(strength: float) -> void`
 - `_apply_finisher_combo_pose(strength: float) -> void`
@@ -2425,6 +2466,7 @@
 - `spawn_player_on_ready`
 - `spawn_initial_enemies`
 - `keep_enemy_respawn_disabled`
+- `dummy_only_mode`
 
 ### Constants
 - `MAIN_MENU_PATH`
