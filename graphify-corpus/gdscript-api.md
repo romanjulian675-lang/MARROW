@@ -215,7 +215,9 @@
 - `damage`
 - `lifetime`
 - `visual_enabled`
+- `override_shape_type`
 - `override_shape_size`
+- `override_sphere_radius`
 
 ### Constants
 - `ENEMY_BODY_HURTBOX_GROUP`
@@ -231,7 +233,9 @@
 - `already_hit`
 - `contact_confirmed`
 - `shape_node`
+- `sphere`
 - `box`
+- `sphere_mesh`
 - `box_mesh`
 - `offset`
 - `offset_value`
@@ -246,6 +250,7 @@
 - `_ready() -> void`
 - `_physics_process(_delta: float) -> void`
 - `_apply_shape_override() -> void`
+- `_override_sphere_radius() -> float`
 - `_update_follow_position() -> void`
 - `_apply_visual_state() -> void`
 - `_start_fade() -> void`
@@ -479,6 +484,7 @@
 - `visual_scale`
 - `visual_offset`
 - `visual_rotation`
+- `head_socket_offset`
 - `hitbox_size`
 - `hitbox_offset`
 - `hitbox_scale`
@@ -1482,7 +1488,9 @@
 - `attack_height`
 - `head_only_attack_hitbox_lifetime`
 - `head_only_attack_hitbox_height`
+- `head_only_attack_hitbox_radius`
 - `head_only_attack_hitbox_size`
+- `torso_head_attack_hitbox_lifetime`
 - `stealth_prompt_scan_range`
 - `bow_enabled`
 - `start_with_bow_equipped`
@@ -1566,6 +1574,7 @@
 - `_on_attack_hit_confirmed(_target: Node) -> void`
 - `_get_head_only_hitbox_follow_target() -> Node3D`
 - `_is_head_only_combat_mode() -> bool`
+- `_is_torso_only_combat_mode() -> bool`
 - `_force_head_only_single_visual() -> void`
 - `_try_bow_shot(charge_multiplier: float = 1.0, charge_ratio: float = 0.0) -> void`
 - `_start_bow_aim() -> void`
@@ -2073,6 +2082,7 @@
 - `ENEMY_BODY_HITBOX_GROUP`
 - `DAMAGE_HITBOX_GROUPS`
 - `MIN_HITBOX_SIZE`
+- `ENEMY_HITBOX_ACCURACY_SCALE`
 
 ### Key Variables
 - `sockets`
@@ -2082,6 +2092,7 @@
 - `limb_joints`
 - `body_hitboxes`
 - `body_hitbox_shapes`
+- `body_hitbox_configs`
 - `body_hitbox_owner`
 - `body_hitbox_damage_group`
 - `body_progression_enabled`
@@ -2114,7 +2125,6 @@
 - `to_b`
 - `n`
 - `area`
-- `shape_node`
 
 ### Functions
 - `_ready() -> void`
@@ -2151,6 +2161,9 @@
 - `_apply_default_body_hitbox(socket_key: String) -> void`
 - `_apply_equipped_body_hitbox(socket_key: String, explicit_size: Vector3, scale_value: Vector3, extra_offset: Vector3, rotation_value: Vector3) -> void`
 - `_apply_body_hitbox(socket_key: String, size_value: Vector3, offset_value: Vector3, rotation_value: Vector3) -> void`
+- `_apply_body_hitbox_shape(socket_key: String, size_value: Vector3, offset_value: Vector3, rotation_value: Vector3) -> void`
+- `_refresh_body_hitbox_shapes() -> void`
+- `_enemy_adjusted_hitbox_size(socket_key: String, size_value: Vector3) -> Vector3`
 - `_refresh_body_hitbox_enabled() -> void`
 - `_body_hitbox_should_be_enabled(socket_key: String) -> bool`
 - `_clear_damage_hitbox_groups(area: Area3D) -> void`
@@ -2283,6 +2296,15 @@
 - `head_only_hit_recoil_horizontal_push`
 - `head_only_hit_recoil_roll`
 - `head_only_hit_recoil_settle`
+- `torso_head_attack_duration`
+- `torso_head_attack_charge_portion`
+- `torso_head_attack_lunge`
+- `torso_head_attack_arc`
+- `torso_head_attack_coil`
+- `torso_head_attack_recoil_duration`
+- `torso_head_attack_recoil_arc`
+- `torso_head_attack_recoil_pullback`
+- `torso_head_attack_roll`
 - `combo_left_arm_forward`
 - `combo_finisher_arm_forward`
 - `combo_finisher_torso_twist`
@@ -2325,6 +2347,15 @@
 - `_head_only_hit_recoil_end_offset`
 - `_head_only_hit_recoil_start_local_position`
 - `_head_only_hit_recoil_end_local_position`
+- `_torso_head_attack_contacted`
+- `_torso_head_attack_landed`
+- `_torso_head_attack_world_offset`
+- `_torso_head_attack_direction`
+- `_torso_head_recoil_timer`
+- `_torso_head_recoil_start_local_position`
+- `_torso_head_recoil_end_local_position`
+- `_torso_head_socket_local_position`
+- `_torso_head_socket_offset`
 - `_aim_requested`
 - `_aim_blend`
 - `_lizard_wall_climb_blend`
@@ -2337,15 +2368,6 @@
 - `target_ratio`
 - `roll_radius`
 - `weight_slowdown`
-- `flat`
-- `local_offset`
-- `head`
-- `rest`
-- `base_local_offset`
-- `s`
-- `value`
-- `w`
-- `sway`
 
 ### Functions
 - `update_from_player(delta: float, velocity: Vector3, max_speed: float, facing_direction: Vector3, equipped_defs: Array) -> void`
@@ -2354,9 +2376,11 @@
 - `confirm_head_only_attack_contact() -> void`
 - `get_head_only_attack_forward_offset() -> float`
 - `get_head_only_attack_world_offset() -> Vector3`
+- `get_head_launch_attack_world_offset() -> Vector3`
 - `_update_head_only_facing_direction(facing_direction: Vector3) -> void`
 - `_world_horizontal_offset_to_local(world_offset: Vector3) -> Vector3`
 - `_capture_head_only_recoil_start_local_position() -> Vector3`
+- `_capture_socket_local_position(socket_key: String) -> Vector3`
 - `_get_head_only_grounded_local_position() -> Vector3`
 - `set_crawl_mode(enabled: bool) -> void`
 - `set_lizard_wall_climb_blend(blend: float) -> void`
@@ -2365,6 +2389,8 @@
 - `_get_rest_pos(key: String) -> Vector3`
 - `_get_rest_rot(key: String) -> Vector3`
 - `_calculate_weight(equipped_defs: Array) -> float`
+- `_update_torso_head_socket_offset(equipped_defs: Array) -> void`
+- `_as_vector3(value: Variant, fallback: Vector3) -> Vector3`
 - `_animate_body() -> void`
 - `_is_head_only() -> bool`
 - `_is_torso_spring_only() -> bool`
@@ -2388,6 +2414,8 @@
 - `_attack_phase() -> float`
 - `_apply_head_only_attack_pose() -> void`
 - `_apply_head_only_hit_recoil_pose(head: Node3D) -> void`
+- `_apply_torso_head_attack_pose() -> void`
+- `_apply_torso_head_recoil_pose(body: Node3D, head: Node3D) -> void`
 - `_apply_right_combo_pose(strength: float) -> void`
 - `_apply_left_combo_pose(strength: float) -> void`
 - `_apply_finisher_combo_pose(strength: float) -> void`

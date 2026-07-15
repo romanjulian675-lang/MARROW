@@ -288,6 +288,10 @@ class AttackHitbox:
         """GDScript function: _apply_shape_override() -> void"""
         pass
 
+    def gd_func__override_sphere_radius(self):
+        """GDScript function: _override_sphere_radius() -> float"""
+        pass
+
     def gd_func__update_follow_position(self):
         """GDScript function: _update_follow_position() -> void"""
         pass
@@ -1662,6 +1666,10 @@ class Player:
         """GDScript function: _is_head_only_combat_mode() -> bool"""
         pass
 
+    def gd_func__is_torso_only_combat_mode(self):
+        """GDScript function: _is_torso_only_combat_mode() -> bool"""
+        pass
+
     def gd_func__force_head_only_single_visual(self):
         """GDScript function: _force_head_only_single_visual() -> void"""
         pass
@@ -2720,6 +2728,18 @@ class ModularSkeletonRig:
         """GDScript function: _apply_body_hitbox(socket_key: String, size_value: Vector3, offset_value: Vector3, rotation_value: Vector3) -> void"""
         pass
 
+    def gd_func__apply_body_hitbox_shape(self):
+        """GDScript function: _apply_body_hitbox_shape(socket_key: String, size_value: Vector3, offset_value: Vector3, rotation_value: Vector3) -> void"""
+        pass
+
+    def gd_func__refresh_body_hitbox_shapes(self):
+        """GDScript function: _refresh_body_hitbox_shapes() -> void"""
+        pass
+
+    def gd_func__enemy_adjusted_hitbox_size(self):
+        """GDScript function: _enemy_adjusted_hitbox_size(socket_key: String, size_value: Vector3) -> Vector3"""
+        pass
+
     def gd_func__refresh_body_hitbox_enabled(self):
         """GDScript function: _refresh_body_hitbox_enabled() -> void"""
         pass
@@ -2810,6 +2830,10 @@ class ProceduralPlayerAnimator:
         """GDScript function: get_head_only_attack_world_offset() -> Vector3"""
         pass
 
+    def gd_func_get_head_launch_attack_world_offset(self):
+        """GDScript function: get_head_launch_attack_world_offset() -> Vector3"""
+        pass
+
     def gd_func__update_head_only_facing_direction(self):
         """GDScript function: _update_head_only_facing_direction(facing_direction: Vector3) -> void"""
         pass
@@ -2820,6 +2844,10 @@ class ProceduralPlayerAnimator:
 
     def gd_func__capture_head_only_recoil_start_local_position(self):
         """GDScript function: _capture_head_only_recoil_start_local_position() -> Vector3"""
+        pass
+
+    def gd_func__capture_socket_local_position(self):
+        """GDScript function: _capture_socket_local_position(socket_key: String) -> Vector3"""
         pass
 
     def gd_func__get_head_only_grounded_local_position(self):
@@ -2852,6 +2880,14 @@ class ProceduralPlayerAnimator:
 
     def gd_func__calculate_weight(self):
         """GDScript function: _calculate_weight(equipped_defs: Array) -> float"""
+        pass
+
+    def gd_func__update_torso_head_socket_offset(self):
+        """GDScript function: _update_torso_head_socket_offset(equipped_defs: Array) -> void"""
+        pass
+
+    def gd_func__as_vector3(self):
+        """GDScript function: _as_vector3(value: Variant, fallback: Vector3) -> Vector3"""
         pass
 
     def gd_func__animate_body(self):
@@ -2944,6 +2980,14 @@ class ProceduralPlayerAnimator:
 
     def gd_func__apply_head_only_hit_recoil_pose(self):
         """GDScript function: _apply_head_only_hit_recoil_pose(head: Node3D) -> void"""
+        pass
+
+    def gd_func__apply_torso_head_attack_pose(self):
+        """GDScript function: _apply_torso_head_attack_pose() -> void"""
+        pass
+
+    def gd_func__apply_torso_head_recoil_pose(self):
+        """GDScript function: _apply_torso_head_recoil_pose(body: Node3D, head: Node3D) -> void"""
         pass
 
     def gd_func__apply_right_combo_pose(self):
