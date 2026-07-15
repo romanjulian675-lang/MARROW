@@ -724,17 +724,17 @@ func get_drop_display_name() -> String:
 
 
 func _is_player_behind(player: Node3D) -> bool:
-	var to_player := player.global_position - global_position
-	to_player.y = 0.0
-	if to_player.length() <= 0.01:
-		return false
-
 	var enemy_forward := facing_direction
 	enemy_forward.y = 0.0
 	if enemy_forward.length() <= 0.01:
 		enemy_forward = _facing_from_rotation()
 
-	return enemy_forward.normalized().dot(to_player.normalized()) <= -stealth_behind_dot
+	return BackstabRulesService.is_attacker_behind_target(
+		global_position,
+		enemy_forward,
+		player.global_position,
+		stealth_behind_dot
+	)
 
 
 func try_stealth_finish(player: Node3D, player_damage: int, hit_from: Vector3) -> bool:
