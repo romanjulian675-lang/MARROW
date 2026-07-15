@@ -173,6 +173,10 @@ assets primero y solo usa sus diccionarios internos como fallback temporal.
   queda bloqueado para nuevos equips. `PlayerEquipmentComponent` solo permite
   restaurar el torso abandonado mediante `restore_detached_body()` cuando el
   player vuelve al marcador y mantiene `Interact`.
+- El bow depende de brazos equipados. `Player._can_use_bow()` revisa el estado
+  de equipamiento y exige `right_arm` y `left_arm`; si falta cualquiera de los
+  dos brazos, el bow se oculta, se cancela aim y no puede disparar flechas.
+  Finger bones siguen siendo el fallback sin bow.
 - El mismo contrato de `hitbox_*` aplica para jugador y enemigos. La diferencia
   vive en el grupo de dano (`player_body_hurtboxes` o `enemy_body_hurtboxes`),
   no en datos duplicados. Los enemigos aplican un recorte adicional de precision

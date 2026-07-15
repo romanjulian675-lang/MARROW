@@ -138,7 +138,7 @@ func _ready() -> void:
 	inventory_open = false
 	_reset_fallback_input_state()
 	health = max_health
-	bow_equipped = start_with_bow_equipped
+	bow_equipped = false
 	stats_component = PlayerStatsComponent.new()
 	add_child(stats_component)
 	stats_component.setup(base_move_speed, base_attack_range, base_attack_damage, max_health)
@@ -152,6 +152,8 @@ func _ready() -> void:
 	add_child(inventory_component)
 	inventory_component.setup(self, equipment_component)
 	_recalculate_stats()
+	if start_with_bow_equipped:
+		_set_bow_equipped(true)
 	inventory_ui = PlayerInventoryUI.new()
 	add_child(inventory_ui)
 	inventory_ui.setup(self)
@@ -466,6 +468,10 @@ func _force_head_only_single_visual() -> void:
 func _try_bow_shot(charge_multiplier: float = 1.0, charge_ratio: float = 0.0) -> void:
 	if not bow_enabled or not can_shoot_bow:
 		return
+	if bow_equipped and not _can_use_bow():
+		_set_bow_equipped(false)
+		_set_stealth_prompt("Attach both arms before using the bow.")
+		return
 
 	can_shoot_bow = false
 	noise_timer = maxf(noise_timer, 0.45)
@@ -497,6 +503,10 @@ func _try_bow_shot(charge_multiplier: float = 1.0, charge_ratio: float = 0.0) ->
 
 func _start_bow_aim() -> void:
 	if not bow_enabled or not can_shoot_bow:
+		return
+	if not _can_use_bow():
+		_set_bow_equipped(false)
+		_set_stealth_prompt("Attach both arms before using the bow.")
 		return
 
 	bow_aiming = true
@@ -535,12 +545,26 @@ func _cancel_bow_aim() -> void:
 func _toggle_bow_equipped() -> void:
 	if not bow_enabled:
 		return
+	if not bow_equipped and not _can_use_bow():
+		_cancel_bow_aim()
+		_set_bow_equipped(false)
+		_set_stealth_prompt("Attach both arms before using the bow.")
+		return
 
 	_cancel_bow_aim()
 
-	bow_equipped = not bow_equipped
+	_set_bow_equipped(not bow_equipped)
+
+
+func _set_bow_equipped(enabled: bool) -> void:
+	bow_equipped = enabled and _can_use_bow()
 	if bow_visual != null:
 		bow_visual.visible = bow_equipped
+
+
+func _can_use_bow() -> bool:
+	var equipment_state: Dictionary = get_equipment_state()
+	return equipment_state.has("right_arm") and equipment_state.has("left_arm")
 
 
 func _fire_player_projectile(forward: Vector3, projectile_damage: int, projectile_speed: float, projectile_gravity: float, projectile_style: String) -> void:
@@ -1030,6 +1054,9 @@ func _recalculate_stats() -> void:
 	attack_damage = int(calculated_stats["attack_damage"])
 	max_health = int(calculated_stats["max_health"])
 	health = int(calculated_stats["health"])
+	if bow_equipped and not _can_use_bow():
+		_cancel_bow_aim()
+		bow_equipped = false
 	if bow_visual != null:
 		bow_visual.visible = bow_equipped
 	_update_health_ui()

@@ -346,3 +346,7 @@ En `TESTING ENVIRONMENT`:
 - 2026-07-15: El cambio final a modo head-only ahora pasa la posicion local
   aterrizada a `enter_detached_head_state()` y hace un micro-blend de 0.08s hacia
   la pose normal de rodar, evitando el pequeno teleport al tocar suelo.
+- 2026-07-15: El bow solo puede equiparse, mostrarse, apuntarse y dispararse si
+  el player tiene ambos brazos equipados (`right_arm` y `left_arm`). Si falta
+  cualquier brazo, el bow se apaga y el player conserva el fallback de finger
+  bones.
