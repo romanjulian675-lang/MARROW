@@ -2738,6 +2738,18 @@ class ProceduralPlayerAnimator:
         """GDScript function: get_head_only_attack_forward_offset() -> float"""
         pass
 
+    def gd_func_get_head_only_attack_world_offset(self):
+        """GDScript function: get_head_only_attack_world_offset() -> Vector3"""
+        pass
+
+    def gd_func__update_head_only_facing_direction(self):
+        """GDScript function: _update_head_only_facing_direction(facing_direction: Vector3) -> void"""
+        pass
+
+    def gd_func__world_horizontal_offset_to_local(self):
+        """GDScript function: _world_horizontal_offset_to_local(world_offset: Vector3) -> Vector3"""
+        pass
+
     def gd_func_set_crawl_mode(self):
         """GDScript function: set_crawl_mode(enabled: bool) -> void"""
         pass

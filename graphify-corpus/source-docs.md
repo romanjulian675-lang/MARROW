@@ -554,11 +554,13 @@ un punto de disparo consistente desde el centro de pantalla.
 1. `ProceduralPlayerAnimator` calcula el offset hacia adelante del ataque cuando
    el jugador sigue siendo solo cabeza.
 2. `Player._update_procedural_animation` lee
-   `get_head_only_attack_forward_offset`.
-3. `Player` lo convierte a mundo usando `last_facing_direction`, con Y en cero.
-4. `PlayerCameraController.set_animation_follow_offset` suaviza ese offset en
+   `get_head_only_attack_world_offset`.
+3. Ese offset ya viene en mundo horizontal e incluye tanto el salto actual como
+   la posicion adelantada acumulada por golpes anteriores.
+4. `Player` lo entrega a la camara con Y en cero.
+5. `PlayerCameraController.set_animation_follow_offset` suaviza ese offset en
    el pivot de camara.
-5. La camara sigue solo la distancia horizontal del salto; el arco vertical se
+6. La camara sigue solo la distancia horizontal del salto; el arco vertical se
    queda en la animacion del socket de cabeza.
 
 ## Flujo de mouse
@@ -774,13 +776,15 @@ Ataque/combo por hueso:
 - Si el jugador sigue solo como cabeza, `trigger_attack` usa una duracion visual
   propia y reemplaza las poses de brazos por un salto de cabeza: primero
   comprime/carga hacia atras, luego salta hacia adelante y arriba hasta una
-  altura cercana a medio torso. La cabeza solo vuelve visualmente a la posicion
-  original cuando `AttackHitbox` confirma contacto con otro cuerpo o hurtbox
-  enemigo; si falla, mantiene la pose lanzada. El salto usa Z local positivo
-  porque esa es la direccion visual hacia adelante del rig del jugador.
+  altura cercana a medio torso. Al caer, esa posicion adelantada se guarda como
+  nuevo inicio local del ciclo; el siguiente golpe empieza desde donde quedo la
+  cabeza y no desde el rest original. El salto usa Z local positivo porque esa
+  es la direccion visual hacia adelante del rig del jugador. La posicion
+  acumulada se guarda en mundo horizontal y luego se convierte a local del rig,
+  para evitar teleports cuando el jugador se mueve o gira lateralmente.
 - Mientras ese ataque esta activo, `Player` lee
-  `get_head_only_attack_forward_offset()` y se lo pasa a la camara como offset
-  horizontal. La camara no sigue el arco vertical de la cabeza.
+  `get_head_only_attack_world_offset()` y se lo pasa a la camara como offset
+  horizontal acumulado. La camara no sigue el arco vertical de la cabeza.
 - Estos campos no cambian cooldown, hitbox, dano ni input automaticamente. Para
   activar combos con gameplay real se debe crear una regla de combate explicita
   y probarla en `TESTING ENVIRONMENT`.
@@ -2146,13 +2150,16 @@ Combo overlay:
 - Step 3 uses both arms, deeper lunge, and a small head dip.
 - If the player is only a head, combo arm poses are skipped. The head instead
   squashes backward to charge, jumps forward/up toward the target direction,
-  reaches roughly mid-torso height, and only falls back to its original rolling
-  position after the melee hitbox confirms contact with another body or enemy
-  hurtbox. The launch uses the rig's positive local Z direction so it moves
-  forward in game view. Misses hold the launched pose instead of snapping home.
+  reaches roughly mid-torso height, and lands forward into a new rolling start
+  point. The next head-only attack starts from that landed position instead of
+  snapping back to the original rest spot. The launch uses the rig's positive
+  local Z direction so it moves forward in game view. The landed offset is
+  stored as a world-horizontal vector and converted into rig-local space each
+  frame, so turning or strafing sideways does not rotate the old landing offset
+  and teleport the head.
 - During that head-only attack, the animator exposes
-  `get_head_only_attack_forward_offset()` so the camera can follow only the
-  horizontal forward motion. The vertical arc stays visual on the head socket.
+  `get_head_only_attack_world_offset()` so the camera can follow the accumulated
+  horizontal motion directly. The vertical arc stays visual on the head socket.
 - This is visual only; melee damage and hitbox behavior are unchanged.
 
 ## Current player body progression

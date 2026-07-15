@@ -2271,7 +2271,11 @@
 - `_attack_duration_current`
 - `_attack_combo_step`
 - `_head_only_attack_contacted`
-- `_head_only_attack_forward_offset`
+- `_head_only_attack_landed`
+- `_head_only_base_world_offset`
+- `_head_only_attack_world_offset`
+- `_head_only_attack_direction`
+- `_head_only_last_facing_direction`
 - `_aim_requested`
 - `_aim_blend`
 - `_lizard_wall_climb_blend`
@@ -2284,6 +2288,8 @@
 - `target_ratio`
 - `roll_radius`
 - `weight_slowdown`
+- `flat`
+- `local_offset`
 - `s`
 - `value`
 - `w`
@@ -2294,14 +2300,8 @@
 - `head`
 - `hop`
 - `rest`
+- `base_local_offset`
 - `phase`
-- `airborne`
-- `contact`
-- `compression`
-- `forward_shove`
-- `spring_tilt`
-- `body_rest`
-- `head_phase`
 
 ### Functions
 - `update_from_player(delta: float, velocity: Vector3, max_speed: float, facing_direction: Vector3, equipped_defs: Array) -> void`
@@ -2309,6 +2309,9 @@
 - `set_aiming(enabled: bool) -> void`
 - `confirm_head_only_attack_contact() -> void`
 - `get_head_only_attack_forward_offset() -> float`
+- `get_head_only_attack_world_offset() -> Vector3`
+- `_update_head_only_facing_direction(facing_direction: Vector3) -> void`
+- `_world_horizontal_offset_to_local(world_offset: Vector3) -> Vector3`
 - `set_crawl_mode(enabled: bool) -> void`
 - `set_lizard_wall_climb_blend(blend: float) -> void`
 - `set_player_body_progression_enabled(enabled: bool) -> void`
