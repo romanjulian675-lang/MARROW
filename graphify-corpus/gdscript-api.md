@@ -168,6 +168,8 @@
 - `damages_player`
 - `projectile_style`
 - `_has_hit`
+- `_spawn_position`
+- `_has_spawn_position`
 - `damage_owner`
 - `call_args`
 - `shape`
@@ -281,6 +283,51 @@
 
 ### Node Path Lookups
 - `CollisionShape3D`
+
+## BallisticsService
+
+- Source file: `scripts/ballistics_service.gd`
+- Extends: `unknown`
+- System: Supporting gameplay
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- none
+
+### Key Variables
+- `arc_scale`
+- `to_target`
+- `horizontal`
+- `distance`
+- `travel_time`
+- `launch`
+- `height`
+- `angle`
+- `flight`
+- `effective_gravity`
+- `refined`
+- `speed_sq`
+- `discriminant`
+
+### Functions
+- none
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- none
 
 ## bone
 
@@ -872,7 +919,7 @@
 - `gorilla_rock_throw_cooldown`
 - `gorilla_rock_throw_windup`
 - `gorilla_rock_throw_speed`
-- `gorilla_rock_throw_upward_boost`
+- `gorilla_rock_throw_arc`
 - `gorilla_rock_gravity`
 - `gorilla_rock_damage`
 - `lizard_profile_mode`
@@ -1124,6 +1171,7 @@
 - `lifetime`
 - `projectile_gravity`
 - `radius`
+- `tumble_speed`
 
 ### Constants
 - `PLAYER_BODY_HURTBOX_GROUP`
@@ -1132,6 +1180,8 @@
 - `velocity`
 - `owner_enemy`
 - `_has_hit`
+- `_spawn_position`
+- `_has_spawn_position`
 - `damage_owner`
 - `shape`
 - `sphere`
@@ -1649,7 +1699,8 @@
 - `_set_bow_equipped(enabled: bool) -> void`
 - `_can_use_bow() -> bool`
 - `_fire_player_projectile(forward: Vector3, projectile_damage: int, projectile_speed: float, projectile_gravity: float, projectile_style: String) -> void`
-- `_get_pointer_aim_direction(start_position: Vector3, fallback_direction: Vector3) -> Vector3`
+- `_get_pointer_aim_point(start_position: Vector3, fallback_direction: Vector3) -> Vector3`
+- `_aim_direction_to(start_position: Vector3, aim_point: Vector3, fallback_direction: Vector3) -> Vector3`
 - `_try_stealth_finish() -> void`
 - `_next_combo_animation_step() -> int`
 - `_combo_animation_window() -> float`

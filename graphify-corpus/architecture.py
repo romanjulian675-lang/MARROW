@@ -352,6 +352,19 @@ class AttackHitbox:
         """Godot signal: hit_confirmed(target: Node)"""
         pass
 
+class BallisticsService:
+    """Godot script: scripts/ballistics_service.gd
+    class_name: BallisticsService
+    extends: unknown
+    system: Supporting gameplay
+    """
+    source_file = 'scripts/ballistics_service.gd'
+    godot_class_name = 'BallisticsService'
+    godot_extends = ''
+    gameplay_system = 'Supporting gameplay'
+
+    pass
+
 class Bone:
     """Godot script: scripts/bone.gd
     class_name: none
@@ -1212,6 +1225,10 @@ class Enemy:
         """Relationship: loads resource."""
         return ArrowProjectile
 
+    def depends_on_BallisticsService(self):
+        """Relationship: references class BallisticsService."""
+        return BallisticsService
+
     def depends_on_BoneRulesService(self):
         """Relationship: references class BoneRulesService."""
         return BoneRulesService
@@ -1755,8 +1772,12 @@ class Player:
         """GDScript function: _fire_player_projectile(forward: Vector3, projectile_damage: int, projectile_speed: float, projectile_gravity: float, projectile_style: String) -> void"""
         pass
 
-    def gd_func__get_pointer_aim_direction(self):
-        """GDScript function: _get_pointer_aim_direction(start_position: Vector3, fallback_direction: Vector3) -> Vector3"""
+    def gd_func__get_pointer_aim_point(self):
+        """GDScript function: _get_pointer_aim_point(start_position: Vector3, fallback_direction: Vector3) -> Vector3"""
+        pass
+
+    def gd_func__aim_direction_to(self):
+        """GDScript function: _aim_direction_to(start_position: Vector3, aim_point: Vector3, fallback_direction: Vector3) -> Vector3"""
         pass
 
     def gd_func__try_stealth_finish(self):
@@ -2058,6 +2079,10 @@ class Player:
     def depends_on_ArrowProjectile(self):
         """Relationship: loads resource."""
         return ArrowProjectile
+
+    def depends_on_BallisticsService(self):
+        """Relationship: references class BallisticsService."""
+        return BallisticsService
 
     def depends_on_BoneRulesService(self):
         """Relationship: references class BoneRulesService."""
