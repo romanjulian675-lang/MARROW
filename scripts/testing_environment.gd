@@ -7,6 +7,7 @@ const ENEMY_SCENE: PackedScene = preload("res://scenes/enemy.tscn")
 @export var spawn_player_on_ready: bool = true
 @export var spawn_initial_enemies: bool = true
 @export var keep_enemy_respawn_disabled: bool = true
+@export var dummy_only_mode: bool = false
 
 var player: Node3D = null
 var enemy_spawn_root: Node3D = null
@@ -17,7 +18,10 @@ var status_label: Label = null
 
 
 func _ready() -> void:
-	name = "TestingEnvironment"
+	if dummy_only_mode:
+		name = "DummyTestingEnvironment"
+	else:
+		name = "TestingEnvironment"
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	GameEvents.enemy_defeated.connect(_on_enemy_defeated)
 	_build_world()
@@ -36,13 +40,21 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_ESCAPE:
 				get_tree().change_scene_to_file(MAIN_MENU_PATH)
 			KEY_1:
-				_spawn_enemy_at_next_marker("normal")
+				if dummy_only_mode:
+					_spawn_enemy_at_next_marker("dummy")
+				else:
+					_spawn_enemy_at_next_marker("normal")
 			KEY_2:
-				_spawn_enemy_at_next_marker("gorilla")
+				if not dummy_only_mode:
+					_spawn_enemy_at_next_marker("gorilla")
 			KEY_3:
-				_spawn_enemy_at_next_marker("lizard")
+				if not dummy_only_mode:
+					_spawn_enemy_at_next_marker("lizard")
 			KEY_4:
-				_spawn_enemy_at_next_marker("ranged")
+				if not dummy_only_mode:
+					_spawn_enemy_at_next_marker("ranged")
+			KEY_5:
+				_spawn_enemy_at_next_marker("dummy")
 			KEY_BACKSPACE:
 				_remove_latest_enemy()
 			KEY_R:
@@ -118,10 +130,15 @@ func _find_or_create_spawn_root() -> void:
 	if enemy_spawn_root.get_child_count() > 0:
 		return
 
+	if dummy_only_mode:
+		_add_spawn_marker("DummySpawn", Vector3(0.0, 0.6, -2.0), "dummy")
+		return
+
 	_add_spawn_marker("NormalSpawn", Vector3(-7.0, 0.6, 9.0), "normal")
 	_add_spawn_marker("GorillaSpawn", Vector3(7.0, 0.6, 9.0), "gorilla")
 	_add_spawn_marker("LizardSpawn", Vector3(-7.0, 0.6, -9.0), "lizard")
 	_add_spawn_marker("RangedSpawn", Vector3(7.0, 0.6, -9.0), "ranged")
+	_add_spawn_marker("DummySpawn", Vector3(0.0, 0.6, -2.0), "dummy")
 
 
 func _add_spawn_marker(marker_name: String, pos: Vector3, profile: String) -> void:
@@ -137,7 +154,7 @@ func _spawn_player() -> void:
 	if player == null:
 		return
 	player.name = "TestingPlayer"
-	player.global_position = Vector3(0.0, 1.05, 4.0)
+	player.position = Vector3(0.0, 1.05, 4.0)
 	add_child(player)
 	_seed_testing_inventory()
 
@@ -193,7 +210,7 @@ func _spawn_enemy(profile: String, pos: Vector3) -> void:
 
 	var enemy_body := enemy as Node3D
 	if enemy_body != null:
-		enemy_body.global_position = pos
+		enemy_body.position = pos
 	add_child(enemy)
 	live_enemies.append(enemy)
 	_update_status()
@@ -215,6 +232,12 @@ func _apply_profile(enemy: Node, profile: String) -> void:
 			enemy.set("max_health", 3)
 			enemy.set("move_speed", 2.2)
 			enemy.set("ranged_attack_range", 18.0)
+		"dummy":
+			enemy.set("dummy_target_enabled", true)
+			enemy.set("max_health", 12)
+			enemy.set("move_speed", 0.0)
+			enemy.set("contact_damage", 0)
+			enemy.set("detection_range", 0.0)
 		_:
 			enemy.set("max_health", 3)
 			enemy.set("move_speed", 2.8)
@@ -228,6 +251,8 @@ func _bone_for_profile(profile: String) -> String:
 			return "rib_bone"
 		"ranged":
 			return "arm_bone"
+		"dummy":
+			return "dummy_bone"
 		_:
 			return "dummy_bone"
 
@@ -279,9 +304,16 @@ func _update_status() -> void:
 		if enemy != null and is_instance_valid(enemy) and bool(enemy.get("alive")):
 			alive_count += 1
 
-	status_label.text = "TESTING ENVIRONMENT\n"
-	status_label.text += "Camera, movement, enemy AI, animations, drops, and rig sandbox.\n\n"
+	if dummy_only_mode:
+		status_label.text = "DUMMY TESTING ENVIRONMENT\n"
+		status_label.text += "Passive target room for animation, damage, limb, and hitbox checks.\n\n"
+	else:
+		status_label.text = "TESTING ENVIRONMENT\n"
+		status_label.text += "Camera, movement, enemy AI, animations, drops, and rig sandbox.\n\n"
 	status_label.text += "Enemies active: " + str(alive_count) + "\n"
-	status_label.text += "1 Normal   2 Gorilla   3 Lizard   4 Ranged\n"
+	if dummy_only_mode:
+		status_label.text += "1 or 5: spawn dummy target only\n"
+	else:
+		status_label.text += "1 Normal   2 Gorilla   3 Lizard   4 Ranged   5 Dummy\n"
 	status_label.text += "Backspace: remove latest enemy   R: reset scene   Esc: menu\n"
 	status_label.text += "Edit EnemySpawnPoints in this scene to add/remove default enemy positions."

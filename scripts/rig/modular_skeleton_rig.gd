@@ -150,6 +150,7 @@ func apply_gorilla_proportions() -> void:
 	_set_base_limb_shape("left_leg", Vector3(0.24, 0.44, 0.24), Vector3(0.0, -0.22, 0.0))
 	_set_base_limb_shape("right_foot", Vector3(0.32, 0.14, 0.46), Vector3(0.0, 0.0, 0.08))
 	_set_base_limb_shape("left_foot", Vector3(0.32, 0.14, 0.46), Vector3(0.0, 0.0, 0.08))
+	_apply_gorilla_body_hitboxes()
 
 
 func apply_lizard_proportions() -> void:
@@ -239,6 +240,17 @@ func _set_base_limb_shape(limb_key: String, new_size: Vector3, new_offset: Vecto
 	limb.position = new_offset
 	limb.scale = Vector3.ONE
 	_apply_body_hitbox(limb_key, new_size, new_offset, Vector3.ZERO)
+
+
+func _apply_gorilla_body_hitboxes() -> void:
+	_apply_body_hitbox("body", Vector3(0.92, 0.84, 0.56), Vector3(0.0, -0.02, 0.0), Vector3.ZERO)
+	_apply_body_hitbox("head", Vector3(0.48, 0.44, 0.48), Vector3(0.0, 0.0, 0.0), Vector3.ZERO)
+	_apply_body_hitbox("right_arm", Vector3(0.36, 0.98, 0.34), Vector3(0.0, -0.48, 0.02), Vector3.ZERO)
+	_apply_body_hitbox("left_arm", Vector3(0.36, 0.98, 0.34), Vector3(0.0, -0.48, 0.02), Vector3.ZERO)
+	_apply_body_hitbox("right_leg", Vector3(0.34, 0.54, 0.34), Vector3(0.0, -0.26, 0.0), Vector3.ZERO)
+	_apply_body_hitbox("left_leg", Vector3(0.34, 0.54, 0.34), Vector3(0.0, -0.26, 0.0), Vector3.ZERO)
+	_apply_body_hitbox("right_foot", Vector3(0.44, 0.20, 0.60), Vector3(0.0, 0.0, 0.10), Vector3.ZERO)
+	_apply_body_hitbox("left_foot", Vector3(0.44, 0.20, 0.60), Vector3(0.0, 0.0, 0.10), Vector3.ZERO)
 
 
 # Hides the grey-box limbs and shows the real model as one body under the torso

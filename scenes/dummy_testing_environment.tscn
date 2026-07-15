@@ -1,0 +1,13 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/testing_environment.gd" id="1_dummy_testing_environment"]
+
+[node name="DummyTestingEnvironment" type="Node3D"]
+script = ExtResource("1_dummy_testing_environment")
+dummy_only_mode = true
+
+[node name="EnemySpawnPoints" type="Node3D" parent="."]
+
+[node name="DummySpawn" type="Marker3D" parent="EnemySpawnPoints"]
+position = Vector3(0, 0.6, -2)
+metadata/enemy_profile = "dummy"

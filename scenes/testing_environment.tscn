@@ -22,3 +22,7 @@ metadata/enemy_profile = "lizard"
 [node name="RangedSpawn" type="Marker3D" parent="EnemySpawnPoints"]
 position = Vector3(7, 0.6, -9)
 metadata/enemy_profile = "ranged"
+
+[node name="DummySpawn" type="Marker3D" parent="EnemySpawnPoints"]
+position = Vector3(0, 0.6, -2)
+metadata/enemy_profile = "dummy"

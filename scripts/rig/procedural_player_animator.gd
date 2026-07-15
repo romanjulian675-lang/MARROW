@@ -80,9 +80,16 @@ extends Node3D
 @export var head_only_attack_duration := 0.34
 @export var head_only_attack_charge_portion := 0.28
 @export var head_only_attack_lunge := 0.85
-@export var head_only_attack_arc := 0.68
+@export var head_only_attack_arc := 0.92
 @export var head_only_attack_charge_squash := 0.22
 @export var head_only_attack_roll := 1.4
+@export var head_only_hit_recoil_duration := 0.58
+@export var head_only_hit_recoil_hold := 0.14
+@export var head_only_hit_recoil_arc := 0.64
+@export var head_only_hit_recoil_lift := 0.46
+@export var head_only_hit_recoil_horizontal_push := 0.18
+@export var head_only_hit_recoil_roll := 0.95
+@export var head_only_hit_recoil_settle := 0.16
 @export var combo_left_arm_forward := 1.0
 @export var combo_finisher_arm_forward := 0.85
 @export var combo_finisher_torso_twist := 0.5
@@ -122,6 +129,11 @@ var _head_only_base_world_offset := Vector3.ZERO
 var _head_only_attack_world_offset := Vector3.ZERO
 var _head_only_attack_direction := Vector3.FORWARD
 var _head_only_last_facing_direction := Vector3.FORWARD
+var _head_only_hit_recoil_timer := 0.0
+var _head_only_hit_recoil_start_offset := Vector3.ZERO
+var _head_only_hit_recoil_end_offset := Vector3.ZERO
+var _head_only_hit_recoil_start_local_position := Vector3.ZERO
+var _head_only_hit_recoil_end_local_position := Vector3.ZERO
 var _aim_requested := false
 var _aim_blend := 0.0
 var _lizard_wall_climb_blend := 0.0
@@ -188,10 +200,12 @@ func trigger_attack(combo_step: int = 0) -> void:
 		_head_only_attack_contacted = false
 		_head_only_attack_landed = false
 		_head_only_attack_direction = _head_only_last_facing_direction
+		_head_only_hit_recoil_timer = 0.0
 	else:
 		_attack_duration_current = attack_overlay_duration
 		_head_only_attack_contacted = true
 		_head_only_attack_landed = true
+		_head_only_hit_recoil_timer = 0.0
 	if _attack_combo_step == 3 and not _is_head_only():
 		_attack_duration_current *= 1.15
 	_attack_timer = _attack_duration_current
@@ -205,6 +219,12 @@ func set_aiming(enabled: bool) -> void:
 func confirm_head_only_attack_contact() -> void:
 	if _is_head_only() and _attack_blend > 0.001:
 		_head_only_attack_contacted = true
+		_head_only_attack_landed = true
+		_head_only_hit_recoil_start_offset = _head_only_base_world_offset + _head_only_attack_world_offset
+		_head_only_hit_recoil_end_offset = _head_only_base_world_offset
+		_head_only_hit_recoil_start_local_position = _capture_head_only_recoil_start_local_position()
+		_head_only_hit_recoil_end_local_position = _get_head_only_grounded_local_position()
+		_head_only_hit_recoil_timer = head_only_hit_recoil_duration
 
 
 func get_head_only_attack_forward_offset() -> float:
@@ -232,6 +252,20 @@ func _world_horizontal_offset_to_local(world_offset: Vector3) -> Vector3:
 	var local_offset: Vector3 = rig.global_transform.basis.inverse() * flat
 	local_offset.y = 0.0
 	return local_offset
+
+
+func _capture_head_only_recoil_start_local_position() -> Vector3:
+	if rig != null:
+		var head: Node3D = rig.get_socket("head")
+		if head != null:
+			return head.position
+	return _get_head_only_grounded_local_position() + _world_horizontal_offset_to_local(_head_only_attack_world_offset)
+
+
+func _get_head_only_grounded_local_position() -> Vector3:
+	var rest: Vector3 = _get_rest_pos("head")
+	var base_local_offset: Vector3 = _world_horizontal_offset_to_local(_head_only_base_world_offset)
+	return Vector3(rest.x, head_only_ground_socket_y, rest.z) + base_local_offset
 
 
 func set_crawl_mode(enabled: bool) -> void:
@@ -589,7 +623,11 @@ func _apply_aim_overlay() -> void:
 
 func _update_attack_overlay(delta: float) -> void:
 	_attack_timer = max(_attack_timer - delta, 0.0)
+	if _head_only_hit_recoil_timer > 0.0:
+		_head_only_hit_recoil_timer = maxf(_head_only_hit_recoil_timer - delta, 0.0)
 	var target := 1.0 if _attack_timer > 0.0 else 0.0
+	if _head_only_hit_recoil_timer > 0.0:
+		target = 1.0
 	if _is_head_only() and not _head_only_attack_contacted:
 		target = 1.0
 	_attack_blend = lerp(_attack_blend, target, 1.0 - exp(-attack_overlay_blend_speed * delta))
@@ -630,6 +668,10 @@ func _attack_phase() -> float:
 func _apply_head_only_attack_pose() -> void:
 	var head := rig.get_socket("head")
 	if head == null:
+		return
+
+	if _head_only_hit_recoil_timer > 0.0:
+		_apply_head_only_hit_recoil_pose(head)
 		return
 
 	var phase: float = _attack_phase()
@@ -674,6 +716,44 @@ func _apply_head_only_attack_pose() -> void:
 	head.rotation.x += head_only_attack_roll * commit
 	var stretch: float = arc * 0.12
 	head.scale = Vector3(1.0 - stretch * 0.5, 1.0 + stretch, 1.0 - stretch * 0.35)
+
+
+func _apply_head_only_hit_recoil_pose(head: Node3D) -> void:
+	var duration: float = maxf(head_only_hit_recoil_duration, 0.001)
+	var t: float = 1.0 - clampf(_head_only_hit_recoil_timer / duration, 0.0, 1.0)
+	var hold_ratio: float = clampf(head_only_hit_recoil_hold / duration, 0.0, 0.65)
+	var move_t: float = 0.0
+	if hold_ratio < 0.999:
+		move_t = clampf((t - hold_ratio) / maxf(1.0 - hold_ratio, 0.001), 0.0, 1.0)
+	var eased: float = move_t * move_t * (3.0 - 2.0 * move_t)
+	var impact_t: float = 1.0
+	if hold_ratio > 0.001:
+		impact_t = clampf(t / hold_ratio, 0.0, 1.0)
+	var impact_weight: float = 1.0 - impact_t
+	var settle_wave: float = sin(move_t * TAU) * (1.0 - move_t) * head_only_hit_recoil_settle
+	var recoil_direction: Vector3 = _head_only_hit_recoil_end_offset - _head_only_hit_recoil_start_offset
+	recoil_direction.y = 0.0
+	if recoil_direction.length() <= 0.001:
+		recoil_direction = -_head_only_attack_direction
+	else:
+		recoil_direction = recoil_direction.normalized()
+	var horizontal_push: float = sin(move_t * PI) * (1.0 - move_t * 0.25)
+	var horizontal_recoil: Vector3 = recoil_direction * head_only_hit_recoil_horizontal_push * horizontal_push
+	horizontal_recoil += recoil_direction * settle_wave
+	var world_offset: Vector3 = _head_only_hit_recoil_start_offset.lerp(_head_only_hit_recoil_end_offset, eased)
+	world_offset += horizontal_recoil
+	_head_only_attack_world_offset = world_offset - _head_only_base_world_offset
+
+	var local_recoil: Vector3 = _world_horizontal_offset_to_local(horizontal_recoil)
+	var local_position: Vector3 = _head_only_hit_recoil_start_local_position.lerp(_head_only_hit_recoil_end_local_position, eased)
+	var bounce_height: float = maxf(head_only_hit_recoil_arc, head_only_hit_recoil_lift)
+	var bounce: float = sin(move_t * PI) * bounce_height * (1.0 - move_t * 0.25)
+	head.position = local_position + local_recoil + Vector3(0.0, bounce, 0.0)
+	var roll: float = impact_weight * head_only_hit_recoil_roll * 0.65
+	roll += sin(move_t * PI) * head_only_hit_recoil_roll + settle_wave * 1.8
+	head.rotation = _get_rest_rot("head") + Vector3(_head_only_roll_angle - roll, 0.0, settle_wave * 0.35)
+	var squash: float = impact_weight * 0.13 + sin(move_t * PI) * 0.075
+	head.scale = Vector3(1.0 + squash * 0.7, 1.0 - squash, 1.0 + squash * 0.35)
 
 
 func _apply_right_combo_pose(strength: float) -> void:

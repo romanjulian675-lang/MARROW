@@ -17,6 +17,7 @@ const ARROW_PROJECTILE_SCRIPT: Script = preload("res://scripts/arrow_projectile.
 @export var attack_range: float = 1.7        # how close before it can hit you
 @export var contact_damage: int = 1
 @export var attack_cooldown: float = 1.1      # seconds between its hits
+@export var dummy_target_enabled: bool = false
 @export var search_duration: float = 20.0
 @export var search_stop_distance: float = 0.75
 @export var search_turn_speed: float = 0.9
@@ -194,6 +195,8 @@ func _ready() -> void:
 	_apply_bone_identity()
 	_apply_lizard_profile()
 	_apply_gorilla_profile()
+	_apply_dummy_target_profile()
+	_apply_profile_collision_shape()
 	health = max_health
 	_roll_low_health_personality()
 	idle_wander_target = spawn_transform.origin
@@ -248,6 +251,10 @@ func _physics_process(delta: float) -> void:
 		velocity.x = knockback_velocity.x
 		velocity.z = knockback_velocity.z
 		move_and_slide()
+		return
+
+	if dummy_target_enabled:
+		_update_dummy_target_physics(delta)
 		return
 
 	if attack_timer > 0.0:
@@ -369,6 +376,26 @@ func _get_player() -> Node3D:
 
 func _player_is_dead(player: Node) -> bool:
 	return player.has_method("is_player_dead") and player.is_player_dead()
+
+
+func _update_dummy_target_physics(delta: float) -> void:
+	_set_player_visible(false)
+	search_timer = 0.0
+	search_look_time = 0.0
+	returning_to_spawn = false
+	fleeing_timer = 0.0
+	bone_recovery_safe_timer = 0.0
+	ranged_attack_windup_timer = 0.0
+	rock_throw_windup_timer = 0.0
+	saliva_spit_windup_timer = 0.0
+	_cancel_held_rock()
+
+	if attack_timer > 0.0:
+		attack_timer = maxf(attack_timer - delta, 0.0)
+	velocity.x = 0.0
+	velocity.z = 0.0
+	_apply_enemy_movement()
+	_update_procedural_animation(delta)
 
 
 func _apply_enemy_movement() -> void:
@@ -1159,7 +1186,7 @@ func take_damage(amount: int, hit_from: Vector3 = Vector3.ZERO, attacker: Node =
 	last_hit_from_position = hit_from
 	_apply_knockback(hit_from)
 	take_hit(amount)
-	if alive and damage_source == "arrow":
+	if alive and damage_source == "arrow" and not dummy_target_enabled:
 		_react_to_arrow_hit(attacker, hit_from)
 
 
@@ -1225,6 +1252,8 @@ func take_hit(damage: int) -> void:
 
 
 func _maybe_start_low_health_flee() -> void:
+	if dummy_target_enabled:
+		return
 	if crawling_due_to_leg_loss:
 		return
 	if has_fled_low_health or not flees_when_low_health:
@@ -1737,7 +1766,9 @@ func _update_health_label() -> void:
 		return
 
 	var state_text := ""
-	if crawling_due_to_leg_loss:
+	if dummy_target_enabled:
+		state_text = "\nDUMMY TARGET"
+	elif crawling_due_to_leg_loss:
 		state_text = "\nCRAWLING"
 	elif fleeing_timer > 0.0:
 		state_text = "\nFLEEING"
@@ -1909,6 +1940,52 @@ func _apply_gorilla_profile() -> void:
 	contact_damage += gorilla_damage_bonus
 	attack_range += gorilla_attack_range_bonus
 	knockback_strength += gorilla_knockback_bonus
+
+
+func _apply_profile_collision_shape() -> void:
+	if collision_shape == null:
+		return
+	if gorilla_profile_active:
+		_apply_box_collision_shape(Vector3(1.36, 1.32, 1.18), Vector3(0.0, 0.06, 0.0))
+
+
+func _apply_box_collision_shape(size_value: Vector3, offset_value: Vector3) -> void:
+	if collision_shape == null:
+		return
+
+	var box: BoxShape3D = collision_shape.shape as BoxShape3D
+	if box == null:
+		box = BoxShape3D.new()
+		collision_shape.shape = box
+	box.size = size_value
+	collision_shape.position = offset_value
+
+
+func _apply_dummy_target_profile() -> void:
+	if not dummy_target_enabled:
+		return
+
+	move_speed = 0.0
+	contact_damage = 0
+	attack_range = 0.0
+	detection_range = 0.0
+	idle_wander_enabled = false
+	use_line_of_sight = false
+	low_health_flee_chance = 0.0
+	flees_when_low_health = false
+	bone_recovery_enabled = false
+	respawn_enabled = false
+	ranged_attacker_enabled = false
+	gorilla_can_throw_rocks = false
+	lizard_wall_phase_enabled = false
+	knockback_strength = 0.0
+	attack_timer = 0.0
+	rock_throw_timer = 0.0
+	saliva_spit_timer = 0.0
+	ranged_attack_timer = 0.0
+	ranged_attack_windup_timer = 0.0
+	rock_throw_windup_timer = 0.0
+	saliva_spit_windup_timer = 0.0
 
 
 func _should_use_gorilla_profile() -> bool:

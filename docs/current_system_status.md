@@ -77,8 +77,13 @@ refactor pass.
 
 - `scenes/testing_environment.tscn` is the unified sandbox for camera, enemies,
   movement, animation, rig, drops, and equipment checks.
+- TESTING ENVIRONMENT can spawn a passive dummy target with `5`; it stays still,
+  does not attack, and keeps normal damage/limb-loss reactions active.
+- `scenes/dummy_testing_environment.tscn` is a separate passive-target room that
+  only spawns dummy enemies for focused animation, damage, limb, and hitbox
+  checks.
 - `scenes/main_menu.tscn` exposes both the playable demo and testing
-  environment.
+  environments.
 
 ## Tutorial
 

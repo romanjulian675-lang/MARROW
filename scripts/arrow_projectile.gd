@@ -63,8 +63,6 @@ func _on_body_entered(body: Node) -> void:
 			queue_free()
 		return
 
-	if body != null and body.has_method("has_body_part_hitboxes") and bool(body.call("has_body_part_hitboxes")):
-		return
 	if body != null and body.has_method("take_damage"):
 		_has_hit = true
 		body.take_damage(damage, global_position, owner_body, projectile_style)

@@ -30,6 +30,9 @@ const ARROW_PROJECTILE_SCRIPT: Script = preload("res://scripts/arrow_projectile.
 @export var attack_cooldown: float = 0.45
 @export var attack_forward_offset: float = 1.15
 @export var attack_height: float = 0.65
+@export var head_only_attack_hitbox_lifetime: float = 0.42
+@export var head_only_attack_hitbox_height: float = 0.04
+@export var head_only_attack_hitbox_size: Vector3 = Vector3(0.48, 0.48, 0.48)
 @export var stealth_prompt_scan_range: float = 3.0
 @export_group("Bow")
 @export var bow_enabled: bool = true
@@ -370,7 +373,15 @@ func _try_attack() -> void:
 	var hitbox := ATTACK_HITBOX_SCENE.instantiate()
 	hitbox.damage = attack_damage
 	hitbox.owner_player = self
-	hitbox.visual_enabled = not _is_head_only_combat_mode()
+	var head_only_attack := _is_head_only_combat_mode()
+	hitbox.visual_enabled = not head_only_attack
+	if head_only_attack:
+		hitbox.lifetime = head_only_attack_hitbox_lifetime
+		hitbox.override_shape_size = head_only_attack_hitbox_size
+		hitbox.follow_target = _get_head_only_hitbox_follow_target()
+		hitbox.follow_direction = forward
+		hitbox.follow_forward_offset = 0.0
+		hitbox.follow_height = head_only_attack_hitbox_height
 	if hitbox.has_signal("hit_confirmed"):
 		hitbox.hit_confirmed.connect(_on_attack_hit_confirmed)
 
@@ -378,15 +389,16 @@ func _try_attack() -> void:
 	# swung and cleans itself up after its brief lifetime.
 	get_tree().current_scene.add_child(hitbox)
 
-	# Place the box a bit in front of the player and slightly above the floor...
-	hitbox.global_position = global_position + forward * attack_forward_offset + Vector3.UP * attack_height
-	# ...then aim its depth in the attack direction. (look_at points -Z at the target.)
-	hitbox.look_at(hitbox.global_position + forward, Vector3.UP)
+	if not head_only_attack:
+		# Place the box a bit in front of the player and slightly above the floor...
+		hitbox.global_position = global_position + forward * attack_forward_offset + Vector3.UP * attack_height
+		# ...then aim its depth in the attack direction. (look_at points -Z at the target.)
+		hitbox.look_at(hitbox.global_position + forward, Vector3.UP)
 
 	# Arm Bone reach: a bigger attack_range grows the whole swing box. We set
 	# scale AFTER look_at, because look_at rewrites the box's rotation.
 	var reach_ratio := 1.0
-	if base_attack_range > 0.0:
+	if base_attack_range > 0.0 and not head_only_attack:
 		reach_ratio = attack_range / base_attack_range
 	hitbox.scale = Vector3.ONE * reach_ratio
 
@@ -402,6 +414,14 @@ func _try_attack() -> void:
 func _on_attack_hit_confirmed(_target: Node) -> void:
 	if animator != null and animator.has_method("confirm_head_only_attack_contact"):
 		animator.confirm_head_only_attack_contact()
+
+
+func _get_head_only_hitbox_follow_target() -> Node3D:
+	if rig != null and rig.has_method("get_socket"):
+		var head_socket := rig.get_socket("head")
+		if head_socket != null:
+			return head_socket
+	return self
 
 
 func _is_head_only_combat_mode() -> bool:

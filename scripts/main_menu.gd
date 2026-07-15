@@ -2,6 +2,7 @@ extends Control
 
 const DEMO_SCENE_PATH: String = "res://scenes/main.tscn"
 const TESTING_SCENE_PATH: String = "res://scenes/testing_environment.tscn"
+const DUMMY_TESTING_SCENE_PATH: String = "res://scenes/dummy_testing_environment.tscn"
 
 
 func _ready() -> void:
@@ -28,9 +29,9 @@ func _build_menu() -> void:
 	panel.anchor_right = 0.5
 	panel.anchor_bottom = 0.5
 	panel.offset_left = -260.0
-	panel.offset_top = -190.0
+	panel.offset_top = -230.0
 	panel.offset_right = 260.0
-	panel.offset_bottom = 190.0
+	panel.offset_bottom = 230.0
 	add_child(panel)
 
 	var margin := MarginContainer.new()
@@ -59,9 +60,10 @@ func _build_menu() -> void:
 
 	layout.add_child(_make_menu_button("PLAY DEMO", Callable(self, "_open_demo")))
 	layout.add_child(_make_menu_button("TESTING ENVIRONMENT", Callable(self, "_open_testing_environment")))
+	layout.add_child(_make_menu_button("DUMMY TESTING", Callable(self, "_open_dummy_testing_environment")))
 
 	var hint := Label.new()
-	hint.text = "Use the testing environment for camera, enemy, movement, animation, and rig checks."
+	hint.text = "Use testing rooms for camera, enemy, movement, animation, damage, and rig checks."
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	layout.add_child(hint)
@@ -85,3 +87,8 @@ func _open_demo() -> void:
 func _open_testing_environment() -> void:
 	get_tree().paused = false
 	get_tree().change_scene_to_file(TESTING_SCENE_PATH)
+
+
+func _open_dummy_testing_environment() -> void:
+	get_tree().paused = false
+	get_tree().change_scene_to_file(DUMMY_TESTING_SCENE_PATH)

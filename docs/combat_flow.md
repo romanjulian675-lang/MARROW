@@ -124,7 +124,7 @@ Ataque/combo por hueso:
 - Si el jugador sigue solo como cabeza, `trigger_attack` usa una duracion visual
   propia y reemplaza las poses de brazos por un salto de cabeza: primero
   comprime/carga hacia atras, luego salta hacia adelante y arriba hasta una
-  altura cercana a medio torso. Al caer, esa posicion adelantada se guarda como
+  altura por encima de medio torso. Al caer, esa posicion adelantada se guarda como
   nuevo inicio local del ciclo; el siguiente golpe empieza desde donde quedo la
   cabeza y no desde el rest original. El salto usa Z local positivo porque esa
   es la direccion visual hacia adelante del rig del jugador. La posicion
@@ -133,6 +133,26 @@ Ataque/combo por hueso:
 - Mientras ese ataque esta activo, `Player` lee
   `get_head_only_attack_world_offset()` y se lo pasa a la camara como offset
   horizontal acumulado. La camara no sigue el arco vertical de la cabeza.
+- Si `AttackHitbox` confirma contacto real, `Player` llama
+  `confirm_head_only_attack_contact`. El animator entra en una pose separada de
+  recoil: captura el punto de impacto, hace que la cabeza rebote/caiga hacia
+  atras por la colision y vuelve hacia el punto inicial previo al golpe con
+  easing suave y una pequena onda de asentamiento. Si el golpe falla, se
+  mantiene la regla anterior de aterrizar adelante y continuar desde ahi.
+- En modo solo cabeza, `Player._try_attack` crea un hitbox pequeno que sigue el
+  socket real de `head` durante toda la animacion. El dano se aplica donde esta
+  la cabeza visible: si ese hitbox toca un body, limb hurtbox u objeto, se
+  confirma contacto y la cabeza entra en recoil desde su posicion real.
+- El recoil ya no borra el offset de ataque al confirmar contacto; empieza desde
+  la posicion actual de la cabeza. El hitbox de cabeza ignora cuerpos tipo
+  ground/floor/ramp para evitar que la cabeza vuelva al inicio por tocar el piso.
+- El recoil de cabeza captura la altura actual del socket `head` al contactar;
+  el primer frame de recoil conserva la posicion local exacta del socket,
+  incluyendo su colocacion visual X/Y. Despues del inicio,
+  `head_only_hit_recoil_lift` funciona como minimo visible para el rebote.
+  Tambien usa el offset horizontal actual del ataque y aplica
+  `head_only_hit_recoil_horizontal_push` de forma gradual para empujar la cabeza
+  hacia atras en el plano del suelo antes de volver al punto previo al golpe.
 - En modo solo cabeza, `AttackHitbox` mantiene colision/dano pero apaga su mesh
   visual para que el flash del hitbox no parezca una segunda cabeza durante el
   salto. El mesh `Visual` del hitbox esta oculto por defecto en la escena y el
@@ -175,10 +195,13 @@ Hurtboxes de enemigos:
 - `AttackHitbox` escucha `area_entered` y llama
   `take_enemy_body_part_damage(body_part, ...)` para melee.
 - Flechas y finger bones del jugador tambien escuchan `enemy_body_hurtboxes`.
-- Si un enemigo tiene hurtboxes activos, melee/proyectiles del jugador ignoran
-  el capsule principal del enemigo para evitar dano duplicado.
+- Los hurtboxes por parte tienen prioridad, pero melee/proyectiles del jugador
+  vuelven al capsule principal del enemigo si el overlap del socket no llega.
+  `already_hit` / `_has_hit` evitan dano duplicado.
 - Cuando una extremidad enemiga se desprende, su hurtbox se desactiva; cuando
   el enemigo recupera la parte, el hurtbox vuelve a activarse.
+- Gorillas usan hurtboxes por parte del cuerpo mas grandes y una collision shape
+  principal mas ancha que el enemigo normal para cubrir su silueta.
 
 Lizard wall climb:
 - El lizard ya no atraviesa paredes con `global_position`.
@@ -212,13 +235,16 @@ En `TESTING ENVIRONMENT`:
 3. Spawn gorilla con `2`, confirmar rock throw.
 4. Spawn lizard con `3`, confirmar saliva y wall climb.
 5. Spawn ranged con `4`, confirmar flechas enemigas.
-6. Probar bow/finger bones del player.
-7. Atacar limbs hasta crawling.
-8. Confirmar que muerte emite drops.
+6. Spawn dummy target con `5`, confirmar que no se mueve ni ataca.
+7. Probar bow/finger bones del player.
+8. Atacar limbs hasta crawling.
+9. Confirmar que muerte emite drops.
 
 ## Historial de cambios
 
 - 2026-07-14: Se documento el flujo actual.
+- 2026-07-14: Se agrego `dummy_target_enabled` en `Enemy` y spawn con `5`
+  en `TESTING ENVIRONMENT` para probar dano, limb loss y animaciones sin AI.
 - 2026-07-14: Lizard wall climb corregido para usar colision normal y subir al
   detectar pared, en vez de atravesar usando posicion global.
 - 2026-07-14: Se documento la preparacion de datos limpios para stats de huesos
@@ -243,6 +269,32 @@ En `TESTING ENVIRONMENT`:
   parte del cuerpo de enemigos mediante `enemy_body_hurtboxes`.
 - 2026-07-14: Se limpio el ruteo de hurtboxes en melee/proyectiles con helpers
   pequenos para evitar duplicacion entre jugador y enemigos.
+- 2026-07-14: Se ajustaron los hitboxes de gorilla: padding por limb en el rig y
+  collision shape principal mas grande en `Enemy`.
 - 2026-07-14: La cabeza sola ahora tiene overlay de ataque propio: carga,
   salto hacia el enemigo y regreso visual al ciclo base. No cambia dano ni
   hitbox.
+- 2026-07-14: El recoil de impacto de cabeza sola dura mas y sostiene el
+  contacto brevemente.
+- 2026-07-14: Melee, flechas y finger bones vuelven a poder danar el capsule
+  principal del enemigo si el hurtbox por parte no registra overlap.
+- 2026-07-14: El hitbox melee de cabeza sola ahora es un volumen pequeno que
+  sigue el socket real de la cabeza durante la animacion, evitando offset de
+  dano y teleports por impacto forzado.
+- 2026-07-14: Se evito el snap de mitad de ataque: el recoil conserva el offset
+  actual al confirmar contacto y el hitbox de cabeza ignora piso/terreno.
+- 2026-07-14: Se agrego lift vertical al recoil de cabeza sola para que el
+  fallback/impacto sea visible por encima del suelo.
+- 2026-07-14: La altura de recoil de cabeza sola ahora depende de la altura
+  real del contacto, con `head_only_hit_recoil_lift` como minimo visible.
+- 2026-07-14: El recoil de cabeza sola ahora tambien depende de la posicion
+  horizontal real del contacto y agrega push en el plano del suelo.
+- 2026-07-14: Se corrigio el snap horizontal de recoil: el empuje ya no se
+  calcula desde el socket renderizado, sino desde el offset estable del ataque.
+- 2026-07-15: Se corrigio la altura inicial del recoil: el primer frame usa la
+  altura real de contacto y el lift minimo solo afecta el rebote posterior.
+- 2026-07-15: El recoil de cabeza ahora captura la posicion local completa del
+  socket `head` al contactar para evitar saltos visuales en X/Y al iniciar.
+- 2026-07-15: Se aumento la altura general del ataque de cabeza sola:
+  `head_only_attack_arc` 0.92, `head_only_hit_recoil_arc` 0.64 y
+  `head_only_hit_recoil_lift` 0.46.

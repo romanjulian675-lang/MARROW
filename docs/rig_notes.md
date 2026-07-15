@@ -43,7 +43,10 @@ foot_smoothing 14 · foot_align_to_normal true (uncheck foot_placement_enabled t
 Head-only attack tuning: `head_only_attack_duration`,
 `head_only_attack_charge_portion`, `head_only_attack_lunge`,
 `head_only_attack_arc`, `head_only_attack_charge_squash` and
-`head_only_attack_roll`.
+`head_only_attack_roll`. Hit recoil tuning: `head_only_hit_recoil_duration`,
+`head_only_hit_recoil_hold`, `head_only_hit_recoil_arc`,
+`head_only_hit_recoil_lift`, `head_only_hit_recoil_horizontal_push`,
+`head_only_hit_recoil_roll` and `head_only_hit_recoil_settle`.
 
 Combo overlay:
 - `Player` passes a combo step into `ProceduralPlayerAnimator.trigger_attack`.
@@ -52,7 +55,7 @@ Combo overlay:
 - Step 3 uses both arms, deeper lunge, and a small head dip.
 - If the player is only a head, combo arm poses are skipped. The head instead
   squashes backward to charge, jumps forward/up toward the target direction,
-  reaches roughly mid-torso height, and lands forward into a new rolling start
+  reaches above mid-torso height, and lands forward into a new rolling start
   point. The next head-only attack starts from that landed position instead of
   snapping back to the original rest spot. The launch uses the rig's positive
   local Z direction so it moves forward in game view. The landed offset is
@@ -62,6 +65,22 @@ Combo overlay:
 - The landing frame applies the newly accumulated landed offset immediately,
   instead of waiting for the next animation tick. This prevents a one-frame
   snap/ghost where the head briefly appears at the previous start point.
+- If `AttackHitbox` confirms a real contact, the head-only attack switches into
+  a separate hit recoil pose. It captures the exact local `head` socket position
+  at impact, including the screen X/Y placement, and blends from that pose back
+  toward the pre-impact start point while the camera follows the horizontal
+  recoil. The extra ground-plane push ramps in during the recoil instead of
+  snapping on the impact frame. The recoil uses smoothstep easing plus a small
+  damped settle wave. `head_only_hit_recoil_lift` is only used as a minimum
+  bounce height after recoil starts, and `head_only_hit_recoil_horizontal_push`
+  controls the extra shove along the ground plane. A miss still lands forward
+  and becomes the next start point.
+- Current head-only height tuning uses `head_only_attack_arc = 0.92`,
+  `head_only_hit_recoil_arc = 0.64`, and `head_only_hit_recoil_lift = 0.46`.
+- Head-only melee uses a small `AttackHitbox` volume that follows the rig's
+  `head` socket every physics frame. Contact is driven by the visible head
+  position, including the vertical arc/recoil, instead of forcing the animator to
+  snap forward to a minimum impact offset.
 - During that head-only attack, the animator exposes
   `get_head_only_attack_world_offset()` so the camera can follow the accumulated
   horizontal motion directly. The vertical arc stays visual on the head socket.
@@ -123,6 +142,10 @@ Combo overlay:
 - Enemies register themselves as the owner of their rig hurtboxes. When limbs
   detach or recover, `Enemy._set_rig_limb_visible()` also disables/enables that
   limb's hurtbox.
+- Gorilla proportions now apply custom padded hurtboxes for torso, head, arms,
+  legs and feet after the larger limb visuals are created. `Enemy` also widens
+  the main collision box for active gorilla profiles, so physical contact and
+  body-part damage both match the larger silhouette better.
 
 ## Known limitations / TODO
 - Socket positions & limb sizes are hand-estimated grey-box values — expect to
