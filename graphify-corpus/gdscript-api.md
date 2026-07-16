@@ -609,6 +609,11 @@
 
 ### Constants
 - `PLAYER_BONUS_DEFAULTS`
+- `PLAYER_STAT_MODIFIER_DEFAULTS`
+- `PLAYER_STAT_PERCENT_LIMIT`
+- `EQUIPMENT_FREE_WEIGHT`
+- `EQUIPMENT_LOAD_SPEED_PENALTY_PER_WEIGHT`
+- `EQUIPMENT_LOAD_SPEED_PENALTY_MAX`
 - `UNKNOWN_COLOR`
 
 ### Key Variables
@@ -623,8 +628,18 @@
 - `range_bonus`
 - `damage_bonus`
 - `health_bonus`
+- `multiplier`
 - `total`
+- `attack_damage_total`
+- `max_health_total`
 - `bone_id`
+- `weight_multiplier`
+- `load_over_free`
+- `modifiers`
+- `move_before_percent`
+- `move_multiplier`
+- `damage_before_percent`
+- `health_before_percent`
 - `keys`
 
 ### Functions
@@ -1632,6 +1647,7 @@
 - `inventory_component`
 - `equipment_component`
 - `stats_component`
+- `last_calculated_stats`
 - `nearby_bone_pickups`
 - `can_attack`
 - `can_shoot_bow`
@@ -1663,7 +1679,6 @@
 - `detached_torso_bone_id`
 - `detached_torso_marker`
 - `detached_torso_reattach_progress`
-- `detached_torso_reattaching`
 
 ### Functions
 - `_ready() -> void`
@@ -2020,6 +2035,7 @@
 ### Constants
 - `INVENTORY_EMPTY_SLOT_SCRIPT`
 - `CONTROL_SETTINGS_PATH`
+- `INVENTORY_PREVIEW_BASE_SIZE`
 - `CONTROL_BINDINGS`
 
 ### Key Variables
@@ -2049,6 +2065,7 @@
 - `inventory_preview_area`
 - `inventory_preview_container`
 - `inventory_preview_viewport`
+- `inventory_preview_equipment_snapshot`
 - `inventory_details_panel`
 - `inventory_paper_doll`
 - `inventory_footer`
@@ -2062,7 +2079,6 @@
 - `control_rows`
 - `control_labels`
 - `control_buttons`
-- `rebinding_action`
 
 ### Functions
 - `setup(owner_player: Node) -> void`
@@ -2102,9 +2118,12 @@
 - `_make_inventory_style(bg: Color, border: Color, border_width: int = 1, radius: int = 0) -> StyleBoxFlat`
 - `_make_empty_inventory_slot() -> Control`
 - `_build_character_preview_panel() -> Control`
+- `_inventory_preview_base_size() -> Vector2`
 - `_build_preview_room(parent: Node3D) -> void`
 - `_make_preview_room_box(name: String, size: Vector3, position: Vector3, color: Color) -> MeshInstance3D`
 - `sync_preview() -> void`
+- `_preview_equipment_snapshot() -> Dictionary`
+- `_preview_snapshot_matches(next_snapshot: Dictionary) -> bool`
 - `_build_paper_doll() -> Control`
 - `_place_slot(doll: Control, slot: String, short_name: String, pos: Vector2, slot_size: Vector2) -> void`
 - `_begin_rebinding(action: String, button: Button) -> void`
@@ -2770,6 +2789,8 @@
 - `MAIN_MENU_PATH`
 - `PLAYER_SCENE`
 - `ENEMY_SCENE`
+- `VALIDATION_LOG_PATH`
+- `P0_VALIDATION_GUIDES`
 - `NORMAL_LIMB_BONES`
 - `EXTRA_TESTING_BONES`
 
@@ -2780,6 +2801,11 @@
 - `spawn_cursor`
 - `enemy_serial`
 - `status_label`
+- `validation_guide_index`
+- `notes_edit`
+- `notes_editing`
+- `observed_notes`
+- `validation_log`
 - `environment`
 - `env`
 - `sun`
@@ -2798,7 +2824,17 @@
 - `canvas`
 - `panel`
 - `margin`
+- `content`
 - `alive_count`
+- `guide`
+- `text`
+- `steps`
+- `enemy_names`
+- `snapshot`
+- `entry`
+- `mode`
+- `file`
+- `count`
 
 ### Functions
 - `_ready() -> void`
@@ -2822,6 +2858,16 @@
 - `_on_enemy_defeated(_enemy: Node, _dropped_bone_id: String) -> void`
 - `_build_ui() -> void`
 - `_update_status() -> void`
+- `_cycle_validation_guide(direction: int) -> void`
+- `_current_validation_guide_text() -> String`
+- `_begin_notes_editing() -> void`
+- `_cancel_notes_editing() -> void`
+- `_on_notes_submitted(text: String) -> void`
+- `_runtime_evidence_snapshot() -> Dictionary`
+- `_log_validation_result(result: String) -> void`
+- `_append_log_entry_to_file(entry: Dictionary) -> void`
+- `_count_validation_results(result: String) -> int`
+- `_validation_log_summary_text() -> String`
 
 ### Resource Dependencies
 - `scenes/player.tscn`
