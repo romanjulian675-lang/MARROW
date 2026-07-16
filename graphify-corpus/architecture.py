@@ -1792,6 +1792,10 @@ class Player:
         """GDScript function: _next_combo_animation_step() -> int"""
         pass
 
+    def gd_func__is_arm_sword_held(self):
+        """GDScript function: _is_arm_sword_held() -> bool"""
+        pass
+
     def gd_func__has_both_arms_equipped(self):
         """GDScript function: _has_both_arms_equipped() -> bool"""
         pass
@@ -2145,6 +2149,10 @@ class PlayerCameraController:
 
     def gd_func__ready(self):
         """GDScript function: _ready() -> void"""
+        pass
+
+    def gd_func__physics_process(self):
+        """GDScript function: _physics_process(delta: float) -> void"""
         pass
 
     def gd_func__process(self):
@@ -2548,6 +2556,10 @@ class PlayerInventoryUI:
         """GDScript function: _build_character_preview_panel() -> Control"""
         pass
 
+    def gd_func__inventory_preview_base_size(self):
+        """GDScript function: _inventory_preview_base_size() -> Vector2"""
+        pass
+
     def gd_func__build_preview_room(self):
         """GDScript function: _build_preview_room(parent: Node3D) -> void"""
         pass
@@ -2558,6 +2570,14 @@ class PlayerInventoryUI:
 
     def gd_func_sync_preview(self):
         """GDScript function: sync_preview() -> void"""
+        pass
+
+    def gd_func__preview_equipment_snapshot(self):
+        """GDScript function: _preview_equipment_snapshot() -> Dictionary"""
+        pass
+
+    def gd_func__preview_snapshot_matches(self):
+        """GDScript function: _preview_snapshot_matches(next_snapshot: Dictionary) -> bool"""
         pass
 
     def gd_func__build_paper_doll(self):
@@ -3376,6 +3396,10 @@ class ProceduralPlayerAnimator:
         """GDScript function: _attack_pose_strength() -> float"""
         pass
 
+    def gd_func__attack_strike_curve(self):
+        """GDScript function: _attack_strike_curve(phase: float) -> float"""
+        pass
+
     def gd_func__attack_phase(self):
         """GDScript function: _attack_phase() -> float"""
         pass
@@ -3408,6 +3432,14 @@ class ProceduralPlayerAnimator:
         """GDScript function: _apply_torso_head_recoil_pose(body: Node3D, head: Node3D) -> void"""
         pass
 
+    def gd_func__attack_strength_lagged(self):
+        """GDScript function: _attack_strength_lagged(lag: float) -> float"""
+        pass
+
+    def gd_func__whip_elbow(self):
+        """GDScript function: _whip_elbow(joint_key: String, strength: float) -> void"""
+        pass
+
     def gd_func__apply_right_combo_pose(self):
         """GDScript function: _apply_right_combo_pose(strength: float) -> void"""
         pass
@@ -3418,6 +3450,22 @@ class ProceduralPlayerAnimator:
 
     def gd_func__apply_arm_sword_pose(self):
         """GDScript function: _apply_arm_sword_pose(strength: float) -> void"""
+        pass
+
+    def gd_func_is_arm_sword_held(self):
+        """GDScript function: is_arm_sword_held() -> bool"""
+        pass
+
+    def gd_func_note_arm_sword_swing(self):
+        """GDScript function: note_arm_sword_swing() -> void"""
+        pass
+
+    def gd_func__update_arm_sword(self):
+        """GDScript function: _update_arm_sword(delta: float) -> void"""
+        pass
+
+    def gd_func__both_arms_equipped(self):
+        """GDScript function: _both_arms_equipped() -> bool"""
         pass
 
     def gd_func__right_hand_rig_position(self):
@@ -3588,6 +3636,46 @@ class TestingEnvironment:
 
     def gd_func__update_status(self):
         """GDScript function: _update_status() -> void"""
+        pass
+
+    def gd_func__cycle_validation_guide(self):
+        """GDScript function: _cycle_validation_guide(direction: int) -> void"""
+        pass
+
+    def gd_func__current_validation_guide_text(self):
+        """GDScript function: _current_validation_guide_text() -> String"""
+        pass
+
+    def gd_func__begin_notes_editing(self):
+        """GDScript function: _begin_notes_editing() -> void"""
+        pass
+
+    def gd_func__cancel_notes_editing(self):
+        """GDScript function: _cancel_notes_editing() -> void"""
+        pass
+
+    def gd_func__on_notes_submitted(self):
+        """GDScript function: _on_notes_submitted(text: String) -> void"""
+        pass
+
+    def gd_func__runtime_evidence_snapshot(self):
+        """GDScript function: _runtime_evidence_snapshot() -> Dictionary"""
+        pass
+
+    def gd_func__log_validation_result(self):
+        """GDScript function: _log_validation_result(result: String) -> void"""
+        pass
+
+    def gd_func__append_log_entry_to_file(self):
+        """GDScript function: _append_log_entry_to_file(entry: Dictionary) -> void"""
+        pass
+
+    def gd_func__count_validation_results(self):
+        """GDScript function: _count_validation_results(result: String) -> int"""
+        pass
+
+    def gd_func__validation_log_summary_text(self):
+        """GDScript function: _validation_log_summary_text() -> String"""
         pass
 
     def uses_game_event_enemy_defeated(self):

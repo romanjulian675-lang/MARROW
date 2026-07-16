@@ -609,6 +609,11 @@
 
 ### Constants
 - `PLAYER_BONUS_DEFAULTS`
+- `PLAYER_STAT_MODIFIER_DEFAULTS`
+- `PLAYER_STAT_PERCENT_LIMIT`
+- `EQUIPMENT_FREE_WEIGHT`
+- `EQUIPMENT_LOAD_SPEED_PENALTY_PER_WEIGHT`
+- `EQUIPMENT_LOAD_SPEED_PENALTY_MAX`
 - `UNKNOWN_COLOR`
 
 ### Key Variables
@@ -623,8 +628,18 @@
 - `range_bonus`
 - `damage_bonus`
 - `health_bonus`
+- `multiplier`
 - `total`
+- `attack_damage_total`
+- `max_health_total`
 - `bone_id`
+- `weight_multiplier`
+- `load_over_free`
+- `modifiers`
+- `move_before_percent`
+- `move_multiplier`
+- `damage_before_percent`
+- `health_before_percent`
 - `keys`
 
 ### Functions
@@ -1632,6 +1647,7 @@
 - `inventory_component`
 - `equipment_component`
 - `stats_component`
+- `last_calculated_stats`
 - `nearby_bone_pickups`
 - `can_attack`
 - `can_shoot_bow`
@@ -1663,7 +1679,6 @@
 - `detached_torso_bone_id`
 - `detached_torso_marker`
 - `detached_torso_reattach_progress`
-- `detached_torso_reattaching`
 
 ### Functions
 - `_ready() -> void`
@@ -1704,6 +1719,7 @@
 - `_aim_direction_to(start_position: Vector3, aim_point: Vector3, fallback_direction: Vector3) -> Vector3`
 - `_try_stealth_finish() -> void`
 - `_next_combo_animation_step() -> int`
+- `_is_arm_sword_held() -> bool`
 - `_has_both_arms_equipped() -> bool`
 - `_combo_animation_window() -> float`
 - `_flash_player_attack() -> void`
@@ -1860,6 +1876,7 @@
 
 ### Functions
 - `_ready() -> void`
+- `_physics_process(delta: float) -> void`
 - `_process(delta: float) -> void`
 - `_unhandled_input(event: InputEvent) -> void`
 - `capture_mouse() -> void`
@@ -2019,6 +2036,7 @@
 ### Constants
 - `INVENTORY_EMPTY_SLOT_SCRIPT`
 - `CONTROL_SETTINGS_PATH`
+- `INVENTORY_PREVIEW_BASE_SIZE`
 - `CONTROL_BINDINGS`
 
 ### Key Variables
@@ -2048,6 +2066,7 @@
 - `inventory_preview_area`
 - `inventory_preview_container`
 - `inventory_preview_viewport`
+- `inventory_preview_equipment_snapshot`
 - `inventory_details_panel`
 - `inventory_paper_doll`
 - `inventory_footer`
@@ -2061,7 +2080,6 @@
 - `control_rows`
 - `control_labels`
 - `control_buttons`
-- `rebinding_action`
 
 ### Functions
 - `setup(owner_player: Node) -> void`
@@ -2101,9 +2119,12 @@
 - `_make_inventory_style(bg: Color, border: Color, border_width: int = 1, radius: int = 0) -> StyleBoxFlat`
 - `_make_empty_inventory_slot() -> Control`
 - `_build_character_preview_panel() -> Control`
+- `_inventory_preview_base_size() -> Vector2`
 - `_build_preview_room(parent: Node3D) -> void`
 - `_make_preview_room_box(name: String, size: Vector3, position: Vector3, color: Color) -> MeshInstance3D`
 - `sync_preview() -> void`
+- `_preview_equipment_snapshot() -> Dictionary`
+- `_preview_snapshot_matches(next_snapshot: Dictionary) -> bool`
 - `_build_paper_doll() -> Control`
 - `_place_slot(doll: Control, slot: String, short_name: String, pos: Vector2, slot_size: Vector2) -> void`
 - `_begin_rebinding(action: String, button: Button) -> void`
@@ -2440,6 +2461,13 @@
 - `env_smoothing`
 - `attack_overlay_duration`
 - `attack_overlay_blend_speed`
+- `attack_windup_portion`
+- `attack_strike_portion`
+- `attack_strike_hold`
+- `attack_anticipation`
+- `attack_overlap_arm`
+- `attack_overlap_elbow`
+- `attack_elbow_whip`
 - `attack_arm_forward`
 - `attack_torso_twist`
 - `attack_lunge`
@@ -2480,6 +2508,9 @@
 - `arm_sword_torso_twist`
 - `arm_sword_lunge`
 - `arm_sword_blade_pitch`
+- `arm_sword_swing_count`
+- `arm_sword_hold_speed`
+- `arm_sword_hold_timeout`
 - `combo_left_arm_forward`
 - `combo_finisher_arm_forward`
 - `combo_finisher_torso_twist`
@@ -2511,6 +2542,9 @@
 - `WAIST_CARRIED`
 
 ### Key Variables
+- `_arm_sword_swings`
+- `_arm_sword_hold`
+- `_arm_sword_idle_timer`
 - `walk_time`
 - `_time`
 - `speed_ratio`
@@ -2548,9 +2582,6 @@
 - `_torso_head_miss_fall_start_scale`
 - `_torso_head_miss_body_hold_global_transform`
 - `_torso_head_detach_body_global_transform`
-- `_torso_head_miss_body_hold_transform_ready`
-- `_detached_head_landing_timer`
-- `_detached_head_landing_start_position`
 
 ### Functions
 - `update_from_player(delta: float, velocity: Vector3, max_speed: float, facing_direction: Vector3, equipped_defs: Array) -> void`
@@ -2641,6 +2672,7 @@
 - `_apply_attack_overlay() -> void`
 - `_combo_step_for_equipped_arms() -> int`
 - `_attack_pose_strength() -> float`
+- `_attack_strike_curve(phase: float) -> float`
 - `_attack_phase() -> float`
 - `_apply_head_only_attack_pose() -> void`
 - `_apply_head_only_hit_recoil_pose(head: Node3D) -> void`
@@ -2649,9 +2681,15 @@
 - `_apply_torso_head_miss_body_hold_pose(body: Node3D) -> void`
 - `_future_head_only_ground_position() -> Vector3`
 - `_apply_torso_head_recoil_pose(body: Node3D, head: Node3D) -> void`
+- `_attack_strength_lagged(lag: float) -> float`
+- `_whip_elbow(joint_key: String, strength: float) -> void`
 - `_apply_right_combo_pose(strength: float) -> void`
 - `_apply_left_combo_pose(strength: float) -> void`
 - `_apply_arm_sword_pose(strength: float) -> void`
+- `is_arm_sword_held() -> bool`
+- `note_arm_sword_swing() -> void`
+- `_update_arm_sword(delta: float) -> void`
+- `_both_arms_equipped() -> bool`
 - `_right_hand_rig_position() -> Vector3`
 - `_apply_finisher_combo_pose(strength: float) -> void`
 - `_animate_feet(delta: float) -> void`
@@ -2752,6 +2790,8 @@
 - `MAIN_MENU_PATH`
 - `PLAYER_SCENE`
 - `ENEMY_SCENE`
+- `VALIDATION_LOG_PATH`
+- `P0_VALIDATION_GUIDES`
 - `NORMAL_LIMB_BONES`
 - `EXTRA_TESTING_BONES`
 
@@ -2762,6 +2802,11 @@
 - `spawn_cursor`
 - `enemy_serial`
 - `status_label`
+- `validation_guide_index`
+- `notes_edit`
+- `notes_editing`
+- `observed_notes`
+- `validation_log`
 - `environment`
 - `env`
 - `sun`
@@ -2780,7 +2825,17 @@
 - `canvas`
 - `panel`
 - `margin`
+- `content`
 - `alive_count`
+- `guide`
+- `text`
+- `steps`
+- `enemy_names`
+- `snapshot`
+- `entry`
+- `mode`
+- `file`
+- `count`
 
 ### Functions
 - `_ready() -> void`
@@ -2804,6 +2859,16 @@
 - `_on_enemy_defeated(_enemy: Node, _dropped_bone_id: String) -> void`
 - `_build_ui() -> void`
 - `_update_status() -> void`
+- `_cycle_validation_guide(direction: int) -> void`
+- `_current_validation_guide_text() -> String`
+- `_begin_notes_editing() -> void`
+- `_cancel_notes_editing() -> void`
+- `_on_notes_submitted(text: String) -> void`
+- `_runtime_evidence_snapshot() -> Dictionary`
+- `_log_validation_result(result: String) -> void`
+- `_append_log_entry_to_file(entry: Dictionary) -> void`
+- `_count_validation_results(result: String) -> int`
+- `_validation_log_summary_text() -> String`
 
 ### Resource Dependencies
 - `scenes/player.tscn`
