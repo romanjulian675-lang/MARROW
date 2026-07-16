@@ -77,6 +77,7 @@
 - `scripts/testing_environment.gd` depends on `scenes/player.tscn` because it loads resource.
 - `scripts/testing_environment.gd` depends on `scenes/enemy.tscn` because it loads resource.
 - `scripts/testing_environment.gd` depends on `scripts/equipment_rules_service.gd` because it references class EquipmentRulesService.
+- `scripts/testing_environment.gd` depends on `scripts/tuning_menu_ui.gd` because it references class TuningMenuUI.
 - `scripts/tutorial_island_builder.gd` depends on `scenes/enemy.tscn` because it loads resource.
 - `scripts/tutorial_island_builder.gd` depends on `scenes/bone.tscn` because it loads resource.
 - `scripts/tutorial_island_builder.gd` depends on `scripts/demo_enemy_camp.gd` because it loads resource.
@@ -112,6 +113,7 @@
 - `scenes/player.tscn` uses script `scripts/rig/modular_skeleton_rig.gd`.
 - `scenes/player.tscn` uses script `scripts/rig/procedural_player_animator.gd`.
 - `scenes/player.tscn` uses script `scripts/player_camera_controller.gd`.
+- `scenes/player.tscn` uses script `scripts/tuning_menu_ui.gd`.
 - `scenes/player.tscn` instantiates scene `assets/skull.glb`.
 - `scenes/rig_test.tscn` uses script `scripts/rig/rig_test_player.gd`.
 - `scenes/rig_test.tscn` uses script `scripts/rig/modular_skeleton_rig.gd`.

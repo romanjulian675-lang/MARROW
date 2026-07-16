@@ -6,7 +6,12 @@ const ARROW_PROJECTILE_SCRIPT: Script = preload("res://scripts/arrow_projectile.
 
 # These are the player's normal stats before any bones are equipped.
 # The @export tag means you can tune these values in the Godot editor later.
-@export var base_move_speed: float = 6.0
+# 6.0 was proportionally absurd for a 0.92 m skeleton (a human walks 1.4 m/s at
+# twice the height) and forced the foot IK into its scurry zone at all times —
+# the legs can only express a 0.32 m stride, so speed IS foot speed. 2.6 puts
+# normal movement where the leap gait reads: ~0.19 s strides, full chest cycle.
+# (Author-directed 2026-07-16: "if needed, have the overall walking speed lower".)
+@export var base_move_speed: float = 2.6
 @export var sprint_multiplier: float = 1.55
 @export var jump_velocity: float = 8.5
 @export var base_attack_range: float = 2.0

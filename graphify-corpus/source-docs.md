@@ -3057,6 +3057,19 @@ checklist.
 Isolated prototype for the "Modular Rigging and Procedural Animation" brief.
 **Not wired into the real player yet** (brief Phase G) — test it in `rig_test.tscn` first.
 
+## Live tuning menu (key 4, in game)
+`TuningMenuUI` (scripts/tuning_menu_ui.gd, a CanvasLayer in player.tscn) opens
+with **4** (Esc or 4 closes; the testing environment's ranged-enemy spawn moved
+from 4 to 6 to free the key) and live-edits the most-tuned values without
+hunting exports: walk speed (`base_move_speed`, routed through
+`recalculate_player_stats()` so bone bonuses keep stacking), step jump height
+(`ik_leap_height`), and the whole-body rotation on all three axes
+(`whole_body_rotation_deg`, a new animator export applied to the rig node —
+zero for enemies, guarded so their transform never dirties). Values are LIVE
+only — "Reset to defaults" restores what the scene loaded with; to make a value
+permanent, copy it into the export/scene. The mouse is released while the menu
+is open and re-captured on close.
+
 ## How to test
 Open `scenes/rig_test.tscn` in Godot and run it (F6 / "Run Current Scene").
 
@@ -3066,8 +3079,9 @@ Open `scenes/rig_test.tscn` in Godot and run it (F6 / "Run Current Scene").
   then a heavier two-arm/torso finisher.
 - **Q** — cycles equipping **Arm → Leg → Heavy** into their slots. The grey limb is
   swapped for a bone-colored one; Heavy is bigger (visual_scale) and heavier.
-- Walk **forward onto the ramp** (in front of spawn) to see foot placement (Phase F):
-  each foot raycasts down and plants on the surface, tilting to the slope.
+- Walk **forward onto the ramp** (in front of spawn) to see the foot IK (see
+  "Foot IK locomotion" below): feet plant in world space and the legs solve to
+  reach them. Only the split player rig has the knee socket this needs.
 
 ### Animation A/B demo (rig sandbox only)
 `2` and `3` play the SAME head lunge authored two ways, so the two styles can be
@@ -3303,8 +3317,8 @@ byte-identical. Remaining cuts:
 - **Cut 3 — proportions + delete the flag.** `apply_gorilla_proportions` /
   `apply_lizard_proportions` resize whole limbs; applied to a half they render a
   ~1.3 m arm. Then remove the flag. If it outlives cut 3 it is permanent debt.
-- `foot_placement_enabled` (off by default) assigns `foot.position` in the foot's
-  parent space, which is now the ROTATING knee. Resolve that before enabling it.
+- The old `foot_placement_enabled` planter (which assigned `foot.position` in the
+  ROTATING knee's space) is **deleted** — replaced by the foot IK below.
 
 ## Socket markers (model-swap build aid)
 `ModularSkeletonRig.show_socket_markers` (on in `player.tscn`) puts a small
@@ -3356,8 +3370,8 @@ turn_smoothing 12.0 · idle_breath_amount 0.025 · heavy_weight_swing_slowdown 0
 
 ## Phase E/F tuning (exports on ProceduralAnimator)
 attack_overlay_duration 0.16 · attack_overlay_blend_speed 18 · attack_arm_forward 1.1 ·
-attack_torso_twist 0.35 · foot_raycast_up/down 0.6/1.4 · foot_lift 0.06 ·
-foot_smoothing 14 · foot_align_to_normal true (uncheck foot_placement_enabled to disable).
+attack_torso_twist 0.35. Foot IK exports are in the "Foot IK locomotion" section
+above (the old `foot_*` raycast planter has been deleted).
 Head-only attack tuning: `head_only_attack_duration`,
 `head_only_attack_charge_portion`, `head_only_attack_lunge`,
 `head_only_attack_arc`, `head_only_attack_charge_squash`,
@@ -3555,11 +3569,254 @@ Combo overlay:
   flip the sign (orientation not verified visually).
 - Attack overlay sign (arm forward/back) not visually verified — flip
   `attack_arm_forward` if it thrusts the wrong way.
-- Feet are independent of the swinging leg boxes (no knee IK yet, per the brief's
-  grey-box rule); on steep slopes there may be a visible leg/foot gap.
-- Foot placement done on flat ground + a ramp; steps not added (CharacterBody3D
-  needs step-up logic to climb vertical steps).
 - Not merged into the real player (Phase G) — do that only after this feels good.
+
+## Foot IK locomotion (2026-07-15)
+
+Replaces the dead `foot_placement_enabled` planter. **Inverts the leg chain from
+FK to IK**: the walk cycle used to rotate the hip and drag the foot along; now the
+foot is planted in WORLD space and the hip+knee rotations are *solved* to reach it.
+Lives entirely in `procedural_player_animator.gd` (`_update_foot_ik` and the
+`_ik_*` helpers); the FK writers for the arms are untouched.
+
+- **Scripts touched:** `scripts/rig/procedural_player_animator.gd` only.
+- **New behaviour:** feet stay pinned to the ground in world space while the body
+  moves/turns; each foot steps to a spherecast-probed ground point when it drifts
+  past `ik_step_trigger`; legs strictly alternate (one airborne at a time); the
+  pelvis (and everything a real pelvis would carry) rides the average foot height.
+- **Gate — `_ik_active()`.** On only when `ik_feet_enabled` (default true) AND the
+  rig has a waist joint (split player only) AND not head-only / torso-spring /
+  crawl / demo. Every enemy is unsplit → no waist → **IK never runs**, so their
+  FK/crawl/lizard-climb paths are bit-identical. Same for the head-only and
+  torso-only player states. Verified headless: `_ik_active()==false` and
+  `_ik_pelvis_dy==0` for the default (head-only) player and for `enemy.tscn`.
+- **Proportion-agnostic.** Leg lengths, the ankle rest tilt (`knee_rest`, ~12.5°
+  forward — the rest shin is NOT collinear with the thigh, so `knee.rotation.x=0`
+  is a slightly broken knee and +X straightens before it bends) and the pelvis
+  baseline are all read from the captured rest pose, never from `SOCKET_LAYOUT`.
+  A gorilla (0.44 leg) or lizard (0.40) would solve correctly the day it is split.
+- **The swing cycle (author-directed, 2026-07-15).** A step is shaped, not a
+  symmetric hop: the LIFT peaks early (`sin(pow(t,0.7)*PI)`) and the forward travel
+  is back-loaded (`pow(t,1.6)`), so the foot lifts with the knee coming forward and
+  UP first, then EXTENDS down-and-forward to plant. Measured knee flexion over a
+  walk: ~24°..92°. The hips also lean forward into the move (`ik_run_lean`, +Z is
+  forward) so the reach reads as "the feet pull the body along," not the hips.
+  `ik_step_height` 0.14 drives how high the knee lifts — drop it if the walk reads
+  too marchy.
+- **The body's motion comes from the feet (author-directed, 2026-07-15; took
+  three iterations, each killed by a measurement).** The capsule glides at
+  constant speed, so a rig glued to it reads hip-led no matter what the legs do —
+  measured: body world speed dead-flat at capsule speed. What finally works is a
+  composed system; removing any one part collapses back to a glide:
+  1. **The pelvis rides the feet horizontally** (the other half of "use average
+     feet position for body position"), applied RAW — a filtered/high-passed pulse
+     was tried first and its ±4 cm was invisible.
+  2. **Swing-weighting** (`ik_step_drive`): an even mean of two alternating feet
+     moves at exactly capsule speed by construction — zero read. Weighting the
+     stepping foot makes the body load back as the knee lifts and get dragged
+     forward by the extending leg.
+  3. **Cadence coupled to speed** (`_ik_step_duration_now` = `ik_step_reach` /
+     speed): with a fixed duration the capsule advances further per step than the
+     leg can stride (~0.24 m), so the plants trail permanently, the raw offset
+     saturates any clamp, and the sprint skated ~196% of its path. Duration =
+     reach/speed keeps each step's travel expressible. Side effect: this KILLED
+     the sprint skate (196% → 2.1%).
+  4. **Plants straddle the capsule** (`ik_stride_lead`, in units of one step's
+     capsule travel; the anchor itself moves one travel during the swing, so 1.5
+     lands ~half a stride ahead): centred plants give the raw offset (near) zero
+     steady component, so `ik_body_follow_recenter` is only a very slow safety
+     bleed, not a signal filter.
+  Measured after: body world speed **0.07..5.04 m/s around a 2.5 m/s capsule**
+  (the body stops between steps and doubles the capsule at each surge; was
+  2.50..2.50 flat), 2.18..10.14 at 6 m/s; true skate 0.0% at 2.5 m/s, 2.1% at 6;
+  follow DC ≈ 0 at all speeds; circles and 1 s reversals bounded (|follow| ≤ 0.33
+  vs the 0.45 clamp), plants pinned to ground throughout.
+- **Longer strides, slower feet (author-directed, 2026-07-16).** Because cadence
+  is `ik_step_reach / speed`, raising the reach IS the slow-the-feet knob — but
+  the standing envelope caps the stride at ~0.24 m (hip 0.534 m up, leg 0.587 m).
+  Three mechanisms buy the rest, each earned by a measured failure:
+  1. **Stride dip** (`ik_stride_dip` 0.10): pure leg-triangle geometry —
+     `dy ≤ sqrt(L² − spread²) − span` — the pelvis gives vertically only when a
+     leg's spread would put its plant out of reach, and releases between strides.
+     Envelope table: dip 0 → 0.24 m, 0.04 → 0.31, 0.08 → 0.37, 0.12 → 0.41.
+  2. **Asymmetric dip response** (drop at 3× `ik_pelvis_response`, rise at 0.8×):
+     a symmetric τ≈0.1 s arrives after the skate guard has already dragged the
+     plant — measured 9.5% skate at 2.5 m/s from lag alone.
+  3. **Anticipatory spread + hysteresis**: the dip estimator measures against
+     THIS frame's follow (where the hips are heading — at each step handoff the
+     weights snap and a one-frame-behind estimator under-dips exactly when the
+     leading leg is longest), and uses leg×0.96 vs the guard's 0.99 so the pelvis
+     arrives below the drag threshold, not exactly at it.
+  Reach sweep (skate % at 1.5/2.5/6.0 m/s, all mechanisms in): 0.28 → 1.0/0.0/5.6;
+  **0.32 → 0.0/0.5/3.6 (chosen)**; 0.34 → 0.4/2.9/3.8; 0.40 → 7.3/10.0/3.4.
+  Net vs the original 0.24: **feet step ~53% slower with ~33% longer strides**
+  (0.147 vs 0.096 s/step at 2.5 m/s). The 6 m/s residual is the
+  `ik_step_duration_min` floor, identical at every reach.
+  Adversarial review verified the dip is feedforward (no limit cycle — the bob is
+  step-synchronized and decaying), ramp-safe both directions, and NaN-free.
+- **Swing overlap — the smooth-vs-grounded knob (author-directed, 2026-07-16:
+  "feet look like near teleportation").** Strict one-foot-at-a-time forced every
+  swing to fit inside stride/speed: 8 frames at a walk, 4 at a sprint. With
+  `ik_step_overlap`, the next swing launches while the previous is landing
+  (launch order still strictly alternating), stretching every swing's airtime by
+  1/(1−overlap) at the same ground coverage — the cadence formula divides by the
+  LAUNCH interval, and so does the stride lead. THE BUG THAT ATE THE FIRST
+  ATTEMPT: the lead scaled by swing duration (which overlap had just stretched
+  54%), throwing every plant ~50% too far ahead — metre-long swings, no
+  smoothness gain, and all of the low-speed skate. Lead must scale by
+  duration×(1−overlap). Two arc fixes ride along: forward travel eases OUT into
+  the plant (pow(t,1.6) peaked foot speed at the landing frame), and the lift is
+  eased through smoothstep first (pow(t,0.7) alone has infinite slope at t=0 —
+  a ~7 cm first-frame pop). Measured at 2.5 m/s (tele = max foot movement per
+  frame): old gait 0.142 m, overlap 0.15 → 0.124, **0.25 → 0.108 (default)**,
+  0.35 → 0.095 but both feet airborne 49% of the time and the body surge
+  flattens (1.7..3.9 vs 1.0..4.5 at 0.25). Bonus: the lead fix + overlap lifting
+  sprint duration off its floor removed ALL remaining skate — 0.00% at every
+  speed tested, sprint included (was 3.6%).
+- **The leap gait (author-directed, 2026-07-16, twice).** First cut was a
+  two-feet BOUND (both feet push off together — it halves rel-to-body foot
+  speed, tele 0.074 at 2.5 m/s), but the author corrected it: *"still have the
+  feet move one after the other. the jump its not meant to be a two feet
+  jump."* So the shipped gait keeps the strictly alternating stepper (overlap
+  0.35, swings 0.197 s at 2.5 m/s, tele 0.094) and layers a per-stride LEAP on
+  top, driven by the foot CLOSEST to touchdown (keying on the newest swing
+  instead played the chest's landing compression before every touchdown —
+  measured, wrong):
+  - `_ik_leap_lift`: ballistic pelvis parabola over each swing (`ik_leap_height`
+    0.05), applied through `_ik_pelvis_offset`. The stride-dip estimator
+    subtracts the lift — it eats leg reach, and without that the planted foot
+    skated 13% of the path (measured; 0.00% with it).
+  - `_ik_leap_pitch`: the chest pitches UP at push-off (`ik_leap_pitch_up_deg`
+    25) and COMPRESSES through to slightly down (`ik_leap_pitch_down_deg` 7) as
+    the foot touches — "chest and waist compress". Rides the waist joint (added
+    to `_animate_waist`'s bend, so `_apply_waist_carry` moves head/arms with
+    it), exactly 0 whenever the IK is inactive — special modes stay
+    bit-identical. Both outputs are SMOOTHED (`ik_leap_pitch_response` 14): the
+    max-t driver is a sawtooth at swing handoffs, and at ~4 steps/s the full
+    ±sweep would bobblehead — realized range at 2.5 m/s is a held-up chest
+    (mean ≈ −7°) nodding ~8° into each landing; the full range emerges at
+    slower cadences. Raise the response for a snappier sweep.
+  - Jump landings are a CATCH, not a snap: `_ik_land_plants` turns each foot
+    into a normal step from wherever the fall left it down to the probed
+    ground (a straight snap dropped the sockets 0.44 m in one frame —
+    adversarial review, measured; the catch's worst frame is 0.025 m).
+  The two bound-only defects the adversarial review found (reversal landing
+  teleport, walk→bound adoption pop) were removed along with the bound itself.
+  Known remaining: an instant 180° reversal at speed produces one catch-up
+  swing of up to ~0.27 m/frame — inherent to plant-ahead stepping under
+  un-ramped velocity flips.
+- **The walking speed was the real ceiling (author-directed, 2026-07-16: "if
+  needed, have the character's overall walking speed lower").** `base_move_speed`
+  was 6.0 with sprint ×1.55 = 9.3 — proportionally absurd for a 0.92 m skeleton
+  (a human walks 1.4 m/s at twice the height), and it pinned the foot IK in its
+  scurry zone during ALL normal play: speed IS foot speed when the legs can only
+  express a 0.32 m stride. Lowered to **2.6 (sprint 4.03)** in player.gd.
+  Measured at the new in-game speeds: walk tele 0.103 (was 0.258 at the old
+  walk), swings 0.189 s (was 0.082), full leap cycle with a visible ~7 cm hop
+  (`ik_leap_height` 0.08) and chest nod; sprint tele 0.153, skate 0.04%. The
+  flat `player_stats.move_speed` bone bonuses in bone_data_catalog.gd were
+  rescaled ×0.43 (3.0→1.3, −1.5→−0.65, 1.5→0.65) to keep their
+  percent-of-base design; enemy_stats speeds untouched.
+  Follow-up (author-directed, same day: "higher jumps so feet make a smoother
+  move"): `ik_leap_height` 0.08→0.13, `ik_step_overlap` 0.35→0.45,
+  `ik_stride_dip` 0.13→0.16. The higher jump and the extra overlap are one
+  mechanism: with more airtime per stride the next swing launches earlier, the
+  feet ride the jump instead of racing around a planted twin, and swings get
+  1.8× strict-alternation airtime. Measured at play speeds: walk tele 0.087
+  (swing 0.224 s, realized hop 0.107 m), sprint tele 0.129 / 0.00% skate, jump
+  catch 0.025, strict LRLR order. Trade accepted: stances become brief
+  touch-and-go contacts, so the stall-surge pulse narrows (1.98..3.51 at walk).
+  Second follow-up ("torso tilt back more, feet slower via higher jumps"):
+  `ik_leap_height` 0.13→0.18 (realized hop 0.149 m), `ik_step_overlap`
+  0.45→**0.5 — the zero-stance limit**: each foot relaunches the moment it
+  lands, a foot averages exactly ground speed during a swing, the mathematical
+  floor for an alternating gait. The swing's velocity profile became a
+  back-loaded TRAPEZOID (`_swing_forward_curve`, ease 25/cruise/ease 18 — peak
+  ~1.27× average vs ~1.6× for an eased hump). The back-tilt is three pieces:
+  `waist_bend_lean` +0.10→**−0.08** (the walk lean now tilts BACK),
+  `ik_leap_pitch_up_deg` 32 / `down_deg` 0 (the cycle settles to level, never
+  forward), and `torso_lean_amount = 0.0` overridden on the PLAYER instance in
+  player.tscn (the shared default 0.14 stays for enemies — it was adding 8°
+  forward that ate half the tilt). Measured: **net chest pitch −19..−11° back**
+  through the walk cycle, walk tele 0.064 (started at 0.258 — 4× smoother),
+  sprint tele 0.096, skate 0.00% both speeds, jump catch 0.021. **BALANCE FLAG: enemy
+  chase/flee speeds were tuned against a 6.0 player and are now relatively
+  ~2.3× faster — they likely need their own pass.** `ik_stride_dip` raised to
+  0.16 (full-ratio posture + leap lift both draw on the dip budget). Residual
+  walk skate 1.8% — millimetre-scale drags, visually negligible.
+- **Landing re-grounds the plants (found by adversarial review, fixed
+  2026-07-16).** The airborne hang leaves each plant ~v/14 m above the floor at
+  touchdown, and nothing else restores plant Y — steps fire on XZ error alone, so
+  a standing landing never steps and the skeleton stood on air indefinitely
+  (measured: both feet 0.23 m up, forever, after a 5 m/s fall; running landings
+  dragged a floating foot ~0.9 m behind for ~0.27 s). `_ik_land_plants()` runs on
+  the airborne→grounded edge: keeps the hang XZ (the feet gathered under the hips
+  during the fall — that is a landing pose) and probes Y/normal down to the ground
+  actually under each foot. Measured after: worst |plant y| after landing 0.0000
+  in both scenarios.
+- **The carry's frame invariant (found by adversarial review, fixed).** The pelvis
+  carry `+=`s six sockets and NEEDS their positions re-assigned from rest earlier
+  in the same frame or it compounds. The wobble's position assign is that reset;
+  with `wobble_enabled` off (it is an exported tunable) nothing wrote the four limb
+  sockets and the carry sent an arm 202 m off the rig in 10 s. `_update_foot_ik`
+  now re-bases the four limb sockets itself when the wobble is off (measured after:
+  worst drift 0.29 m = the bounded offset, over the same 600 frames).
+- **THE LOAD-BEARING CONSTRAINT — the leg is too short for the game's run speed.**
+  Standing, the leg rests at 99.9% extension (hip→ankle 0.586 m vs 0.587 m reach):
+  ~0.5 mm of slack. `ik_hip_drop` (0.05 m after the author asked to reduce the
+  crouch) lowers the pelvis a little to buy the knees room to bend; the reach the
+  gait actually needs now comes from the stepping cycle, not a deep hip drop. The
+  reachable foot excursion is only ~0.25–0.32 m, while a 6 m/s run
+  (`base_move_speed`) demands a ~1.4 m stride per step. Above that ceiling a
+  planted foot **skates** forward (`_ik_reachable_target` clamps the target onto
+  reachable ground) rather than floating toward an unreachable point. Shallower
+  crouch = a bit more skate; the author chose that trade. The remaining honest
+  fixes are longer leg sockets or a lower run speed — logged, not taken here.
+- **Body-from-feet is `_apply_pelvis_carry`, not a `_animate_body` edit.** Every
+  socket is a child of the RIG (body/head/arms/legs are SIBLINGS), so moving the
+  body socket alone would tear the figure at the waist. The carry offsets all six
+  pelvis-carried sockets by `_ik_pelvis_dy`, mirroring `_apply_waist_carry`. The
+  waist carry's rest pivot is shifted by `_ik_pelvis_dy` so the bend still pivots
+  on the (now-lowered) waist plane.
+- **Coexistence with the wobble.** `_animate_wobble` no longer rattles the foot
+  sockets under IK (the foot IS the plant, and its rest offset is the shin length
+  the solver measures). The legs stay in the wobble list: the solver runs after
+  it and reads the wobbled hip, so the rattle survives as absorbed hip motion.
+- **Recommended tests:** headless probes covered plant-invariance under 180° yaw
+  (0.000 m drift), standing solve accuracy (<1 cm), ramp ground-tracking (≤2.1 cm
+  vs true ground height on an 11° slope), finite output over 60 frames, and the
+  bit-identical gates above. **Manual, still owed:** how the crouch silhouette and
+  the gait/skate READ on-screen — none of that is headless-testable.
+- **Tuning** (all `@export`, "Foot IK" group): `ik_hip_drop` (0.05),
+  `ik_step_trigger` (0.18), `ik_step_duration` (0.32 ceiling),
+  `ik_step_reach` (0.32 — the stride; cadence = reach/speed, so this is ALSO the
+  slow-the-feet knob; above 0.32 plants start to slide, see the sweep),
+  `ik_stride_dip` (0.10 — extra pelvis give at stride extremes; the weight bob),
+  `ik_step_duration_min` (0.06 — cadence floor; past ~4 m/s the feet scurry),
+  `ik_step_overlap` (0.5 — the zero-stance limit; lower toward 0.25 for a
+  planted walk),
+  `ik_leap_height` (0.18), `ik_leap_pitch_up_deg` (32),
+  `ik_leap_pitch_down_deg` (0), `ik_leap_pitch_response` (14 — raise for a
+  snappier chest sweep),
+  `ik_step_height` (0.14), `ik_stride_lead` (1.5 launch-interval travels),
+  `ik_run_lean` (0.07), `ik_body_follow` (1.0),
+  `ik_step_drive` (0.85 — raise toward 1.0 for a harder per-step surge),
+  `ik_body_follow_max` (0.45), `ik_body_follow_response` (22),
+  `ik_body_follow_recenter` (0.8 — safety bleed only, NOT a signal filter; raising
+  it re-glues the body to the capsule and kills the read),
+  `ik_probe_radius/up/down`, `ik_max_drop`, `ik_pelvis_response`,
+  `ik_foot_response`, `ik_align_to_normal`.
+
+### Known limits
+- Sprint skate is nearly gone (2.1% of path at 6 m/s) since the cadence coupling,
+  but past ~4 m/s the `ik_step_duration_min` floor bites and the feet scurry —
+  rapid small steps rather than long strides. That is the honest ceiling of these
+  leg proportions.
+- World-space plants assume static ground — teleports/level loads/moving platforms
+  strand a plant until the next step re-probes.
+- Vertical steps taller than the capsule can climb block the body (CharacterBody3D
+  step-up), unrelated to the IK; ramps are fine.
+- Enemies keep FK forever (unsplit). Splitting them is the separate Cut 2/3 work.
 
 ## docs/roadmap_progress.md
 

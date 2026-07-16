@@ -3460,12 +3460,92 @@ class ProceduralPlayerAnimator:
         """GDScript function: _apply_finisher_combo_pose(strength: float) -> void"""
         pass
 
-    def gd_func__animate_feet(self):
-        """GDScript function: _animate_feet(delta: float) -> void"""
+    def gd_func__ik_active(self):
+        """GDScript function: _ik_active() -> bool"""
         pass
 
-    def gd_func__place_foot(self):
-        """GDScript function: _place_foot(space: PhysicsDirectSpaceState3D, key: String, delta: float) -> void"""
+    def gd_func__ik_leg_chain(self):
+        """GDScript function: _ik_leg_chain(foot_key: String) -> Dictionary"""
+        pass
+
+    def gd_func__update_foot_ik(self):
+        """GDScript function: _update_foot_ik(delta: float) -> void"""
+        pass
+
+    def gd_func__ik_hang_world(self):
+        """GDScript function: _ik_hang_world(foot_key: String) -> Vector3"""
+        pass
+
+    def gd_func__ik_land_plants(self):
+        """GDScript function: _ik_land_plants() -> void"""
+        pass
+
+    def gd_func__ik_reset_plants(self):
+        """GDScript function: _ik_reset_plants() -> void"""
+        pass
+
+    def gd_func__ik_anchor_world(self):
+        """GDScript function: _ik_anchor_world(foot_key: String, with_lead: bool) -> Vector3"""
+        pass
+
+    def gd_func__ik_probe_ground(self):
+        """GDScript function: _ik_probe_ground(around: Vector3) -> Dictionary"""
+        pass
+
+    def gd_func__ik_update_leap(self):
+        """GDScript function: _ik_update_leap(delta: float) -> void"""
+        pass
+
+    def gd_func__ik_update_steps(self):
+        """GDScript function: _ik_update_steps(delta: float) -> void"""
+        pass
+
+    def gd_func__ik_other_foot(self):
+        """GDScript function: _ik_other_foot(foot_key: String) -> String"""
+        pass
+
+    def gd_func__ik_step_duration_now(self):
+        """GDScript function: _ik_step_duration_now() -> float"""
+        pass
+
+    def gd_func__ik_step_error(self):
+        """GDScript function: _ik_step_error(foot_key: String) -> float"""
+        pass
+
+    def gd_func__ik_begin_step(self):
+        """GDScript function: _ik_begin_step(foot_key: String) -> void"""
+        pass
+
+    def gd_func__ik_foot_world(self):
+        """GDScript function: _ik_foot_world(foot_key: String) -> Vector3"""
+        pass
+
+    def gd_func__swing_forward_curve(self):
+        """GDScript function: _swing_forward_curve(t: float) -> float"""
+        pass
+
+    def gd_func__ik_foot_normal(self):
+        """GDScript function: _ik_foot_normal(foot_key: String) -> Vector3"""
+        pass
+
+    def gd_func__ik_reachable_target(self):
+        """GDScript function: _ik_reachable_target(foot_key: String) -> Vector3"""
+        pass
+
+    def gd_func__ik_update_pelvis(self):
+        """GDScript function: _ik_update_pelvis(delta: float, grounded: bool) -> void"""
+        pass
+
+    def gd_func__ik_pelvis_offset(self):
+        """GDScript function: _ik_pelvis_offset() -> Vector3"""
+        pass
+
+    def gd_func__apply_pelvis_carry(self):
+        """GDScript function: _apply_pelvis_carry() -> void"""
+        pass
+
+    def gd_func__ik_solve_leg(self):
+        """GDScript function: _ik_solve_leg(foot_key: String, target_world: Vector3, ground_normal: Vector3, delta: float) -> void"""
         pass
 
     def gd_func__find_body(self):
@@ -3637,6 +3717,65 @@ class TestingEnvironment:
     def depends_on_EquipmentRulesService(self):
         """Relationship: references class EquipmentRulesService."""
         return EquipmentRulesService
+
+    def depends_on_TuningMenuUI(self):
+        """Relationship: references class TuningMenuUI."""
+        return TuningMenuUI
+
+class TuningMenuUI:
+    """Godot script: scripts/tuning_menu_ui.gd
+    class_name: TuningMenuUI
+    extends: CanvasLayer
+    system: UI and guidance
+    """
+    source_file = 'scripts/tuning_menu_ui.gd'
+    godot_class_name = 'TuningMenuUI'
+    godot_extends = 'CanvasLayer'
+    gameplay_system = 'UI and guidance'
+
+    def gd_func__ready(self):
+        """GDScript function: _ready() -> void"""
+        pass
+
+    def gd_func__unhandled_input(self):
+        """GDScript function: _unhandled_input(event: InputEvent) -> void"""
+        pass
+
+    def gd_func_set_open(self):
+        """GDScript function: set_open(open: bool) -> void"""
+        pass
+
+    def gd_func__current_value(self):
+        """GDScript function: _current_value(id: String) -> float"""
+        pass
+
+    def gd_func__apply_value(self):
+        """GDScript function: _apply_value(id: String, value: float) -> void"""
+        pass
+
+    def gd_func__capture_defaults(self):
+        """GDScript function: _capture_defaults() -> void"""
+        pass
+
+    def gd_func__reset_defaults(self):
+        """GDScript function: _reset_defaults() -> void"""
+        pass
+
+    def gd_func__refresh_all(self):
+        """GDScript function: _refresh_all() -> void"""
+        pass
+
+    def gd_func__update_value_label(self):
+        """GDScript function: _update_value_label(id: String, value: float) -> void"""
+        pass
+
+    def gd_func__build_ui(self):
+        """GDScript function: _build_ui() -> void"""
+        pass
+
+    def gd_func__add_row(self):
+        """GDScript function: _add_row(parent: VBoxContainer, id: String, text: String, min_v: float, max_v: float, step: float) -> void"""
+        pass
 
 class TutorialIslandBuilder:
     """Godot script: scripts/tutorial_island_builder.gd
@@ -4109,7 +4248,7 @@ class SceneOpenWorldStage:
 class ScenePlayer:
     """Godot scene: scenes/player.tscn"""
     source_file = 'scenes/player.tscn'
-    nodes = ['Player', 'MeshInstance3D', 'CollisionShape3D', 'VisualRoot', 'ModularSkeletonRig', 'ProceduralAnimator', 'SocketArmRight', 'SocketArmLeft', 'SocketLegs', 'SocketBody', 'CameraPivot', 'SpringArm3D', 'Camera3D']
+    nodes = ['Player', 'MeshInstance3D', 'CollisionShape3D', 'VisualRoot', 'ModularSkeletonRig', 'ProceduralAnimator', 'SocketArmRight', 'SocketArmLeft', 'SocketLegs', 'SocketBody', 'CameraPivot', 'SpringArm3D', 'Camera3D', 'TuningMenuUI']
 
     def contains_Player(self):
         """Scene relationship: uses script."""
@@ -4126,6 +4265,10 @@ class ScenePlayer:
     def contains_PlayerCameraController(self):
         """Scene relationship: uses script."""
         return PlayerCameraController
+
+    def contains_TuningMenuUI(self):
+        """Scene relationship: uses script."""
+        return TuningMenuUI
 
 class SceneRigTest:
     """Godot scene: scenes/rig_test.tscn"""

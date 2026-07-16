@@ -189,11 +189,21 @@ var _arm_sword_idle_timer := 0.0
 # It ASSIGNS rotation (stomping any other writer), its joint_bend_base 0.12 +
 # joint_bend_swing 0.7 would give the chest a permanent 0.12-0.82 rad flex every
 # step, and its bend_sign keys off the substring "arm". A waist is not an elbow.
-@export var waist_bend_lean := 0.10       # steady lean while moving — the main read
+# Steady waist bend while moving. NEGATIVE = tilted BACK (author-directed
+# 2026-07-16: the leaping walk carries the torso tilted back, chest up), and it
+# stacks with the leap's pitch cycle. Split-player only — enemies have no waist.
+@export var waist_bend_lean := -0.08
 @export var waist_bend_step := 0.025      # slight pump at twice the stride
 @export var waist_bend_breath := 0.015    # idle only
 @export var waist_bend_limit := 0.35      # ~20 deg. A waist is not a hinge.
 @export var waist_response := 12.0        # smoothing rate
+
+@export_group("Whole body")
+# Rotates the entire visible rig — every socket rides along — as a posture
+# offset on top of facing. Live-tunable from the F3 tuning menu. Large angles
+# also tilt the IK's solve frame: the feet still reach their world plants, but
+# extreme values will read strangely. Defaults ZERO, so enemies are untouched.
+@export var whole_body_rotation_deg := Vector3.ZERO
 
 @export_group("Aim overlay")
 @export var aim_overlay_blend_speed := 14.0
@@ -204,15 +214,100 @@ var _arm_sword_idle_timer := 0.0
 @export var aim_torso_lean := 0.12
 @export var aim_head_dip := 0.08
 
-# Foot placement is superseded by feet-follow-legs (feet are parented under the
-# legs now), so this is OFF by default. Turn on for independent ground planting.
-@export_group("Foot placement")
-@export var foot_placement_enabled := false
-@export var foot_raycast_up := 0.6
-@export var foot_raycast_down := 1.4
-@export var foot_lift := 0.06
-@export var foot_smoothing := 14.0
-@export var foot_align_to_normal := true
+# Feet are planted in WORLD space and the legs are solved to reach them, inverting
+# the FK walk cycle (which rotates the hip and drags the foot along). Only the
+# split player rig has the knee socket this needs — see _ik_active().
+@export_group("Foot IK")
+@export var ik_feet_enabled := true
+# THE LEG RESTS AT 99.9% EXTENSION (hip->ankle 0.586 against a 0.587 reach), so a
+# standing pose has ~0.5 mm of slack and a foot more than ~6 cm from under its hip
+# is out of reach. Lowering the pelvis is what buys the knees room to bend; every
+# other tunable here is downstream of it. 0 disables stepping in all but name.
+@export var ik_hip_drop := 0.05           # shallow crouch; the step, not the hip, makes the reach
+@export var ik_step_trigger := 0.18       # world distance from the anchor before a step fires
+@export var ik_step_duration := 0.32      # ceiling; the live duration adapts to speed
+# The longest stride one step may cover. THE LOAD-BEARING COUPLING: each step
+# must not let the capsule advance further than this, or the plants fall behind
+# faster than the legs can recover and the gait collapses into a trailing glide —
+# so the live step duration is ik_step_reach / speed. Faster body, quicker steps;
+# LONGER REACH, SLOWER FEET. The standing envelope is only ~0.24 m; anything
+# above that is bought by ik_stride_dip lowering the pelvis when the legs
+# scissor apart. 0.32 measured cleanest (0.5% skate at 2.5 m/s); 0.34 costs ~3%
+# visible plant slide — the sweep table is in docs/rig_notes.md.
+@export var ik_step_reach := 0.32
+@export var ik_step_duration_min := 0.06  # cadence floor: past ~4 m/s the feet scurry
+# Fraction of a swing still remaining when the NEXT swing may launch. Strict
+# one-at-a-time forced every swing to fit inside stride/speed — 8 frames at a
+# walk, 4 at a sprint, which read as the feet teleporting. Overlap stretches
+# every swing's airtime by 1/(1-overlap) at the same ground coverage; the launch
+# order is still strictly alternating. THE SMOOTH-vs-GROUNDED KNOB (measured at
+# 2.5 m/s): 0.15 -> punchier surge; 0.25 -> balanced; 0.35 -> smoothest, with
+# real double-flight windows — which the leap gait's pelvis arc and chest cycle
+# deliberately sell as a jump, so 0.35 is the default. 0 = one-foot-at-a-time.
+# 0.5 is the ZERO-STANCE LIMIT: each foot relaunches the moment it lands, the
+# swing gets 2x strict-alternation airtime, and the feet average exactly ground
+# speed during a swing — the mathematical floor for an alternating gait (a
+# foot's average over its whole cycle IS the ground speed; only the airborne
+# fraction can be tuned). Past 0.5 nothing more is gained: launches strictly
+# alternate, so the gate saturates. Lower toward 0.25 for a planted walk.
+@export var ik_step_overlap := 0.5
+
+# --- Leap gait (author-directed): each stride is a little jump, feet strictly
+# one after the other. The NEWEST swing drives a whole-body cycle: at push-off
+# the pelvis arcs up and the chest pitches UP ~25 deg; as the foot comes down
+# the chest and waist COMPRESS — the pitch eases through to slightly looking
+# down at touchdown. The capsule is untouched; this is the visible body.
+@export_group("Leap gait")
+@export var ik_leap_height := 0.18          # pelvis lift at the top of each stride
+@export var ik_leap_pitch_up_deg := 32.0    # chest pitch at push-off (front face up)
+@export var ik_leap_pitch_down_deg := 0.0   # settle to LEVEL at touchdown — the cycle
+											# never dips forward; the torso stays back
+# How quickly the chest follows the cycle. At walking cadence (~4 steps/s) the
+# smoothing deliberately softens the full up/down sweep into a held-up posture
+# with a nod into each landing — the complete 25->-7 sweep would bobblehead at
+# that frequency. The full range plays out at slower strides. Raise for snappier.
+@export var ik_leap_pitch_response := 14.0
+# Extra pelvis drop the stride may pull IN ADDITION to ik_hip_drop, engaged only
+# when a leg would otherwise be out of reach and released between strides. This
+# is the weight-transfer bob that makes long strides physically possible on
+# these leg proportions; without it any reach above ~0.24 just clamps.
+@export var ik_stride_dip := 0.16
+@export var ik_step_height := 0.14        # knee lifts forward+up at the top of the swing
+# Where a step lands, in units of ONE STEP'S capsule travel, measured ahead of
+# the under-hip anchor at launch time. 1.5 makes the plants STRADDLE the moving
+# capsule (land ~half a stride ahead, leave ~half a stride behind) instead of
+# permanently trailing it — that centring is what lets the body ride the feet
+# raw, without a bias filter eating the motion.
+@export var ik_stride_lead := 1.5
+@export var ik_run_lean := 0.07           # hips lean forward into the movement (rig faces +Z)
+# The body rides the MEAN OF THE FEET horizontally, not just vertically. The
+# capsule still owns gameplay motion (constant glide); this offset makes the
+# VISIBLE body stall while both feet are planted and surge when a step lands —
+# without it the torso slides at constant speed and the gait reads hip-led no
+# matter what the legs do.
+@export var ik_body_follow := 1.0         # 0 = old constant glide, 1 = full feet-driven
+# How hard the SWINGING foot drags the body: 0 = even mean of both feet, 1 = the
+# body rides the stepping foot alone. An even mean moves at EXACTLY capsule speed
+# whenever the stepping is continuous (measured: body speed dead-constant 2.50 at
+# a 2.5 m/s walk), which is indistinguishable from hip-led glide. Weighting the
+# swing foot makes the body load back as the knee lifts and get pulled forward by
+# the extending leg — a per-step surge even with no pause between steps.
+@export var ik_step_drive := 0.85
+@export var ik_body_follow_max := 0.45    # rig-local clamp so the art never tears off the capsule
+@export var ik_body_follow_response := 22.0
+# Slow safety baseline only. With the plants centred on the capsule by
+# ik_stride_lead the raw feet offset has (near) zero steady component, so the
+# body can ride the feet RAW — the full stall-and-surge, not a filtered pulse.
+# This very slow tracker just bleeds off whatever small bias survives (slopes,
+# turns, the cadence floor at a sprint) so it never accumulates into the clamp.
+@export var ik_body_follow_recenter := 0.8
+@export var ik_probe_radius := 0.05       # spherecast radius
+@export var ik_probe_up := 0.7
+@export var ik_probe_down := 1.2
+@export var ik_max_drop := 0.16           # how far uneven ground may sink the pelvis
+@export var ik_pelvis_response := 10.0
+@export var ik_foot_response := 14.0
+@export var ik_align_to_normal := true
 
 var walk_time := 0.0
 var _time := 0.0
@@ -309,6 +404,34 @@ var _head_only_body_catch_up_requested := false
 const ANIMATED_KEYS := ["body", "head", "right_arm", "left_arm", "right_leg", "left_leg"]
 const FOOT_KEYS := ["left_foot", "right_foot"]
 
+# foot socket -> the hip socket its chain hangs from. The knee between them is
+# "<leg>_lower", which only exists on a split rig.
+const IK_LEG_OF_FOOT := {"left_foot": "left_leg", "right_foot": "right_leg"}
+# Sockets a real pelvis would parent. Every socket is a child of the RIG (legs and
+# body are SIBLINGS), so a pelvis drop has to be applied to each of them by hand —
+# the same trick, and the same reason, as _apply_waist_carry below.
+const IK_PELVIS_CARRIED := ["body", "head", "right_arm", "left_arm", "right_leg", "left_leg"]
+
+var _ik_plant: Dictionary = {}        # foot key -> world Vector3, the anchor
+var _ik_plant_normal: Dictionary = {} # foot key -> world Vector3
+var _ik_step_from: Dictionary = {}
+var _ik_step_to: Dictionary = {}
+var _ik_step_to_normal: Dictionary = {}
+var _ik_step_t: Dictionary = {}
+var _ik_stepping := ""                # "" or the ONE foot currently in the air
+var _ik_next_foot := "right_foot"     # whose turn it is, so the legs alternate
+var _ik_ready := false
+var _ik_grounded_prev := false
+var _ik_leap_pitch := 0.0    # smoothed chest pitch of the leap cycle (radians)
+var _ik_leap_lift := 0.0     # pelvis lift of the current stride's flight
+var _ik_pelvis_dy := 0.0
+var _ik_pelvis_lean := 0.0   # forward (+Z rig-local) hip offset while moving
+var _ik_pelvis_follow := Vector3.ZERO  # rig-local XZ: the applied, recentred pulse
+var _ik_follow_fast := Vector3.ZERO    # raw feet offset, fast smoothing
+var _ik_follow_slow := Vector3.ZERO    # same signal, slow — the baseline that cancels the DC
+var _ik_velocity := Vector3.ZERO
+var _ik_probe_shape: SphereShape3D = null
+
 
 # Called by the player AFTER move_and_slide(), so velocity is the resolved motion.
 func update_from_player(delta: float, velocity: Vector3, max_speed: float, facing_direction: Vector3, equipped_defs: Array) -> void:
@@ -317,10 +440,16 @@ func update_from_player(delta: float, velocity: Vector3, max_speed: float, facin
 	if not _captured:
 		_capture_rest()
 
+	# Whole-body posture offset (F3 tuning menu). Guarded compare so the common
+	# zero case (every enemy) never dirties the rig's transform.
+	if rig.rotation_degrees != whole_body_rotation_deg:
+		rig.rotation_degrees = whole_body_rotation_deg
+
 	_time += delta
 	_update_head_only_facing_direction(facing_direction)
 
 	var horizontal := Vector3(velocity.x, 0.0, velocity.z)
+	_ik_velocity = horizontal
 	var target_ratio: float = clamp(horizontal.length() / max(max_speed, 0.001), 0.0, 1.0)
 	speed_ratio = lerp(speed_ratio, target_ratio, 1.0 - exp(-speed_smoothing * delta))
 	if _is_head_only():
@@ -362,8 +491,12 @@ func update_from_player(delta: float, velocity: Vector3, max_speed: float, facin
 	_head_only_attack_world_offset = Vector3.ZERO
 	_torso_head_attack_world_offset = Vector3.ZERO
 	_apply_attack_overlay()
-	if foot_placement_enabled:
-		_animate_feet(delta)
+	# After every FK writer, because the solve ASSIGNS the hip and knee rotations
+	# the walk cycle just wrote — that overwrite IS the FK->IK inversion, so the
+	# leg half of _animate_limbs/_animate_joints needs no gate of its own. It has
+	# to see the final hip position, though: _animate_wobble slides the hip by up
+	# to wobble_slide, and the solver compensates for that instead of fighting it.
+	_update_foot_ik(delta)
 	# Runs last so the demo wins the head socket for its duration. The tween
 	# variant has already advanced its own values by the time we get here.
 	if _demo_mode == DemoMode.PROCEDURAL:
@@ -437,9 +570,13 @@ func _animate_waist(delta: float) -> void:
 		return  # unsplit rig (every enemy) — no waist exists
 
 	_waist_angle = lerp(_waist_angle, _waist_target_angle(), 1.0 - exp(-waist_response * delta))
+	# The leap's chest cycle rides the same joint: pitched UP at push-off,
+	# compressing to slightly DOWN as the foot lands. It is exactly zero whenever
+	# the IK is inactive, so every special mode stays bit-identical.
+	var total_bend: float = _waist_angle + _ik_leap_pitch
 	# Plain assign is right here: this node is new and has exactly one writer.
-	waist.rotation.x = _waist_angle
-	_apply_waist_carry(_waist_angle)
+	waist.rotation.x = total_bend
+	_apply_waist_carry(total_bend)
 
 
 # Applies the chest's rotation to the sockets a real hierarchy would carry.
@@ -449,8 +586,10 @@ func _apply_waist_carry(angle: float) -> void:
 
 	# Pivot is the waist PLANE at rest, NOT body.position: the head and arms
 	# deliberately do not inherit the body's bob/sway today, and this must add the
-	# bend and nothing else.
-	var pivot: Vector3 = _get_rest_pos("body")
+	# bend and nothing else. The pelvis carry moved that plane, though, so the rest
+	# pivot has to follow it down or the bend swings the head about a point the
+	# waist no longer occupies.
+	var pivot: Vector3 = _get_rest_pos("body") + _ik_pelvis_offset()
 	var bend := Basis(Vector3.RIGHT, angle)
 	for key in WAIST_CARRIED:
 		var socket: Node3D = rig.get_socket(key)
@@ -1103,6 +1242,10 @@ func _as_vector3(value: Variant, fallback: Vector3) -> Vector3:
 func _animate_body() -> void:
 	var sway := sin(walk_time) * body_sway_amount * total_equipped_weight * speed_ratio
 	var bob := absf(sin(walk_time)) * body_bob_amount * speed_ratio
+	# The leap supplies its own (bigger, step-synced) vertical arc; the canned
+	# bob on top of it reads as shudder. Player-only: enemies never leap.
+	if _ik_leap_lift > 0.0005:
+		bob *= 0.4
 	var breath := sin(_time * 1.8) * idle_breath_amount * (1.0 - speed_ratio)
 	if _is_head_only():
 		_animate_head_only(sway, breath)
@@ -1446,8 +1589,16 @@ func _animate_wobble() -> void:
 	if not wobble_enabled or rig == null:
 		return
 
+	var ik: bool = _ik_active()
 	for key in ["right_arm", "left_arm", "right_leg", "left_leg", "left_foot", "right_foot", "head"]:
 		if (_is_head_only() or _is_torso_spring_only()) and key == "head":
+			continue
+		# Under IK the foot socket IS the plant, and its rest offset is the shin
+		# length the solver measures. Sliding it would both rattle a foot that is
+		# supposed to be nailed down and change the bone length mid-solve. The legs
+		# stay in: the solver runs after this and reads the wobbled hip, so the
+		# rattle survives as hip motion the legs absorb rather than fight.
+		if ik and (key == "left_foot" or key == "right_foot"):
 			continue
 
 		var s := rig.get_socket(key)
@@ -2022,54 +2173,628 @@ func _apply_finisher_combo_pose(strength: float) -> void:
 		head.rotation.x -= 0.12 * strength
 
 
-# --- Phase F: foot placement ---------------------------------------------------
+# --- Phase F: foot IK locomotion -----------------------------------------------
+#
+# Feet are anchored in WORLD space. Each frame: probe the ground under where a
+# foot WANTS to be, step it there when it has fallen too far behind, drop the
+# pelvis to the average foot height, then solve each leg to reach its anchor.
+#
+# The plant has to be world-space. A rig-local anchor translates with the capsule
+# and yaws with turn_target, so "planted" would not be a constant — that is the
+# bug the deleted _place_foot had, and no amount of smoothing fixes it.
 
-func _animate_feet(delta: float) -> void:
+# Split player only. The waist joint is the existing discriminator (see
+# _animate_waist): the animator is shared with every enemy and has no per-rig
+# flag, and only a split rig has the knee socket this solver rotates. The
+# head-only and torso-spring gates are "there are no legs equipped".
+func _ik_active() -> bool:
+	if not ik_feet_enabled or rig == null:
+		return false
+	if not rig.has_method("get_waist_joint") or rig.call("get_waist_joint") == null:
+		return false
+	if crawl_mode or _is_head_only() or _is_torso_spring_only():
+		return false
+	return _demo_mode == DemoMode.OFF
+
+
+# Rest metrics of one leg, all READ FROM THE CAPTURED REST POSE rather than from
+# the rig's layout constants: a gorilla's leg is 0.44 and a lizard's 0.40, so a
+# hardcoded 0.31 would be silently wrong the day either of them is split.
+func _ik_leg_chain(foot_key: String) -> Dictionary:
+	var leg_key: String = IK_LEG_OF_FOOT[foot_key]
+	var lower_key: String = leg_key + "_lower"
+	var rest_foot: Vector3 = _get_rest_pos(foot_key)
+	return {
+		"leg": leg_key,
+		"lower": lower_key,
+		"thigh": _get_rest_pos(lower_key).length(),
+		"shin": rest_foot.length(),
+		# The rest shin is NOT collinear with the thigh: the ankle sits at
+		# (0,-0.27,0.06), tilting it ~12.5 deg FORWARD. So knee.rotation.x = 0 is a
+		# slightly broken knee, and the +X hinge STRAIGHTENS it before it bends it.
+		# This offset is what makes "PI - interior angle" mean a real bend.
+		"knee_rest": atan2(rest_foot.z, -rest_foot.y),
+		# Rig-local Y the ankle sits at when standing, used as the pelvis baseline.
+		"ankle_rest_y": _get_rest_pos(leg_key).y + _get_rest_pos(lower_key).y + rest_foot.y,
+	}
+
+
+func _update_foot_ik(delta: float) -> void:
+	if not _ik_active():
+		_ik_ready = false
+		_ik_grounded_prev = false
+		_ik_leap_pitch = 0.0
+		_ik_leap_lift = 0.0
+		_ik_pelvis_dy = 0.0
+		_ik_pelvis_lean = 0.0
+		_ik_pelvis_follow = Vector3.ZERO
+		_ik_follow_fast = Vector3.ZERO
+		_ik_follow_slow = Vector3.ZERO
+		return
 	if _body == null:
 		_body = _find_body()
+	for foot_key in FOOT_KEYS:
+		if rig.get_socket(foot_key) == null or rig.get_socket(IK_LEG_OF_FOOT[foot_key] + "_lower") == null:
+			return  # unsplit or mid-rebuild: leave the FK pose alone
+
+	# _apply_pelvis_carry (+=) and _apply_waist_carry (rotate-in-place) both need
+	# these sockets' positions ASSIGNED from rest earlier in the same frame or they
+	# compound frame over frame. With the wobble on, its position assign is that
+	# reset; with it off nothing writes the four limb sockets, and the carry sent an
+	# arm 200 m off the rig in 10 s (measured). Re-base them here in that case —
+	# exactly the assign the wobble would have made with zero slide.
+	if not wobble_enabled:
+		for key in ["right_arm", "left_arm", "right_leg", "left_leg"]:
+			var s: Node3D = rig.get_socket(key)
+			if s != null and _rest_pos.has(key):
+				s.position = _get_rest_pos(key)
+
+	_ik_velocity = Vector3(_ik_velocity.x, 0.0, _ik_velocity.z)
+	if not _ik_ready:
+		_ik_reset_plants()
+
+	var grounded: bool = _body is CharacterBody3D and (_body as CharacterBody3D).is_on_floor()
+	if grounded and not _ik_grounded_prev:
+		_ik_land_plants()
+	_ik_grounded_prev = grounded
+	if grounded:
+		_ik_update_steps(delta)
+	else:
+		# Airborne: nothing to plant on. Hang the feet under the hips and carry them
+		# with the rig, or they stretch toward the ground the jump just left.
+		_ik_stepping = ""
+		for foot_key in FOOT_KEYS:
+			_ik_step_t[foot_key] = 1.0
+			_ik_plant[foot_key] = (_ik_plant[foot_key] as Vector3).lerp(
+				_ik_hang_world(foot_key), 1.0 - exp(-ik_foot_response * delta))
+			_ik_plant_normal[foot_key] = Vector3.UP
+
+	_ik_update_leap(delta)
+	_ik_update_pelvis(delta, grounded)
+	_apply_pelvis_carry()
+	# The plants are chosen; the hips have just moved. Solve each leg to the plant,
+	# but never past what the leg can reach on the ground: at a run the body demands
+	# a stride longer than the leg is (0.32 m reach vs a 1.4 m demand at 6 m/s), so
+	# above that ceiling the planted foot SKATES forward rather than floating up
+	# toward an unreachable target. Below it the clamp never bites and the foot is
+	# genuinely nailed down.
+	for foot_key in FOOT_KEYS:
+		_ik_solve_leg(foot_key, _ik_reachable_target(foot_key), _ik_foot_normal(foot_key), delta)
+
+
+# Where a foot rides when there is no ground under it: straight down from its hip
+# at the standing ankle depth.
+func _ik_hang_world(foot_key: String) -> Vector3:
+	var chain: Dictionary = _ik_leg_chain(foot_key)
+	var leg_rest: Vector3 = _get_rest_pos(chain["leg"])
+	return rig.to_global(Vector3(leg_rest.x, float(chain["ankle_rest_y"]) + _ik_pelvis_dy, leg_rest.z))
+
+
+# Landing edge. The airborne hang leaves each plant wherever the fall's smoothing
+# got it — ~v/14 m above the floor after landing at v — and NOTHING else restores
+# plant Y: steps fire on XZ error alone, so a standing landing never steps and the
+# skeleton would stand on air indefinitely (measured: both feet 0.23 m up, forever,
+# after a 5 m/s fall). Snapping the plants straight to ground instead dropped the
+# foot sockets 0.44 m in ONE frame (adversarial review, measured). So the landing
+# is a CATCH: each foot arcs from wherever the fall left it down to the probed
+# ground as a normal step — the legs visibly reach down to take the weight.
+func _ik_land_plants() -> void:
+	for foot_key in FOOT_KEYS:
+		var plant: Vector3 = _ik_plant[foot_key]
+		var ground: Dictionary = _ik_probe_ground(plant)
+		if ground.is_empty():
+			ground = _ik_probe_ground(_ik_anchor_world(foot_key, false))
+		_ik_step_from[foot_key] = plant
+		_ik_step_to[foot_key] = ground.get("position", _ik_anchor_world(foot_key, false)) as Vector3
+		_ik_step_to_normal[foot_key] = ground.get("normal", Vector3.UP) as Vector3
+		_ik_step_t[foot_key] = 0.0
+	# Mark one catch as the newest swing so the leap cycle plays its landing
+	# compression while the feet come down.
+	_ik_stepping = _ik_next_foot
+	_ik_next_foot = _ik_other_foot(_ik_next_foot)
+
+
+func _ik_reset_plants() -> void:
+	_ik_stepping = ""
+	_ik_pelvis_dy = -ik_hip_drop
+	for foot_key in FOOT_KEYS:
+		var anchor: Vector3 = _ik_anchor_world(foot_key, false)
+		var ground: Dictionary = _ik_probe_ground(anchor)
+		_ik_plant[foot_key] = ground.get("position", anchor) as Vector3
+		_ik_plant_normal[foot_key] = ground.get("normal", Vector3.UP) as Vector3
+		_ik_step_t[foot_key] = 1.0
+		_ik_step_from[foot_key] = _ik_plant[foot_key]
+		_ik_step_to[foot_key] = _ik_plant[foot_key]
+		_ik_step_to_normal[foot_key] = _ik_plant_normal[foot_key]
+	_ik_ready = true
+
+
+# Where this foot WANTS to be: straight under its hip's rest spot, in world space,
+# optionally thrown forward along the current velocity so a step lands ahead of
+# the body instead of under it. Reads the hip's REST, not its live position, so
+# the anchor does not inherit the wobble it is meant to be independent of.
+func _ik_anchor_world(foot_key: String, with_lead: bool) -> Vector3:
+	var chain: Dictionary = _ik_leg_chain(foot_key)
+	var leg_rest: Vector3 = _get_rest_pos(chain["leg"])
+	var rest_foot: Vector3 = _get_rest_pos(foot_key)
+	var anchor: Vector3 = rig.to_global(Vector3(leg_rest.x, float(chain["ankle_rest_y"]), leg_rest.z + rest_foot.z))
+	if with_lead and _ik_velocity.length() > 0.05:
+		# Ahead by ik_stride_lead LAUNCH-INTERVAL travels — what the capsule
+		# covers per step, NOT per swing. With overlap the swing lasts longer
+		# than the launch interval, and scaling the lead by swing duration threw
+		# every plant ~50% too far ahead: metre-long swings (measured), faster
+		# feet, and over-thrown plants dragged back from out of reach. 1.5 lands
+		# the plant ~half a stride ahead of the moving anchor and lets it drift
+		# ~half a stride behind — the plants straddle the capsule.
+		var launch_travel: float = _ik_velocity.length() * _ik_step_duration_now() \
+			* (1.0 - clampf(ik_step_overlap, 0.0, 0.9))
+		anchor += _ik_velocity.normalized() * (launch_travel * ik_stride_lead)
+	return anchor
+
+
+# Spherecast straight down. A sphere is what the user asked for and it is the
+# right shape: a ray drops into cracks and off ledge edges that a foot would
+# actually bridge.
+func _ik_probe_ground(around: Vector3) -> Dictionary:
 	var world := get_world_3d()
-	if world == null:
-		return
-	var space := world.direct_space_state
-	if space == null:
-		return
-	for key in FOOT_KEYS:
-		_place_foot(space, key, delta)
+	if world == null or world.direct_space_state == null:
+		return {}
+	if _ik_probe_shape == null:
+		_ik_probe_shape = SphereShape3D.new()
+	_ik_probe_shape.radius = maxf(ik_probe_radius, 0.005)
 
+	var base_y: float = rig.global_position.y
+	var start := Vector3(around.x, base_y + ik_probe_up, around.z)
+	var motion := Vector3(0.0, -(ik_probe_up + ik_probe_down), 0.0)
 
-func _place_foot(space: PhysicsDirectSpaceState3D, key: String, delta: float) -> void:
-	var foot := rig.get_socket(key)
-	if foot == null or not _rest_pos.has(key):
-		return
-
-	var rest: Vector3 = _get_rest_pos(key)
-	# World XZ under the foot's rest spot (accounts for the body's yaw).
-	var foot_world := rig.to_global(rest)
-	var base_y := rig.global_position.y
-
-	var query := PhysicsRayQueryParameters3D.create(
-		Vector3(foot_world.x, base_y + foot_raycast_up, foot_world.z),
-		Vector3(foot_world.x, base_y - foot_raycast_down, foot_world.z))
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = _ik_probe_shape
+	query.transform = Transform3D(Basis(), start)
+	query.motion = motion
 	if _body != null:
 		query.exclude = [_body.get_rid()]
 
-	var hit := space.intersect_ray(query)
+	var span: Array = world.direct_space_state.cast_motion(query)
+	if span.size() < 2 or float(span[0]) >= 1.0:
+		return {}  # nothing under the foot within the sweep
 
-	var target := rest
-	if not hit.is_empty():
-		# Ground world-Y -> local-Y under the rig (yaw doesn't change Y).
-		target.y = (hit.position.y + foot_lift) - base_y
+	# The sphere stops one radius above the surface, so the contact is a radius
+	# below its centre. get_rest_info at the UNSAFE fraction (where it is just
+	# touching) refines that to the real point and gives us the slope.
+	var centre: Vector3 = start + motion * float(span[0])
+	var result := {
+		"position": Vector3(centre.x, centre.y - _ik_probe_shape.radius, centre.z),
+		"normal": Vector3.UP,
+	}
+	query.transform = Transform3D(Basis(), start + motion * float(span[1]))
+	query.motion = Vector3.ZERO
+	var rest := world.direct_space_state.get_rest_info(query)
+	if not rest.is_empty():
+		result["position"] = rest["point"]
+		result["normal"] = rest["normal"]
+	return result
 
-	# Smoothly step the foot toward the target so it doesn't snap.
-	foot.position = foot.position.lerp(target, 1.0 - exp(-foot_smoothing * delta))
 
-	# Tilt the foot to the floor slope.
-	if foot_align_to_normal and not hit.is_empty():
-		var n: Vector3 = hit.normal
-		var target_rot := Vector3(atan2(n.z, n.y), foot.rotation.y, -atan2(n.x, n.y))
-		foot.rotation = foot.rotation.lerp(target_rot, 1.0 - exp(-foot_smoothing * delta))
-	elif _rest_rot.has(key):
-		foot.rotation = _get_rest_rot(key)
+# Each stride is a little LEAP driven by the newest swing's clock: pelvis lift
+# is a ballistic parabola over the swing, and the chest pitches UP at push-off
+# then eases through to slightly DOWN as the foot touches — the "chest and
+# waist compress" landing. Both are zero the moment no foot is in flight and
+# fade out entirely at creep speeds, so idle and slow shuffles stay quiet.
+func _ik_update_leap(delta: float) -> void:
+	# The foot CLOSEST to touchdown drives the cycle. With overlap a new swing
+	# launches before the old one lands; keying on the NEWEST swing snapped the
+	# pitch back to "up" right before every touchdown, so the compression never
+	# played (measured: pitch never passed -8 deg). Keying on max t makes the
+	# compression land exactly with the foot — and turns the driver into a
+	# sawtooth at each handoff, which is why BOTH outputs are smoothed here.
+	var t := -1.0
+	for k in FOOT_KEYS:
+		if float(_ik_step_t[k]) < 1.0:
+			t = maxf(t, float(_ik_step_t[k]))
+	var engage: float = clampf(speed_ratio * 2.5, 0.0, 1.0)
+	var lift_target := 0.0
+	var pitch_target := 0.0
+	if t >= 0.0:
+		# The tail taper drives the TARGET to zero well before touchdown so the
+		# SMOOTHED lift is already low when the plant lands — otherwise its lag
+		# hands the landing a pelvis that is still airborne-high, and the
+		# landing snap has to eat the difference (which compressed the visible
+		# jump amplitude and, past ~0.2, dragged plants).
+		lift_target = ik_leap_height * 4.0 * t * (1.0 - t) * engage \
+			* (1.0 - smoothstep(0.72, 0.96, t))
+		# Up through the launch, compressing from mid-flight into the touch.
+		var settle: float = smoothstep(0.25, 1.0, t)
+		pitch_target = lerpf(-deg_to_rad(ik_leap_pitch_up_deg), deg_to_rad(ik_leap_pitch_down_deg), settle) * engage
+	_ik_leap_lift = lerpf(_ik_leap_lift, lift_target, 1.0 - exp(-ik_leap_pitch_response * 1.4 * delta))
+	_ik_leap_pitch = lerpf(_ik_leap_pitch, pitch_target, 1.0 - exp(-ik_leap_pitch_response * delta))
+
+
+# Swings OVERLAP: the next may launch while the previous is landing, with
+# ik_step_overlap of it still to go. The launch ORDER is still strictly
+# alternating ("make each leg move after the other"); what the overlap buys is
+# airtime — each swing lasts 1/(1-overlap) longer at the same ground coverage,
+# which is what stops the feet reading as teleports at speed. _ik_stepping is
+# the NEWEST swing (the follow weights key on it); the older one is always
+# further along and completes first.
+func _ik_update_steps(delta: float) -> void:
+	var dur: float = maxf(_ik_step_duration_now(), 0.001)
+	for foot_key in FOOT_KEYS:
+		if float(_ik_step_t[foot_key]) >= 1.0:
+			continue
+		var t: float = float(_ik_step_t[foot_key]) + delta / dur
+		_ik_step_t[foot_key] = minf(t, 1.0)
+		if t >= 1.0:
+			_ik_plant[foot_key] = _ik_step_to[foot_key]
+			_ik_plant_normal[foot_key] = _ik_step_to_normal[foot_key]
+			_ik_next_foot = _ik_other_foot(foot_key)
+			if _ik_stepping == foot_key:
+				_ik_stepping = ""
+			_ik_snap_dip_for_landing(foot_key)
+
+	# The launch gate: the newest swing must be far enough into its landing.
+	if _ik_stepping != "" and float(_ik_step_t[_ik_stepping]) < 1.0 - clampf(ik_step_overlap, 0.0, 0.9):
+		return
+
+	# Whoever is furthest from home goes first, but a foot may not go twice in a
+	# row while the other is also overdue, and a foot already in flight may not
+	# be picked again.
+	var candidates: Array = []
+	for foot_key in FOOT_KEYS:
+		if float(_ik_step_t[foot_key]) < 1.0:
+			continue
+		var err: float = _ik_step_error(foot_key)
+		if err > ik_step_trigger:
+			candidates.append([err, foot_key])
+	if candidates.is_empty():
+		return
+	var pick: String = String(candidates[0][1])
+	if candidates.size() > 1:
+		pick = _ik_next_foot
+	elif pick != _ik_next_foot and float(_ik_step_t[_ik_next_foot]) >= 1.0 and _ik_step_error(_ik_next_foot) > ik_step_trigger * 0.5:
+		# The other leg is nearly overdue too — let it take its turn first so the
+		# alternation does not slip a beat.
+		pick = _ik_next_foot
+	_ik_begin_step(pick)
+
+
+func _ik_other_foot(foot_key: String) -> String:
+	return "left_foot" if foot_key == "right_foot" else "right_foot"
+
+
+# The cadence is coupled to speed through the leg's real stride: one step may
+# cover at most ik_step_reach of capsule travel, so duration = reach / speed.
+# A fixed duration lets a fast capsule advance further per step than the leg can
+# express — the plants then trail permanently and the body devolves into a glide
+# no matter how the follow is computed. This coupling is what keeps the feet
+# CENTRED on the capsule, which is what lets the body ride them raw.
+func _ik_step_duration_now() -> float:
+	var speed: float = _ik_velocity.length()
+	if speed <= 0.01:
+		return ik_step_duration
+	# With overlap, launches happen every duration*(1-overlap), so the coverage
+	# constraint is on the LAUNCH interval — the swing itself gets the rest as
+	# extra airtime. At a 6 m/s sprint this also lifts the duration off its floor
+	# (0.082 s vs a floor-clamped 0.06), which removed the sprint's trailing.
+	var launch_share: float = 1.0 - clampf(ik_step_overlap, 0.0, 0.9)
+	return clampf(ik_step_reach / (speed * launch_share), ik_step_duration_min, ik_step_duration)
+
+
+# How far the plant has drifted from where the foot wants to be, on the ground
+# plane. Y is excluded: a slope must not fire a step by itself.
+func _ik_step_error(foot_key: String) -> float:
+	var anchor: Vector3 = _ik_anchor_world(foot_key, false)
+	var plant: Vector3 = _ik_plant[foot_key]
+	return Vector2(anchor.x - plant.x, anchor.z - plant.z).length()
+
+
+func _ik_begin_step(foot_key: String) -> void:
+	var target: Vector3 = _ik_anchor_world(foot_key, true)
+	var ground: Dictionary = _ik_probe_ground(target)
+	_ik_step_from[foot_key] = _ik_plant[foot_key]
+	_ik_step_to[foot_key] = ground.get("position", target) as Vector3
+	_ik_step_to_normal[foot_key] = ground.get("normal", Vector3.UP) as Vector3
+	_ik_step_t[foot_key] = 0.0
+	_ik_stepping = foot_key
+
+
+# The plant, or the arc a stepping foot is currently riding along it. The arc is
+# shaped to read as the user's walk cycle rather than a symmetric hop:
+#   - the LIFT peaks early (t~0.35): the knee comes forward and UP first, because a
+#     raised foot still near its hip forces a deep forward knee bend in the solver;
+#   - the forward travel is BACK-LOADED (pow 1.6): the foot hangs back while it
+#     lifts, then EXTENDS down-and-forward to plant, straightening the knee — the
+#     "downward diagonal extension" reach.
+func _ik_foot_world(foot_key: String) -> Vector3:
+	var t: float = float(_ik_step_t[foot_key])
+	if t >= 1.0:
+		return _ik_plant[foot_key]
+	var forward_t: float = _swing_forward_curve(t)
+	var flat: Vector3 = (_ik_step_from[foot_key] as Vector3).lerp(_ik_step_to[foot_key], forward_t)
+	# Eased through smoothstep FIRST: pow(t,0.7) alone has infinite slope at t=0,
+	# which popped the foot ~7 cm upward on the first frame of every step — the
+	# single biggest per-frame jump in the whole gait (measured). The 0.6 exponent
+	# keeps the lift peaking early (t≈0.37) so the knee still leads up-and-forward.
+	var lift: float = sin(pow(smoothstep(0.0, 1.0, t), 0.6) * PI) * ik_step_height
+	return flat + Vector3.UP * lift
+
+
+# A landing must be reachable on the frame it happens. The smoothed leap lift
+# lags its zero-at-touchdown target by a few frames, and a pelvis that is still
+# high when the plant arrives hands the fresh plant straight to the skate guard
+# (measured: 7% slide at leap height 0.18, with visible backward drag pops).
+# Snapping the dip down at the landing event is the compression thud of
+# absorbing a jump — the smoothed dip then recovers on its own slow rate.
+func _ik_snap_dip_for_landing(foot_key: String) -> void:
+	var chain: Dictionary = _ik_leg_chain(foot_key)
+	var leg_rest: Vector3 = _get_rest_pos(chain["leg"])
+	var foot_l: Vector3 = rig.to_local(_ik_plant[foot_key])
+	var hip_x: float = leg_rest.x + _ik_pelvis_follow.x
+	var hip_z: float = leg_rest.z + _ik_pelvis_follow.z + _ik_pelvis_lean
+	var spread: float = Vector2(foot_l.x - hip_x, foot_l.z - hip_z).length()
+	var leg_len: float = (float(chain["thigh"]) + float(chain["shin"])) * 0.96
+	var vert_avail: float = sqrt(maxf(leg_len * leg_len - spread * spread, 0.0009))
+	var span: float = leg_rest.y - foot_l.y
+	var needed: float = vert_avail - span - _ik_leap_lift
+	if needed < _ik_pelvis_dy:
+		_ik_pelvis_dy = maxf(needed, -(ik_hip_drop + ik_stride_dip + ik_max_drop))
+
+
+# Trapezoid velocity for the swing, slightly back-loaded: ease in 25% (the foot
+# hangs back while it lifts — the authored look), CRUISE, ease out 18% into the
+# plant. An eased hump peaks at ~1.6x the average speed; this peaks at ~1.27x,
+# and with the strides mostly airborne that peak is exactly the per-frame foot
+# jump the eye reads — the foot SAILS with the leap instead of whipping past it.
+func _swing_forward_curve(t: float) -> float:
+	var e_in := 0.25
+	var e_out := 0.18
+	var norm: float = 1.0 - (e_in + e_out) * 0.5
+	if t < e_in:
+		return (t * t) / (2.0 * e_in) / norm
+	if t <= 1.0 - e_out:
+		return (e_in * 0.5 + (t - e_in)) / norm
+	var tail: float = t - (1.0 - e_out)
+	return (e_in * 0.5 + (1.0 - e_in - e_out) + tail - (tail * tail) / (2.0 * e_out)) / norm
+
+
+func _ik_foot_normal(foot_key: String) -> Vector3:
+	var t: float = float(_ik_step_t[foot_key])
+	if t >= 1.0:
+		return _ik_plant_normal[foot_key]
+	return (_ik_plant_normal[foot_key] as Vector3).lerp(_ik_step_to_normal[foot_key], t).normalized()
+
+
+# The foot's world target, pulled back onto ground the leg can actually reach. A
+# stepping foot is left alone — it is following its own arc and is meant to lift.
+# Only a planted foot the body has overrun gets dragged, and only on the ground
+# plane so its height is untouched.
+func _ik_reachable_target(foot_key: String) -> Vector3:
+	var target: Vector3 = _ik_foot_world(foot_key)
+	if float(_ik_step_t[foot_key]) < 1.0:
+		return target  # in flight: following its own arc, meant to lift
+	var chain: Dictionary = _ik_leg_chain(foot_key)
+	var hip: Node3D = rig.get_socket(chain["leg"])
+	if hip == null:
+		return target
+	var reach: float = (float(chain["thigh"]) + float(chain["shin"])) * 0.99
+	var hip_w: Vector3 = hip.global_position
+	var vert: float = hip_w.y - target.y
+	# Horizontal distance the leg still has once it has spent length on the drop.
+	var horiz: float = sqrt(maxf(reach * reach - vert * vert, 0.0004))
+	var flat := Vector2(target.x - hip_w.x, target.z - hip_w.z)
+	if flat.length() <= horiz:
+		return target
+	flat = flat.normalized() * horiz
+	var dragged := Vector3(hip_w.x + flat.x, target.y, hip_w.z + flat.y)
+	# Move the stored plant too, so the skate is a genuine world position the next
+	# step error measures against — not a per-frame illusion the anchor forgets.
+	_ik_plant[foot_key] = dragged
+	return dragged
+
+
+# "Use average feet position for leg and body position." The pelvis rides the mean
+# of the two feet, RELATIVE to the flat-ground standing baseline — never as an
+# absolute world height, which would pin the torso to a fixed altitude and leave
+# it on the ground during a jump. ik_hip_drop is folded in here because it is the
+# same quantity: how far the pelvis sits below its straight-legged rest.
+func _ik_update_pelvis(delta: float, grounded: bool) -> void:
+	var target: float = -ik_hip_drop
+	var lean_target := 0.0
+	var follow_target := Vector3.ZERO
+	if grounded:
+		var sum := 0.0
+		var rest_sum := 0.0
+		var feet_flat := Vector3.ZERO
+		var rest_flat := Vector3.ZERO
+		var w_swing: float = 0.5 + clampf(ik_step_drive, 0.0, 1.0) * 0.5
+		for foot_key in FOOT_KEYS:
+			var chain: Dictionary = _ik_leg_chain(foot_key)
+			sum += rig.to_local(_ik_plant[foot_key]).y
+			rest_sum += float(chain["ankle_rest_y"])
+			# Where the feet ARE (the mid-step arc counts: the surge should build
+			# through the swing, not pop when it plants) vs where they'd rest. The
+			# swinging foot gets the lion's share of the weight — its reach is what
+			# drags the torso, which is the whole feet-driven read — and the weights
+			# are applied to the rest side too, so follow stays 0 at rest exactly.
+			var w := 0.5
+			if _ik_stepping == foot_key:
+				w = w_swing
+			elif _ik_stepping != "":
+				w = 1.0 - w_swing
+			var foot_now: Vector3 = rig.to_local(_ik_foot_world(foot_key))
+			var leg_rest: Vector3 = _get_rest_pos(chain["leg"])
+			feet_flat += w * Vector3(foot_now.x, 0.0, foot_now.z)
+			rest_flat += w * Vector3(leg_rest.x, 0.0, leg_rest.z + _get_rest_pos(foot_key).z)
+		var mean_offset: float = (sum - rest_sum) / float(FOOT_KEYS.size())
+		target = clampf(mean_offset, -ik_max_drop, 0.0) - ik_hip_drop
+		# Lean the hips forward into the movement so the reaching foot can plant
+		# ahead of the body — the "movement comes from the feet, not the hips" read.
+		lean_target = ik_run_lean * speed_ratio
+		# The horizontal half of "use average feet position for body position": the
+		# capsule glides at constant speed, so an un-offset body IS hip-led motion.
+		# Riding the (weighted) feet makes the body's world motion pulse with the
+		# steps instead — the weights sum to 1, so no division here.
+		follow_target = (feet_flat - rest_flat) * clampf(ik_body_follow, 0.0, 1.0)
+
+	_ik_pelvis_lean = lerp(_ik_pelvis_lean, lean_target, 1.0 - exp(-ik_pelvis_response * delta))
+	# Fast minus slow: the same signal through two smoothings. The steady trail
+	# the plants always have behind the capsule lives in BOTH and cancels; the
+	# per-step pulse only lives in the fast one and survives. Clamp AFTER the
+	# difference — the raw signal may sit past the clamp, the pulse never should.
+	# This runs BEFORE the stride dip so the dip measures spreads against where
+	# the hips are GOING this frame, not where they were — at each step handoff
+	# the follow target jumps, and an estimator one frame behind under-dips
+	# exactly when the leading leg is longest.
+	_ik_follow_fast = _ik_follow_fast.lerp(follow_target, 1.0 - exp(-ik_body_follow_response * delta))
+	_ik_follow_slow = _ik_follow_slow.lerp(follow_target, 1.0 - exp(-ik_body_follow_recenter * delta))
+	_ik_pelvis_follow = (_ik_follow_fast - _ik_follow_slow).limit_length(ik_body_follow_max)
+
+	if grounded:
+		# STRIDE DIP — what buys strides past the standing envelope. When a leg's
+		# horizontal spread would put its plant out of reach, the pelvis gives
+		# vertically by exactly the shortfall (up to ik_stride_dip): geometry, not
+		# style. dy must satisfy sqrt(x^2 + (span + dy)^2) <= L, hence
+		# dy <= sqrt(L^2 - x^2) - span. Released as the legs come back under the
+		# body, it reads as weight transfer.
+		var dip_needed := 0.0
+		for foot_key in FOOT_KEYS:
+			# PLANTED feet only. Including in-flight feet made the estimator
+			# subtract the leap lift every frame, so the pelvis dipped by exactly
+			# the jump height and the jump knob visibly did nothing
+			# (author-reported). A mid-flight foot that cannot reach its arc just
+			# clamps in the solve — a tucked leg under a jump. A PLANTED foot is
+			# the one the skate guard would drag (measured 27% slide without this
+			# clause), and at touchdown the lift is near zero anyway, so
+			# protecting only plants keeps the feet honest without cancelling
+			# the jump.
+			if float(_ik_step_t[foot_key]) < 1.0:
+				continue
+			var chain: Dictionary = _ik_leg_chain(foot_key)
+			var leg_rest: Vector3 = _get_rest_pos(chain["leg"])
+			var foot_l: Vector3 = rig.to_local(_ik_foot_world(foot_key))
+			var hip_x: float = leg_rest.x + _ik_pelvis_follow.x
+			var hip_z: float = leg_rest.z + _ik_pelvis_follow.z + _ik_pelvis_lean
+			var spread: float = Vector2(foot_l.x - hip_x, foot_l.z - hip_z).length()
+			# 0.96 vs the skate guard's 0.99: the dip estimator must be CONSERVATIVE
+			# relative to the guard, or the pelvis arrives exactly at the drag
+			# threshold and smoothing jitter tips half the strides into a slide.
+			var leg_len: float = (float(chain["thigh"]) + float(chain["shin"])) * 0.96
+			var vert_avail: float = sqrt(maxf(leg_len * leg_len - spread * spread, 0.0009))
+			var span: float = leg_rest.y - foot_l.y  # vertical hip->plant at zero dy
+			dip_needed = minf(dip_needed, vert_avail - span - _ik_leap_lift)
+		target = minf(target, maxf(dip_needed, target - ik_stride_dip))
+
+	# Asymmetric: the dip DROPS fast and RISES slow. Reach is needed the frame the
+	# legs scissor apart — a symmetric τ of ~0.1 s arrives after the skate guard
+	# has already dragged the plant (measured: 9.5% skate at 2.5 m/s from lag
+	# alone) — while the recovery between strides can afford to be graceful.
+	var dy_rate: float = ik_pelvis_response * (3.0 if target < _ik_pelvis_dy else 0.8)
+	_ik_pelvis_dy = lerp(_ik_pelvis_dy, target, 1.0 - exp(-dy_rate * delta))
+
+
+# The one pelvis offset every consumer shares: the vertical ride (dy), the forward
+# lean, and the feet-follow. The waist carry reads this too, so the bend pivots on
+# the waist plane wherever the pelvis actually is.
+func _ik_pelvis_offset() -> Vector3:
+	return Vector3(_ik_pelvis_follow.x, _ik_pelvis_dy + _ik_leap_lift, _ik_pelvis_follow.z + _ik_pelvis_lean)
+
+
+# Stands in for the pelvis parent this rig does not have. Every socket is a child
+# of the RIG, so moving the body socket alone would dip the chest and leave the
+# hips, head and arms standing — the figure would tear at the waist. +Z is this
+# rig's forward, so the lean pushes the whole upper body over the planted feet.
+func _apply_pelvis_carry() -> void:
+	var offset: Vector3 = _ik_pelvis_offset()
+	if offset.length_squared() < 0.0000001:
+		return
+	for key in IK_PELVIS_CARRIED:
+		var socket: Node3D = rig.get_socket(key)
+		if socket != null:
+			socket.position += offset
+
+
+# Two-bone analytic IK in RIG-LOCAL space, honouring the DOF the sockets actually
+# have: the hip is pitch+roll, the knee is a pure sagittal hinge (rotation.x) —
+# that is all there is to rotate.
+func _ik_solve_leg(foot_key: String, target_world: Vector3, ground_normal: Vector3, delta: float) -> void:
+	var chain: Dictionary = _ik_leg_chain(foot_key)
+	var hip: Node3D = rig.get_socket(chain["leg"])
+	var knee: Node3D = rig.get_socket(chain["lower"])
+	var foot: Node3D = rig.get_socket(foot_key)
+	if hip == null or knee == null or foot == null:
+		return
+
+	var thigh: float = float(chain["thigh"])
+	var shin: float = float(chain["shin"])
+	if thigh <= 0.001 or shin <= 0.001:
+		return
+
+	# hip.position is already rig-local (its parent IS the rig), so the target only
+	# has to come back to rig space to be in the hip's own frame.
+	var to_target: Vector3 = rig.to_local(target_world) - hip.position
+	var reach: float = thigh + shin
+	var dist: float = to_target.length()
+	if dist < 0.0001:
+		return
+	# Both singularities. The upper clamp is not polish: at dist == reach exactly,
+	# acos(-1) = PI and the knee's bend direction is undefined, so it pops between
+	# forward and backward on float noise. Rest already sits at 99.9%.
+	var clamped: float = clampf(dist, absf(thigh - shin) + 0.001, reach * 0.995)
+	var dir: Vector3 = to_target / dist
+	to_target = dir * clamped
+
+	# Decompose the aim. Godot's default euler order is YXZ, so rotation (a,0,r)
+	# composes X(a)*Z(r), which maps the thigh's rest -Y onto
+	# (sin r, -cos r*cos a, -cos r*sin a). Inverting that gives:
+	var roll: float = asin(clampf(dir.x, -1.0, 1.0))
+	var aim: float = atan2(-to_target.z, -to_target.y)  # cos(roll) > 0 factors out
+
+	# Law of cosines on the hip -> knee -> ankle triangle.
+	var cos_alpha: float = clampf((thigh * thigh + clamped * clamped - shin * shin) / (2.0 * thigh * clamped), -1.0, 1.0)
+	var cos_knee: float = clampf((thigh * thigh + shin * shin - clamped * clamped) / (2.0 * thigh * shin), -1.0, 1.0)
+	var alpha: float = acos(cos_alpha)   # thigh's offset from the hip->ankle line
+	var interior: float = acos(cos_knee) # PI is a straight leg
+
+	# MINUS alpha swings the knee FORWARD (+Z is this rig's forward), so the knee
+	# leads and the ankle trails: a human knee, not a bird's.
+	hip.rotation = Vector3(aim - alpha, 0.0, roll)
+	knee.rotation = Vector3(float(chain["knee_rest"]) + (PI - interior), 0.0, 0.0)
+
+	# The ankle now sits on the target. Only its orientation is left.
+	if not ik_align_to_normal:
+		foot.rotation = _get_rest_rot(foot_key)
+		return
+	var up: Vector3 = ground_normal.normalized()
+	if up.length_squared() < 0.5:
+		up = Vector3.UP
+	var forward: Vector3 = rig.global_basis.z  # THIS RIG FACES +Z, not Godot's -Z
+	forward -= up * forward.dot(up)
+	if forward.length() < 0.001:
+		forward = rig.global_basis.y - up * rig.global_basis.y.dot(up)
+	if forward.length() < 0.001:
+		return
+	forward = forward.normalized()
+	var aligned := Basis(up.cross(forward).normalized(), up, forward)
+	foot.global_basis = foot.global_basis.orthonormalized().slerp(aligned, clampf(1.0 - exp(-ik_foot_response * delta), 0.0, 1.0))
 
 
 func _find_body() -> Node3D:

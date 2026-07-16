@@ -54,6 +54,7 @@
 ## UI and guidance
 
 - `scripts/guide_wisp.gd`
+- `scripts/tuning_menu_ui.gd`
 - `scripts/tutorial_island_builder.gd`
 
 ## World, goals, and progression
@@ -75,6 +76,6 @@
 - `scenes/main.tscn` composes `scripts/arena_goal_manager.gd`, `scripts/world_map_manager.gd`, `scripts/tutorial_island_builder.gd`.
 - `scenes/main_menu.tscn` composes `scripts/main_menu.gd`.
 - `scenes/open_world_stage.tscn` composes `scripts/open_world_stage.gd`.
-- `scenes/player.tscn` composes `scripts/player.gd`, `scripts/rig/modular_skeleton_rig.gd`, `scripts/rig/procedural_player_animator.gd`, `scripts/player_camera_controller.gd`.
+- `scenes/player.tscn` composes `scripts/player.gd`, `scripts/rig/modular_skeleton_rig.gd`, `scripts/rig/procedural_player_animator.gd`, `scripts/player_camera_controller.gd`, `scripts/tuning_menu_ui.gd`.
 - `scenes/rig_test.tscn` composes `scripts/rig/rig_test_player.gd`, `scripts/rig/modular_skeleton_rig.gd`, `scripts/rig/procedural_player_animator.gd`.
 - `scenes/testing_environment.tscn` composes `scripts/testing_environment.gd`.

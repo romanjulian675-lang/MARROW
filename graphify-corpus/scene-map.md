@@ -198,6 +198,7 @@
 - `scripts/rig/modular_skeleton_rig.gd`
 - `scripts/rig/procedural_player_animator.gd`
 - `scripts/player_camera_controller.gd`
+- `scripts/tuning_menu_ui.gd`
 
 ### Instanced Scenes
 - `assets/skull.glb`
@@ -216,6 +217,7 @@
 - `CameraPivot`
 - `SpringArm3D`
 - `Camera3D`
+- `TuningMenuUI`
 
 ## scenes/rig_test.tscn
 

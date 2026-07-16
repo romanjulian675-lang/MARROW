@@ -2501,6 +2501,7 @@
 - `waist_bend_breath`
 - `waist_bend_limit`
 - `waist_response`
+- `whole_body_rotation_deg`
 - `aim_overlay_blend_speed`
 - `aim_right_arm_forward`
 - `aim_left_arm_forward`
@@ -2508,17 +2509,40 @@
 - `aim_left_arm_brace`
 - `aim_torso_lean`
 - `aim_head_dip`
-- `foot_placement_enabled`
-- `foot_raycast_up`
-- `foot_raycast_down`
-- `foot_lift`
-- `foot_smoothing`
-- `foot_align_to_normal`
+- `ik_feet_enabled`
+- `ik_hip_drop`
+- `ik_step_trigger`
+- `ik_step_duration`
+- `ik_step_reach`
+- `ik_step_duration_min`
+- `ik_step_overlap`
+- `ik_leap_height`
+- `ik_leap_pitch_up_deg`
+- `ik_leap_pitch_down_deg`
+- `ik_leap_pitch_response`
+- `ik_stride_dip`
+- `ik_step_height`
+- `ik_stride_lead`
+- `ik_run_lean`
+- `ik_body_follow`
+- `ik_step_drive`
+- `ik_body_follow_max`
+- `ik_body_follow_response`
+- `ik_body_follow_recenter`
+- `ik_probe_radius`
+- `ik_probe_up`
+- `ik_probe_down`
+- `ik_max_drop`
+- `ik_pelvis_response`
+- `ik_foot_response`
+- `ik_align_to_normal`
 
 ### Constants
 - `COMBO_STEP_ARM_SWORD`
 - `ANIMATED_KEYS`
 - `FOOT_KEYS`
+- `IK_LEG_OF_FOOT`
+- `IK_PELVIS_CARRIED`
 - `WAIST_CARRIED`
 
 ### Key Variables
@@ -2672,8 +2696,28 @@
 - `_both_arms_equipped() -> bool`
 - `_right_hand_rig_position() -> Vector3`
 - `_apply_finisher_combo_pose(strength: float) -> void`
-- `_animate_feet(delta: float) -> void`
-- `_place_foot(space: PhysicsDirectSpaceState3D, key: String, delta: float) -> void`
+- `_ik_active() -> bool`
+- `_ik_leg_chain(foot_key: String) -> Dictionary`
+- `_update_foot_ik(delta: float) -> void`
+- `_ik_hang_world(foot_key: String) -> Vector3`
+- `_ik_land_plants() -> void`
+- `_ik_reset_plants() -> void`
+- `_ik_anchor_world(foot_key: String, with_lead: bool) -> Vector3`
+- `_ik_probe_ground(around: Vector3) -> Dictionary`
+- `_ik_update_leap(delta: float) -> void`
+- `_ik_update_steps(delta: float) -> void`
+- `_ik_other_foot(foot_key: String) -> String`
+- `_ik_step_duration_now() -> float`
+- `_ik_step_error(foot_key: String) -> float`
+- `_ik_begin_step(foot_key: String) -> void`
+- `_ik_foot_world(foot_key: String) -> Vector3`
+- `_swing_forward_curve(t: float) -> float`
+- `_ik_foot_normal(foot_key: String) -> Vector3`
+- `_ik_reachable_target(foot_key: String) -> Vector3`
+- `_ik_update_pelvis(delta: float, grounded: bool) -> void`
+- `_ik_pelvis_offset() -> Vector3`
+- `_apply_pelvis_carry() -> void`
+- `_ik_solve_leg(foot_key: String, target_world: Vector3, ground_normal: Vector3, delta: float) -> void`
 - `_find_body() -> Node3D`
 - `_animate_facing(delta: float, facing_direction: Vector3) -> void`
 
@@ -2835,6 +2879,65 @@
 
 ### Node Path Lookups
 - `EnemySpawnPoints`
+
+## TuningMenuUI
+
+- Source file: `scripts/tuning_menu_ui.gd`
+- Extends: `CanvasLayer`
+- System: UI and guidance
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- `TOGGLE_KEY`
+
+### Key Variables
+- `_player`
+- `_animator`
+- `_panel`
+- `_rows`
+- `_defaults`
+- `_was_mouse_captured`
+- `key_event`
+- `stats`
+- `slider`
+- `label`
+- `box`
+- `title`
+- `reset`
+- `hint`
+- `name_label`
+- `row`
+- `value_label`
+
+### Functions
+- `_ready() -> void`
+- `_unhandled_input(event: InputEvent) -> void`
+- `set_open(open: bool) -> void`
+- `_current_value(id: String) -> float`
+- `_apply_value(id: String, value: float) -> void`
+- `_capture_defaults() -> void`
+- `_reset_defaults() -> void`
+- `_refresh_all() -> void`
+- `_update_value_label(id: String, value: float) -> void`
+- `_build_ui() -> void`
+- `_add_row(parent: VBoxContainer, id: String, text: String, min_v: float, max_v: float, step: float) -> void`
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- `VisualRoot/ProceduralAnimator`
 
 ## tutorial_island_builder
 
