@@ -806,7 +806,11 @@ func _begin_stealth_execution(player: Node3D, hit_from: Vector3) -> void:
 	saliva_spit_windup_timer = 0.0
 	_cancel_held_rock()
 	attack_timer = maxf(attack_timer, stealth_execution_reaction_lock)
-	_turn_toward((player.global_position - global_position).normalized())
+	# Deliberately does NOT turn toward the player: a backstab only
+	# triggers when the enemy is facing away (see can_be_stealth_finished_by
+	# / BackstabRulesService.is_attacker_behind_target), and spinning the
+	# victim to face its attacker would give away the whole point of a
+	# stealth take-down from behind.
 
 
 func _clear_stealth_execution() -> void:
@@ -824,11 +828,8 @@ func _update_stealth_execution_hold() -> bool:
 		_clear_stealth_execution()
 		return false
 
-	var to_player: Vector3 = stealth_execution_player.global_position - global_position
-	to_player.y = 0.0
-	if to_player.length() > 0.01:
-		_turn_toward(to_player.normalized())
-
+	# No _turn_toward() here either: the victim stays facing away from its
+	# attacker for the whole hold, matching _begin_stealth_execution.
 	ranged_attack_windup_timer = 0.0
 	rock_throw_windup_timer = 0.0
 	saliva_spit_windup_timer = 0.0
