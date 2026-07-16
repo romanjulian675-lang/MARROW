@@ -706,9 +706,9 @@ class DropPickupRulesService:
     godot_extends = ''
     gameplay_system = 'Supporting gameplay'
 
-    def depends_on_BoneDatabase(self):
-        """Relationship: references class BoneDatabase."""
-        return BoneDatabase
+    def depends_on_BoneRulesService(self):
+        """Relationship: references class BoneRulesService."""
+        return BoneRulesService
 
     def depends_on_EquipmentRulesService(self):
         """Relationship: references class EquipmentRulesService."""
@@ -1792,6 +1792,10 @@ class Player:
         """GDScript function: _next_combo_animation_step() -> int"""
         pass
 
+    def gd_func__is_arm_sword_held(self):
+        """GDScript function: _is_arm_sword_held() -> bool"""
+        pass
+
     def gd_func__has_both_arms_equipped(self):
         """GDScript function: _has_both_arms_equipped() -> bool"""
         pass
@@ -1921,7 +1925,7 @@ class Player:
         pass
 
     def gd_func_equip_bone(self):
-        """GDScript function: equip_bone(bone_id: String) -> void"""
+        """GDScript function: equip_bone(bone_id: String, target_slot: String = "") -> void"""
         pass
 
     def gd_func_unequip_slot(self):
@@ -2147,6 +2151,10 @@ class PlayerCameraController:
         """GDScript function: _ready() -> void"""
         pass
 
+    def gd_func__physics_process(self):
+        """GDScript function: _physics_process(delta: float) -> void"""
+        pass
+
     def gd_func__process(self):
         """GDScript function: _process(delta: float) -> void"""
         pass
@@ -2223,7 +2231,7 @@ class PlayerEquipmentComponent:
         pass
 
     def gd_func_equip_bone(self):
-        """GDScript function: equip_bone(bone_id: String) -> void"""
+        """GDScript function: equip_bone(bone_id: String, target_slot: String = "") -> void"""
         pass
 
     def gd_func_restore_detached_body(self):
@@ -2255,7 +2263,15 @@ class PlayerEquipmentComponent:
         pass
 
     def gd_func__equip_bone_in_slot(self):
-        """GDScript function: _equip_bone_in_slot(bone_id: String, force_core: bool = false) -> bool"""
+        """GDScript function: _equip_bone_in_slot(bone_id: String, force_core: bool = false, target_slot: String = "") -> bool"""
+        pass
+
+    def gd_func__slot_for_request(self):
+        """GDScript function: _slot_for_request(bone_id: String, target_slot: String = "") -> String"""
+        pass
+
+    def gd_func__first_open_compatible_slot(self):
+        """GDScript function: _first_open_compatible_slot(bone_id: String) -> String"""
         pass
 
     def gd_func__can_equip_slot(self):
@@ -2292,6 +2308,10 @@ class PlayerEquipmentComponent:
 
     def gd_func__get_run_stats(self):
         """GDScript function: _get_run_stats() -> Dictionary"""
+        pass
+
+    def gd_func__definition_for_slot(self):
+        """GDScript function: _definition_for_slot(bone_id: String, slot: String) -> Dictionary"""
         pass
 
     def gd_func__tint_visual(self):
@@ -2448,6 +2468,10 @@ class PlayerInventoryUI:
         """GDScript function: equip_bone(bone_id: String) -> void"""
         pass
 
+    def gd_func_equip_bone_in_slot(self):
+        """GDScript function: equip_bone_in_slot(bone_id: String, slot: String) -> void"""
+        pass
+
     def gd_func_unequip_slot(self):
         """GDScript function: unequip_slot(slot: String) -> void"""
         pass
@@ -2458,6 +2482,10 @@ class PlayerInventoryUI:
 
     def gd_func_show_bone_info(self):
         """GDScript function: show_bone_info(bone_id: String) -> void"""
+        pass
+
+    def gd_func__bone_comparison_text(self):
+        """GDScript function: _bone_comparison_text(bone_id: String) -> String"""
         pass
 
     def gd_func_clear_bone_info(self):
@@ -2548,6 +2576,10 @@ class PlayerInventoryUI:
         """GDScript function: _build_character_preview_panel() -> Control"""
         pass
 
+    def gd_func__inventory_preview_base_size(self):
+        """GDScript function: _inventory_preview_base_size() -> Vector2"""
+        pass
+
     def gd_func__build_preview_room(self):
         """GDScript function: _build_preview_room(parent: Node3D) -> void"""
         pass
@@ -2558,6 +2590,14 @@ class PlayerInventoryUI:
 
     def gd_func_sync_preview(self):
         """GDScript function: sync_preview() -> void"""
+        pass
+
+    def gd_func__preview_equipment_snapshot(self):
+        """GDScript function: _preview_equipment_snapshot() -> Dictionary"""
+        pass
+
+    def gd_func__preview_snapshot_matches(self):
+        """GDScript function: _preview_snapshot_matches(next_snapshot: Dictionary) -> bool"""
         pass
 
     def gd_func__build_paper_doll(self):
@@ -2666,6 +2706,10 @@ class PlayerInventoryUI:
 
     def gd_func__bone_matches_inventory_category(self):
         """GDScript function: _bone_matches_inventory_category(bone_id: String) -> bool"""
+        pass
+
+    def gd_func__compare_inventory_items(self):
+        """GDScript function: _compare_inventory_items(a: String, b: String) -> bool"""
         pass
 
     def gd_func_update_inventory_ui(self):
@@ -3376,6 +3420,10 @@ class ProceduralPlayerAnimator:
         """GDScript function: _attack_pose_strength() -> float"""
         pass
 
+    def gd_func__attack_strike_curve(self):
+        """GDScript function: _attack_strike_curve(phase: float) -> float"""
+        pass
+
     def gd_func__attack_phase(self):
         """GDScript function: _attack_phase() -> float"""
         pass
@@ -3408,6 +3456,14 @@ class ProceduralPlayerAnimator:
         """GDScript function: _apply_torso_head_recoil_pose(body: Node3D, head: Node3D) -> void"""
         pass
 
+    def gd_func__attack_strength_lagged(self):
+        """GDScript function: _attack_strength_lagged(lag: float) -> float"""
+        pass
+
+    def gd_func__whip_elbow(self):
+        """GDScript function: _whip_elbow(joint_key: String, strength: float) -> void"""
+        pass
+
     def gd_func__apply_right_combo_pose(self):
         """GDScript function: _apply_right_combo_pose(strength: float) -> void"""
         pass
@@ -3418,6 +3474,22 @@ class ProceduralPlayerAnimator:
 
     def gd_func__apply_arm_sword_pose(self):
         """GDScript function: _apply_arm_sword_pose(strength: float) -> void"""
+        pass
+
+    def gd_func_is_arm_sword_held(self):
+        """GDScript function: is_arm_sword_held() -> bool"""
+        pass
+
+    def gd_func_note_arm_sword_swing(self):
+        """GDScript function: note_arm_sword_swing() -> void"""
+        pass
+
+    def gd_func__update_arm_sword(self):
+        """GDScript function: _update_arm_sword(delta: float) -> void"""
+        pass
+
+    def gd_func__both_arms_equipped(self):
+        """GDScript function: _both_arms_equipped() -> bool"""
         pass
 
     def gd_func__right_hand_rig_position(self):
@@ -3588,6 +3660,46 @@ class TestingEnvironment:
 
     def gd_func__update_status(self):
         """GDScript function: _update_status() -> void"""
+        pass
+
+    def gd_func__cycle_validation_guide(self):
+        """GDScript function: _cycle_validation_guide(direction: int) -> void"""
+        pass
+
+    def gd_func__current_validation_guide_text(self):
+        """GDScript function: _current_validation_guide_text() -> String"""
+        pass
+
+    def gd_func__begin_notes_editing(self):
+        """GDScript function: _begin_notes_editing() -> void"""
+        pass
+
+    def gd_func__cancel_notes_editing(self):
+        """GDScript function: _cancel_notes_editing() -> void"""
+        pass
+
+    def gd_func__on_notes_submitted(self):
+        """GDScript function: _on_notes_submitted(text: String) -> void"""
+        pass
+
+    def gd_func__runtime_evidence_snapshot(self):
+        """GDScript function: _runtime_evidence_snapshot() -> Dictionary"""
+        pass
+
+    def gd_func__log_validation_result(self):
+        """GDScript function: _log_validation_result(result: String) -> void"""
+        pass
+
+    def gd_func__append_log_entry_to_file(self):
+        """GDScript function: _append_log_entry_to_file(entry: Dictionary) -> void"""
+        pass
+
+    def gd_func__count_validation_results(self):
+        """GDScript function: _count_validation_results(result: String) -> int"""
+        pass
+
+    def gd_func__validation_log_summary_text(self):
+        """GDScript function: _validation_log_summary_text() -> String"""
         pass
 
     def uses_game_event_enemy_defeated(self):
@@ -3821,6 +3933,14 @@ class BoneSlotWidget:
 
     def gd_func__drop_data(self):
         """GDScript function: _drop_data(_at_position: Vector2, data: Variant) -> void"""
+        pass
+
+    def gd_func__notification(self):
+        """GDScript function: _notification(what: int) -> void"""
+        pass
+
+    def gd_func__set_frame_border(self):
+        """GDScript function: _set_frame_border(color: Color) -> void"""
         pass
 
     def gd_func__gui_input(self):

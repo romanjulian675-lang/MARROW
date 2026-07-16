@@ -27,7 +27,10 @@ const ARROW_PROJECTILE_SCRIPT: Script = preload("res://scripts/arrow_projectile.
 # Tier 1D combat-feel tuning.
 # attack_cooldown stops repeated clicks from blurring the test (plan suggests 0.35-0.6s).
 # forward_offset/height place the swing box just in front of and slightly above the player.
-@export var attack_cooldown: float = 0.45
+# Must stay ABOVE attack_overlay_duration * 1.15 (the finisher / arm-sword length),
+# or the next click restarts the swing before it finishes and you only ever see the
+# windup. This is the ceiling on how long a swing can be, so the two move together.
+@export var attack_cooldown: float = 0.85
 # Extra breathing room after a head-launch attack has fully resolved, on top of
 # waiting for the animation itself. Head-launch animations run longer than
 # attack_cooldown (torso launch 0.56s, recoils 0.58-0.66s), so the cooldown alone
@@ -97,6 +100,10 @@ var inventory_component: PlayerInventoryComponent = null
 var equipment_component: PlayerEquipmentComponent = null
 var equipment_builds_component: PlayerEquipmentBuildsComponent = null
 var stats_component: PlayerStatsComponent = null
+# Full dictionary from the last stats_component.calculate() call, kept so
+# get_inventory_stats_snapshot() can expose load/quality fields without
+# recomputing equipment stats on every UI refresh.
+var last_calculated_stats: Dictionary = {}
 
 # This counts nearby world interactions that use the Interact action.
 # When it is above 0, that action is reserved for the world prompt.
@@ -787,12 +794,25 @@ const COMBO_STEP_ARM_SWORD := 4
 
 
 func _next_combo_animation_step() -> int:
+	# While the arm is off, every attack keeps swinging it: the combo does not
+	# advance until it has landed its swings and gone back on.
+	if _is_arm_sword_held():
+		combo_animation_step = COMBO_STEP_ARM_SWORD
+		combo_animation_timer = _combo_animation_window()
+		return COMBO_STEP_ARM_SWORD
+
 	if combo_animation_timer <= 0.0:
 		combo_animation_step = 0
 	var step_count: int = COMBO_STEP_ARM_SWORD if _has_both_arms_equipped() else 3
 	combo_animation_step = (combo_animation_step % step_count) + 1
 	combo_animation_timer = _combo_animation_window()
 	return combo_animation_step
+
+
+func _is_arm_sword_held() -> bool:
+	if animator == null or not animator.has_method("is_arm_sword_held"):
+		return false
+	return bool(animator.call("is_arm_sword_held"))
 
 
 func _has_both_arms_equipped() -> bool:
@@ -1102,12 +1122,24 @@ func get_equipped_bone_for_slot(slot: String) -> String:
 
 
 func get_inventory_stats_snapshot() -> Dictionary:
+	# BoneRulesService.player_stats_with_equipment computes load/quality
+	# fields on every recalculation but nothing previously read them past
+	# PlayerStatsComponent.calculate(); expose the cached result here so any
+	# consumer (inventory UI, HUD, future tooltips) can show that context
+	# without recomputing equipment stats.
 	return {
 		"move_speed": move_speed,
 		"attack_range": attack_range,
 		"attack_damage": attack_damage,
 		"health": health,
 		"max_health": max_health,
+		"equipment_weight": float(last_calculated_stats.get("equipment_weight", 0.0)),
+		"inventory_weight": float(last_calculated_stats.get("inventory_weight", 0.0)),
+		"load_speed_penalty": float(last_calculated_stats.get("load_speed_penalty", 0.0)),
+		"quality_damage_percent": float(last_calculated_stats.get("quality_damage_percent", 0.0)),
+		"quality_speed_percent": float(last_calculated_stats.get("quality_speed_percent", 0.0)),
+		"quality_health_percent": float(last_calculated_stats.get("quality_health_percent", 0.0)),
+		"quality_weight_percent": float(last_calculated_stats.get("quality_weight_percent", 0.0)),
 	}
 
 
@@ -1261,6 +1293,7 @@ func _recalculate_stats() -> void:
 		return
 	var equipment_state: Dictionary = get_equipment_state()
 	var calculated_stats: Dictionary = stats_component.calculate(equipment_state, health, max_health)
+	last_calculated_stats = calculated_stats
 	move_speed = float(calculated_stats["move_speed"])
 	attack_range = float(calculated_stats["attack_range"])
 	attack_damage = int(calculated_stats["attack_damage"])

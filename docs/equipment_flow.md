@@ -89,10 +89,13 @@ Slots principales:
 - `left_leg`
 - `right_leg`
 
-Aliases legacy aceptados:
-- `body`, `ribs`, `ribcage`, `chest` -> `torso`
-- `legs` -> compatible con `right_leg` y `left_leg`
-- `arm_left`, `arm_right`, `leg_left`, `leg_right` -> lado canonico
+Aliases legacy aceptados (solo los que tienen consumidor real en
+`data/bones/*.tres`; no agregar aliases especulativos):
+- `body` -> `torso`
+- `legs` -> compatible con `right_leg` y `left_leg` (equip-next resuelve al
+  primer lado libre via `PlayerEquipmentComponent._first_open_compatible_slot`;
+  `normalize_slot_id("legs")` sigue devolviendo `right_leg` como valor unico
+  por defecto para contextos que necesitan un solo id, como display/orden)
 
 `torso` es el slot de equipamiento. `body` sigue siendo un socket del rig y un
 valor legacy en datos viejos. No se debe mezclar socket del rig, slot de equipo
@@ -164,12 +167,13 @@ assets primero y solo usa sus diccionarios internos como fallback temporal.
   el diccionario plano que el rig, stats y slots ya esperan.
 - Los campos de calidad (`quality_rank`, `quality_score`,
   `quality_multiplier`, `quality_color`) viajan por el mismo diccionario plano.
-  No aplicar `quality_multiplier` a stats automaticamente hasta que una regla de
-  balance lo defina explicitamente.
+  `BoneRulesService.player_stats_with_equipment()` aplica `quality_multiplier`
+  sobre los bonuses directos del jugador antes de agregarlos al resultado final.
 - Los modificadores porcentuales por calidad (`quality_damage_percent`,
   `quality_speed_percent`, `quality_health_percent`, `quality_drop_percent`,
-  `quality_weight_percent`) son metadata granular. Pueden alimentar balance
-  futuro, pero equipamiento no los aplica automaticamente todavia.
+  `quality_weight_percent`) son metadata granular. Damage, speed, health y
+  weight ya alimentan la formula determinista de stats; drop sigue pasivo hasta
+  que una regla de drops lo consuma.
 - Las calidades canonicas son ids en minuscula y sin acentos para datos:
   `chatarra`, `fragil`, `comun`, `fuerte`, `legendario`. Si UI necesita
   acentos o traduccion, debe mapearlos al presentar texto, no cambiar el id.
@@ -190,7 +194,38 @@ assets primero y solo usa sus diccionarios internos como fallback temporal.
 - Los campos de peso (`weight`, `weight_class`, `physical_weight`,
   `equipment_weight`, `inventory_weight`) separan respuesta fisica, carga al
   equipar e impacto de inventario. `weight` queda como campo legacy para la
-  animacion procedural actual.
+  animacion procedural actual. `equipment_weight` contribuye a una penalizacion
+  suave de velocidad cuando la carga equipada supera el umbral libre.
+
+### Unidades Y Formula De Peso/Calidad (`BoneRulesService`)
+
+Todas las constantes viven en `scripts/bone_rules_service.gd`. No hay
+unidades fisicas reales (kg, etc.); son numeros de diseno adimensionales
+calibrados por prueba y error, igual que el resto del balance del proyecto.
+
+- `EQUIPMENT_FREE_WEIGHT := 3.0`: suma de `equipment_weight` (peso ya
+  ajustado por calidad) que el jugador carga sin penalizacion. Mismas
+  unidades que `weight`/`equipment_weight` en los `.tres` de hueso.
+- `EQUIPMENT_LOAD_SPEED_PENALTY_PER_WEIGHT := 0.06`: fraccion de
+  `move_speed` que se resta por cada unidad de `equipment_weight` que
+  excede `EQUIPMENT_FREE_WEIGHT`. Ejemplo: 5.0 de peso equipado con 3.0
+  libres deja 2.0 sobre el umbral, penalizacion = 2.0 * 0.06 = 0.12 (12%).
+- `EQUIPMENT_LOAD_SPEED_PENALTY_MAX := 0.30`: techo de la penalizacion de
+  velocidad (30%), sin importar cuanto peso adicional se equipe.
+- `PLAYER_STAT_PERCENT_LIMIT := 0.75`: techo/piso (+-75%) para la suma de
+  `quality_damage_percent`, `quality_speed_percent`, `quality_health_percent`
+  y `quality_weight_percent` acumulados por todas las piezas equipadas.
+- Orden de aplicacion en `player_stats_with_equipment()`: 1) sumar bonuses
+  planos (`move_speed_bonus`, etc.) ajustados por `quality_multiplier` por
+  pieza; 2) sumar y limitar los porcentajes de calidad; 3) calcular la
+  penalizacion de carga desde `equipment_weight` total; 4) aplicar
+  `(1 + porcentaje) * (1 - penalizacion_de_carga)` sobre velocidad, y
+  `(1 + porcentaje)` sobre dano/vida.
+- `attack_damage` y `max_health` se redondean una sola vez, despues de sumar
+  los bonuses de todas las piezas equipadas como floats. Redondear cada
+  pieza por separado antes de sumar inflaria el total con mas piezas
+  equipadas incluso si la suma real no cambia (ver comentario en
+  `adjusted_player_bonus_for`).
 - Los campos de set/sinergia (`set_id`, `set_name`, `set_piece_key`,
   `set_tags`, `synergy_ids`, `synergy_tags`, `synergy_score`) permiten detectar
   combinaciones de piezas. No aplican bonuses automaticamente todavia.
@@ -316,3 +351,44 @@ En `TESTING ENVIRONMENT`:
   en `PlayerEquipmentBuildsComponent`, la aplicacion usa
   `PlayerEquipmentComponent`, y cada apply revalida copias, torso y
   compatibilidad de slots.
+- 2026-07-15: `BoneRulesService` aplica calidad, modificadores porcentuales y
+  carga equipada al calculo determinista de stats del jugador.
+- 2026-07-15: Se documentaron unidades y formula exacta de peso/calidad. Se
+  corrigio `aggregate_player_bonuses` para sumar bonuses de dano/vida como
+  floats y redondear una sola vez (antes cada pieza equipada redondeaba por
+  separado, inflando el total con mas piezas equipadas). Se expusieron
+  `equipment_weight`, `inventory_weight`, `load_speed_penalty` y los
+  `quality_*_percent` en `Player.get_inventory_stats_snapshot()`, que antes
+  se calculaban y se descartaban sin ningun consumidor. No se agrego
+  defensa, stamina ni movilidad: esos stats no existen en el proyecto.
+- 2026-07-15 (correccion): `_slot_for_request` resolvia el slot por defecto
+  de un hueso bilateral (`legs`, o `right_arm` sin `limb_key`) llamando a
+  `EquipmentRulesService.slot_for_bone`, una funcion pura sin estado que
+  siempre devuelve el primer slot compatible. Equipar-siguiente con dos
+  huesos de pierna genericos nunca podia alcanzar `left_leg`. Se agrego
+  `PlayerEquipmentComponent._first_open_compatible_slot`, que consulta el
+  `equipped` real del componente y elige el primer slot compatible vacio.
+  Verificado en Godot 4.7 headless: dos `leg_bone` equipados via
+  equip-next ahora terminan en `{"left_leg": "leg_bone", "right_leg":
+  "leg_bone"}`. De paso se encontro y corrigio un bug de tipado de
+  GDScript: `compatible_slots_for_bone` devolvia arrays literales sin
+  tipar explicitamente, lo cual fallaba en runtime ("Trying to assign an
+  array of type Array to a variable of type Array[String]") para
+  cualquier llamador externo a la clase que asignara el resultado a una
+  variable tipada; ahora construye el array con `.append()`.
+- 2026-07-15: Se eliminaron 7 de los 9 aliases legacy de slot (`ribs`,
+  `ribcage`, `chest`, `arm_left`, `arm_right`, `leg_left`, `leg_right`):
+  ningun archivo en `data/bones/*.tres` ni codigo en `scripts/` los produce
+  (verificado por grep). Solo quedan `body` y `legs`, que si tienen datos
+  reales. `tools/validate_bone_data.py` actualizado para no exigirlos.
+- 2026-07-15: Se elimino `PlayerEquipmentComponent.get_equipped_bone_defs`
+  (cero llamadores; existe una funcion homonima pero distinta en
+  `ModularSkeletonRig` que si se usa).
+- 2026-07-15: El panel de informacion del inventario ahora compara el hueso
+  bajo el cursor contra el equipado en el mismo slot (deltas de
+  move_speed/attack_range/attack_damage/max_health via
+  `BoneRulesService.adjusted_player_bonus_for`, los unicos stats de hueso
+  que existen). No se inventaron stats de defensa/peso para la comparacion.
+- 2026-07-15: `BoneSlotWidget` pinta el borde del slot en verde/rojo
+  mientras un drag lo sobrevuela, segun `can_equip_bone_in_slot`, y lo
+  restaura en `NOTIFICATION_DRAG_END`.
