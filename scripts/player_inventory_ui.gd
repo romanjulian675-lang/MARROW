@@ -60,6 +60,15 @@ var settings_controls_list: VBoxContainer = null
 var settings_title_label: Label = null
 var settings_status_label: Label = null
 var settings_reset_button: Button = null
+var build_preset_status_label: Label = null
+var build_preset_summary_labels: Dictionary = {}
+var build_preset_apply_buttons: Dictionary = {}
+var build_preset_save_buttons: Dictionary = {}
+# "save:2" / "apply:1" style key for whichever button is armed and waiting
+# for a second press to confirm; "" when nothing is armed.
+var build_preset_armed_action: String = ""
+var build_preset_confirm_timer: SceneTreeTimer = null
+const BUILD_PRESET_CONFIRM_WINDOW := 4.0
 var control_rows: Dictionary = {}
 var control_labels: Dictionary = {}
 var control_buttons: Dictionary = {}
@@ -82,6 +91,7 @@ func setup(owner_player: Node) -> void:
 	GameEvents.bone_unequipped.connect(_on_bone_unequipped)
 	_load_control_settings()
 	_build_inventory_ui()
+	_refresh_build_preset_rows()
 	get_viewport().size_changed.connect(Callable(self, "_queue_inventory_responsive_layout"))
 	rebuild_item_tiles()
 	update_inventory_ui()
@@ -504,6 +514,7 @@ func _select_inventory_category(category: String) -> void:
 	_refresh_inventory_mode()
 	if inventory_category == "settings":
 		_refresh_control_buttons()
+		_refresh_build_preset_rows()
 	else:
 		rebuild_item_tiles()
 	update_inventory_ui()
@@ -868,6 +879,8 @@ func _build_settings_panel() -> ScrollContainer:
 		var label := String(binding.get("label", action))
 		settings_controls_list.add_child(_build_control_binding_row(action, label))
 
+	settings_controls_list.add_child(_build_equipment_build_presets_panel())
+
 	settings_reset_button = Button.new()
 	settings_reset_button.text = "Reset Controls to Demo Defaults"
 	settings_reset_button.process_mode = Node.PROCESS_MODE_ALWAYS
@@ -878,6 +891,184 @@ func _build_settings_panel() -> ScrollContainer:
 	settings_reset_button.pressed.connect(Callable(self, "_reset_control_defaults"))
 	settings_controls_list.add_child(settings_reset_button)
 	return scroll
+
+
+func _build_equipment_build_presets_panel() -> Control:
+	var panel := PanelContainer.new()
+	panel.name = "EquipmentBuildPresets"
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.add_theme_stylebox_override("panel", _make_inventory_style(Color(1.0, 0.99, 0.95, 0.42), Color(0.87, 0.63, 0.19, 0.74), 1, 2))
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 8)
+	margin.add_theme_constant_override("margin_top", 8)
+	margin.add_theme_constant_override("margin_right", 8)
+	margin.add_theme_constant_override("margin_bottom", 8)
+	panel.add_child(margin)
+
+	var list := VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 8)
+	margin.add_child(list)
+
+	var title := Label.new()
+	title.text = "Equipment Builds"
+	title.add_theme_color_override("font_color", Color(0.03, 0.33, 0.38, 1.0))
+	list.add_child(title)
+
+	build_preset_status_label = Label.new()
+	build_preset_status_label.text = "Save the current worn bones, then apply them later when the pieces are available."
+	build_preset_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	build_preset_status_label.add_theme_color_override("font_color", Color(0.03, 0.33, 0.38, 1.0))
+	list.add_child(build_preset_status_label)
+
+	for index in range(1, PlayerEquipmentBuildsComponent.BUILD_SLOT_COUNT + 1):
+		list.add_child(_build_equipment_build_row(index))
+
+	return panel
+
+
+func _build_equipment_build_row(index: int) -> Control:
+	var row := HBoxContainer.new()
+	row.name = "EquipmentBuildRow_" + str(index)
+	row.process_mode = Node.PROCESS_MODE_ALWAYS
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("separation", 8)
+
+	var summary := Label.new()
+	summary.text = "Build " + str(index) + ": Empty"
+	summary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	summary.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	summary.clip_text = true
+	summary.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	summary.add_theme_color_override("font_color", Color(0.03, 0.33, 0.38, 1.0))
+	row.add_child(summary)
+	build_preset_summary_labels[index] = summary
+
+	var save_button := _make_build_preset_button("Save")
+	save_button.pressed.connect(Callable(self, "_save_equipment_build").bind(index))
+	row.add_child(save_button)
+	build_preset_save_buttons[index] = save_button
+
+	var apply_button := _make_build_preset_button("Apply")
+	apply_button.pressed.connect(Callable(self, "_apply_equipment_build").bind(index))
+	row.add_child(apply_button)
+	build_preset_apply_buttons[index] = apply_button
+	return row
+
+
+func _make_build_preset_button(text: String) -> Button:
+	var button := Button.new()
+	button.text = text
+	button.process_mode = Node.PROCESS_MODE_ALWAYS
+	button.focus_mode = Control.FOCUS_NONE
+	button.custom_minimum_size = Vector2(64, 30)
+	button.add_theme_color_override("font_color", Color(0.03, 0.33, 0.38, 1.0))
+	button.add_theme_stylebox_override("normal", _make_inventory_style(Color(1.0, 0.99, 0.95, 0.64), Color(0.87, 0.63, 0.19, 0.86), 1, 2))
+	button.add_theme_stylebox_override("hover", _make_inventory_style(Color(1.0, 1.0, 1.0, 0.90), Color(0.0, 0.78, 0.78, 0.85), 1, 2))
+	return button
+
+
+func _save_equipment_build(index: int) -> void:
+	if player == null or not player.has_method("save_equipment_build"):
+		_set_build_preset_status("Equipment builds are not ready.")
+		return
+	# Saving into an empty slot is harmless; only overwriting an existing
+	# build needs a second press.
+	if not _build_slot_is_empty(index) and not _consume_or_arm_confirmation("save", index, "Save"):
+		return
+	var result := player.call("save_equipment_build", index) as Dictionary
+	_set_build_preset_status(str(result.get("message", "")))
+	_refresh_build_preset_rows()
+
+
+func _apply_equipment_build(index: int) -> void:
+	if player == null or not player.has_method("apply_equipment_build"):
+		_set_build_preset_status("Equipment builds are not ready.")
+		return
+	# Applying always replaces currently worn gear, so it always needs a
+	# second press to confirm.
+	if not _consume_or_arm_confirmation("apply", index, "Apply"):
+		return
+	var result := player.call("apply_equipment_build", index) as Dictionary
+	_set_build_preset_status(str(result.get("message", "")))
+	_refresh_build_preset_rows()
+	if bool(result.get("ok", false)):
+		notify_equipment_changed()
+
+
+func _build_slot_is_empty(index: int) -> bool:
+	if player == null or not player.has_method("get_equipment_build_summaries"):
+		return true
+	var summaries := player.call("get_equipment_build_summaries") as Array
+	for entry in summaries:
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		if int(entry.get("index", 0)) == index:
+			return bool(entry.get("is_empty", true))
+	return true
+
+
+# First press arms the given action+index and edits its button to prompt a
+# second press; returns false without doing anything else. Second press
+# within BUILD_PRESET_CONFIRM_WINDOW seconds on the SAME action+index
+# disarms and returns true, letting the caller proceed. Pressing any other
+# build button while one is armed just re-arms the new one instead of
+# silently running it.
+func _consume_or_arm_confirmation(action: String, index: int, button_text: String) -> bool:
+	var key := action + ":" + str(index)
+	if build_preset_armed_action == key:
+		_disarm_build_preset_confirmation()
+		return true
+
+	_disarm_build_preset_confirmation()
+	build_preset_armed_action = key
+	var buttons: Dictionary = build_preset_apply_buttons if action == "apply" else build_preset_save_buttons
+	var button := buttons.get(index) as Button
+	if button != null:
+		button.text = "Confirm?"
+	_set_build_preset_status(button_text + " build " + str(index) + " again to confirm.")
+	build_preset_confirm_timer = get_tree().create_timer(BUILD_PRESET_CONFIRM_WINDOW)
+	build_preset_confirm_timer.timeout.connect(_on_build_preset_confirm_timeout.bind(key))
+	return false
+
+
+func _on_build_preset_confirm_timeout(expected_key: String) -> void:
+	if build_preset_armed_action == expected_key:
+		_disarm_build_preset_confirmation()
+		_set_build_preset_status("Confirmation timed out.")
+
+
+func _disarm_build_preset_confirmation() -> void:
+	build_preset_armed_action = ""
+	build_preset_confirm_timer = null
+	for index in build_preset_save_buttons:
+		var save_button := build_preset_save_buttons[index] as Button
+		if save_button != null:
+			save_button.text = "Save"
+	for index in build_preset_apply_buttons:
+		var apply_button := build_preset_apply_buttons[index] as Button
+		if apply_button != null:
+			apply_button.text = "Apply"
+
+
+func _refresh_build_preset_rows() -> void:
+	if player == null or not player.has_method("get_equipment_build_summaries"):
+		return
+	var summaries := player.call("get_equipment_build_summaries") as Array
+	for entry in summaries:
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		var index := int(entry.get("index", 0))
+		var label := build_preset_summary_labels.get(index) as Label
+		if label == null:
+			continue
+		label.text = "Build " + str(index) + ": " + str(entry.get("summary", "Empty"))
+
+
+func _set_build_preset_status(text: String) -> void:
+	if build_preset_status_label != null:
+		build_preset_status_label.text = text
 
 
 func _build_control_binding_row(action: String, label_text: String) -> Control:

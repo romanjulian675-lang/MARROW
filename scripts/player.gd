@@ -98,6 +98,7 @@ var inventory_open: bool = false
 var inventory_ui: PlayerInventoryUI = null
 var inventory_component: PlayerInventoryComponent = null
 var equipment_component: PlayerEquipmentComponent = null
+var equipment_builds_component: PlayerEquipmentBuildsComponent = null
 var stats_component: PlayerStatsComponent = null
 # Full dictionary from the last stats_component.calculate() call, kept so
 # get_inventory_stats_snapshot() can expose load/quality fields without
@@ -184,6 +185,9 @@ func _ready() -> void:
 	inventory_component = PlayerInventoryComponent.new()
 	add_child(inventory_component)
 	inventory_component.setup(self, equipment_component)
+	equipment_builds_component = PlayerEquipmentBuildsComponent.new()
+	add_child(equipment_builds_component)
+	equipment_builds_component.setup(self, equipment_component)
 	_recalculate_stats()
 	if start_with_bow_equipped:
 		_set_bow_equipped(true)
@@ -1137,6 +1141,24 @@ func get_inventory_stats_snapshot() -> Dictionary:
 		"quality_health_percent": float(last_calculated_stats.get("quality_health_percent", 0.0)),
 		"quality_weight_percent": float(last_calculated_stats.get("quality_weight_percent", 0.0)),
 	}
+
+
+func save_equipment_build(index: int) -> Dictionary:
+	if equipment_builds_component == null:
+		return {"ok": false, "message": "Equipment builds are not ready."}
+	return equipment_builds_component.save_current_build(index)
+
+
+func apply_equipment_build(index: int) -> Dictionary:
+	if equipment_builds_component == null:
+		return {"ok": false, "message": "Equipment builds are not ready."}
+	return equipment_builds_component.apply_build(index)
+
+
+func get_equipment_build_summaries() -> Array:
+	if equipment_builds_component == null:
+		return []
+	return equipment_builds_component.get_build_summaries()
 
 
 # Enemies call this when they land a contact hit on the player.
