@@ -352,6 +352,19 @@ class AttackHitbox:
         """Godot signal: hit_confirmed(target: Node)"""
         pass
 
+class BackstabRulesService:
+    """Godot script: scripts/backstab_rules_service.gd
+    class_name: BackstabRulesService
+    extends: unknown
+    system: Supporting gameplay
+    """
+    source_file = 'scripts/backstab_rules_service.gd'
+    godot_class_name = 'BackstabRulesService'
+    godot_extends = ''
+    gameplay_system = 'Supporting gameplay'
+
+    pass
+
 class BallisticsService:
     """Godot script: scripts/ballistics_service.gd
     class_name: BallisticsService
@@ -857,6 +870,30 @@ class Enemy:
         """GDScript function: try_stealth_finish(player: Node3D, player_damage: int, hit_from: Vector3) -> bool"""
         pass
 
+    def gd_func_apply_stealth_finish_impact(self):
+        """GDScript function: apply_stealth_finish_impact(player: Node3D, player_damage: int, hit_from: Vector3) -> bool"""
+        pass
+
+    def gd_func_finish_stealth_execution(self):
+        """GDScript function: finish_stealth_execution(player: Node3D) -> void"""
+        pass
+
+    def gd_func_cancel_stealth_execution(self):
+        """GDScript function: cancel_stealth_execution(player: Node3D) -> void"""
+        pass
+
+    def gd_func__begin_stealth_execution(self):
+        """GDScript function: _begin_stealth_execution(player: Node3D, hit_from: Vector3) -> void"""
+        pass
+
+    def gd_func__clear_stealth_execution(self):
+        """GDScript function: _clear_stealth_execution() -> void"""
+        pass
+
+    def gd_func__update_stealth_execution_hold(self):
+        """GDScript function: _update_stealth_execution_hold() -> bool"""
+        pass
+
     def gd_func__can_see_player(self):
         """GDScript function: _can_see_player(player: Node3D, to_player: Vector3, dist: float) -> bool"""
         pass
@@ -1224,6 +1261,10 @@ class Enemy:
     def depends_on_ArrowProjectile(self):
         """Relationship: loads resource."""
         return ArrowProjectile
+
+    def depends_on_BackstabRulesService(self):
+        """Relationship: references class BackstabRulesService."""
+        return BackstabRulesService
 
     def depends_on_BallisticsService(self):
         """Relationship: references class BallisticsService."""
@@ -1786,6 +1827,42 @@ class Player:
 
     def gd_func__try_stealth_finish(self):
         """GDScript function: _try_stealth_finish() -> void"""
+        pass
+
+    def gd_func__start_backstab_execution(self):
+        """GDScript function: _start_backstab_execution(target: Node3D, damage: int, hit_from: Vector3) -> void"""
+        pass
+
+    def gd_func__update_backstab_execution(self):
+        """GDScript function: _update_backstab_execution(delta: float) -> void"""
+        pass
+
+    def gd_func__on_backstab_animator_impact(self):
+        """GDScript function: _on_backstab_animator_impact() -> void"""
+        pass
+
+    def gd_func__apply_backstab_impact_once(self):
+        """GDScript function: _apply_backstab_impact_once() -> void"""
+        pass
+
+    def gd_func__finish_backstab_execution(self):
+        """GDScript function: _finish_backstab_execution() -> void"""
+        pass
+
+    def gd_func__cancel_backstab_execution(self):
+        """GDScript function: _cancel_backstab_execution() -> void"""
+        pass
+
+    def gd_func__clear_backstab_execution_state(self):
+        """GDScript function: _clear_backstab_execution_state() -> void"""
+        pass
+
+    def gd_func__is_backstab_executing(self):
+        """GDScript function: _is_backstab_executing() -> bool"""
+        pass
+
+    def gd_func__face_backstab_target(self):
+        """GDScript function: _face_backstab_target(target: Node3D) -> void"""
         pass
 
     def gd_func__next_combo_animation_step(self):
@@ -3315,6 +3392,10 @@ class ProceduralPlayerAnimator:
         """GDScript function: trigger_attack(combo_step: int = 0, allow_head_launch: bool = true) -> void"""
         pass
 
+    def gd_func_trigger_stealth_finish_attack(self):
+        """GDScript function: trigger_stealth_finish_attack() -> void"""
+        pass
+
     def gd_func__capture_torso_head_miss_body_hold_transform(self):
         """GDScript function: _capture_torso_head_miss_body_hold_transform() -> void"""
         pass
@@ -3661,6 +3742,10 @@ class ProceduralPlayerAnimator:
 
     def gd_func__animate_facing(self):
         """GDScript function: _animate_facing(delta: float, facing_direction: Vector3) -> void"""
+        pass
+
+    def signal_attack_impact_reached(self):
+        """Godot signal: attack_impact_reached()"""
         pass
 
     def depends_on_ModularSkeletonRig(self):

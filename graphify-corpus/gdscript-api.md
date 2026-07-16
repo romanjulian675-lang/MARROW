@@ -284,6 +284,40 @@
 ### Node Path Lookups
 - `CollisionShape3D`
 
+## BackstabRulesService
+
+- Source file: `scripts/backstab_rules_service.gd`
+- Extends: `unknown`
+- System: Supporting gameplay
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- `MIN_BACKSTAB_VECTOR_LENGTH`
+
+### Key Variables
+- `to_attacker`
+- `flat_forward`
+
+### Functions
+- none
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- none
+
 ## BallisticsService
 
 - Source file: `scripts/ballistics_service.gd`
@@ -1001,6 +1035,7 @@
 - `stealth_finish_range`
 - `stealth_behind_dot`
 - `failed_stealth_damage_multiplier`
+- `stealth_execution_reaction_lock`
 - `respawn_enabled`
 - `near_respawn_delay`
 - `far_respawn_delay`
@@ -1091,6 +1126,12 @@
 - `get_drop_display_name() -> String`
 - `_is_player_behind(player: Node3D) -> bool`
 - `try_stealth_finish(player: Node3D, player_damage: int, hit_from: Vector3) -> bool`
+- `apply_stealth_finish_impact(player: Node3D, player_damage: int, hit_from: Vector3) -> bool`
+- `finish_stealth_execution(player: Node3D) -> void`
+- `cancel_stealth_execution(player: Node3D) -> void`
+- `_begin_stealth_execution(player: Node3D, hit_from: Vector3) -> void`
+- `_clear_stealth_execution() -> void`
+- `_update_stealth_execution_hold() -> bool`
 - `_can_see_player(player: Node3D, to_player: Vector3, dist: float) -> bool`
 - `_can_hear_player(player: Node, dist: float) -> bool`
 - `_investigate_position(position: Vector3, duration: float) -> void`
@@ -1661,6 +1702,9 @@
 - `detached_torso_ground_probe_height`
 - `detached_torso_ground_probe_depth`
 - `stealth_prompt_scan_range`
+- `backstab_execution_duration`
+- `backstab_execution_impact_time`
+- `backstab_execution_recovery_time`
 - `bow_enabled`
 - `start_with_bow_equipped`
 - `bow_damage`
@@ -1721,11 +1765,11 @@
 - `stealth_target`
 - `noise_timer`
 - `sprinting_this_frame`
-- `head_launch_target`
-- `head_launch_recovery_timer`
-- `head_detached_from_torso`
-- `detached_torso_bone_id`
-- `detached_torso_marker`
+- `backstab_execution_target`
+- `backstab_execution_damage`
+- `backstab_execution_hit_from`
+- `backstab_execution_impact_timer`
+- `backstab_execution_recovery_timer`
 
 ### Functions
 - `_ready() -> void`
@@ -1765,6 +1809,15 @@
 - `_get_pointer_aim_point(start_position: Vector3, fallback_direction: Vector3) -> Vector3`
 - `_aim_direction_to(start_position: Vector3, aim_point: Vector3, fallback_direction: Vector3) -> Vector3`
 - `_try_stealth_finish() -> void`
+- `_start_backstab_execution(target: Node3D, damage: int, hit_from: Vector3) -> void`
+- `_update_backstab_execution(delta: float) -> void`
+- `_on_backstab_animator_impact() -> void`
+- `_apply_backstab_impact_once() -> void`
+- `_finish_backstab_execution() -> void`
+- `_cancel_backstab_execution() -> void`
+- `_clear_backstab_execution_state() -> void`
+- `_is_backstab_executing() -> bool`
+- `_face_backstab_target(target: Node3D) -> void`
 - `_next_combo_animation_step() -> int`
 - `_is_arm_sword_held() -> bool`
 - `_has_both_arms_equipped() -> bool`
@@ -2545,7 +2598,7 @@
 - System: Rig and animation
 
 ### Signals
-- none
+- `attack_impact_reached()`
 
 ### Exported Tuning
 - `rig`
@@ -2694,6 +2747,8 @@
 - `_attack_blend`
 - `_attack_duration_current`
 - `_attack_combo_step`
+- `_attack_impact_signaled`
+- `_is_stealth_finish_attack`
 - `_head_only_attack_contacted`
 - `_head_only_attack_landed`
 - `_head_only_base_world_offset`
@@ -2721,8 +2776,6 @@
 - `_torso_head_miss_fall_start_position`
 - `_torso_head_miss_fall_start_rotation`
 - `_torso_head_miss_fall_start_scale`
-- `_torso_head_miss_body_hold_global_transform`
-- `_torso_head_detach_body_global_transform`
 
 ### Functions
 - `update_from_player(delta: float, velocity: Vector3, max_speed: float, facing_direction: Vector3, equipped_defs: Array) -> void`
@@ -2750,6 +2803,7 @@
 - `_head_launch_aim_or(fallback: Vector3) -> Vector3`
 - `_update_head_launch_attack_aim() -> void`
 - `trigger_attack(combo_step: int = 0, allow_head_launch: bool = true) -> void`
+- `trigger_stealth_finish_attack() -> void`
 - `_capture_torso_head_miss_body_hold_transform() -> void`
 - `set_aiming(enabled: bool) -> void`
 - `confirm_head_only_attack_contact() -> void`

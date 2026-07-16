@@ -28,6 +28,7 @@
 - `scripts/enemy.gd` depends on `scripts/limb_bone_pickup.gd` because it loads resource.
 - `scripts/enemy.gd` depends on `scripts/enemy_rock_projectile.gd` because it loads resource.
 - `scripts/enemy.gd` depends on `scripts/arrow_projectile.gd` because it loads resource.
+- `scripts/enemy.gd` depends on `scripts/backstab_rules_service.gd` because it references class BackstabRulesService.
 - `scripts/enemy.gd` depends on `scripts/ballistics_service.gd` because it references class BallisticsService.
 - `scripts/enemy.gd` depends on `scripts/bone_rules_service.gd` because it references class BoneRulesService.
 - `scripts/enemy.gd` depends on `scripts/drop_pickup_rules_service.gd` because it references class DropPickupRulesService.
