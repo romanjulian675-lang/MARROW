@@ -457,3 +457,22 @@ navegacion con teclado; eso sigue requiriendo una sesion manual.
   vertical del bloque brazos+piernas contra el centro del frame del preview en
   las cinco resoluciones. Probado contra las posiciones viejas (falla en las 5,
   desviacion de 30-61 px segun resolucion) y contra las nuevas (pasa).
+
+- 2026-07-18 (calidad en el ciclo de vida): la instancia conserva
+  `bone_id` + `quality_id` en inventario, equipar/desequipar, stacks, builds,
+  rollback y preview. `unequip_slot` solo borra el mapeo de slot, asi que la
+  pieza sigue en `bone_inventory` y vuelve siendo la misma instancia.
+  `PlayerStatsComponent.calculate` recibe el equipment state con instance_ids,
+  de modo que ya opera sobre stats efectivos.
+
+  Stack key = `bone_id | quality_id | mutacion | durabilidad`. La durabilidad
+  hoy es authored por tipo (no hay desgaste por pieza), pero entra en la clave
+  ahora para que agregar desgaste luego no pueda fusionar en silencio una
+  pieza intacta con una agrietada.
+
+  UI: filtro de calidad (All + las 5) y orden (Default / Quality: Lowest first
+  / Quality: Highest first), ambos combinables con el filtro corporal. Cada
+  tarjeta muestra la calidad como texto y un acento del color del tier. El
+  panel de detalles muestra nombre, slot, calidad, multiplicador,
+  `base -> efectivo` y la comparacion contra la pieza equipada, con efectivos
+  en ambos lados.

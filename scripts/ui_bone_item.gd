@@ -60,10 +60,13 @@ func setup(id: String, player_ref: Node, quantity: int = 1) -> void:
 	# abbreviated one.
 	tooltip_text = BoneRulesService.display_name_with_slot(id)
 
+	# The top rule doubles as the quality accent: it is the one always-visible
+	# mark of a piece's tier, so a Pristine and a Frail arm never look alike
+	# even before reading the label.
 	var top_rule := ColorRect.new()
-	top_rule.color = Color(0.87, 0.63, 0.19, 0.36)
+	top_rule.color = BoneQualityService.color_for(BoneInstanceService.quality_id_of(id))
 	top_rule.position = Vector2(pad + inner_width * 0.10, pad + maxf(1.0, tile_size.y * 0.03))
-	top_rule.size = Vector2(inner_width * 0.80, 1)
+	top_rule.size = Vector2(inner_width * 0.80, maxf(2.0, tile_size.y * 0.035))
 	top_rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(top_rule)
 
@@ -130,10 +133,12 @@ func setup(id: String, player_ref: Node, quantity: int = 1) -> void:
 	_slot_label = Label.new()
 	_slot_label.position = Vector2(pad, tile_size.y - slot_height - pad * 0.5)
 	_slot_label.size = Vector2(caption_width, slot_height)
+	# Quality as text next to the slot, so the accent colour is never the only
+	# way to tell tiers apart.
 	var slot_text := EquipmentRulesService.slot_display_name(EquipmentRulesService.slot_for_bone(id))
 	if slot_text == "":
 		slot_text = "Piece"
-	_slot_label.text = slot_text
+	_slot_label.text = "%s  ·  %s" % [BoneQualityService.display_name_for(BoneInstanceService.quality_id_of(id)), slot_text]
 	_slot_label.add_theme_font_size_override("font_size", clampi(int(min_side * 0.10), 8, 13))
 	_slot_label.add_theme_color_override("font_color", Color(0.44, 0.32, 0.12, 0.95))
 	_slot_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

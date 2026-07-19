@@ -119,10 +119,20 @@ static func _legacy_quality_id_for(value: String) -> String:
 static func stack_key_for(value: String) -> String:
 	var data := resolve(value)
 	var bone_id := str(data["bone_id"])
-	return "%s|%s|%s" % [
+	# Every field that changes how the piece behaves has to be in the key.
+	# Two pieces that stack must be interchangeable: if a Normal and a Strong
+	# arm shared a tile, the stack would hide that they roll different
+	# effective stats and pulling one out could hand back either.
+	return "%s|%s|%s|%d" % [
 		bone_id,
 		str(data["quality_id"]),
 		BoneRulesService.mutation_id_for(bone_id),
+		# Durability/condition. Per-instance wear does not exist yet (the
+		# durability fields are authored per type), so this currently varies
+		# only by type -- but keying on it now means adding per-instance wear
+		# later cannot silently merge a pristine-condition piece with a
+		# cracked one.
+		BoneRulesService.durability_start_for(bone_id),
 	]
 
 

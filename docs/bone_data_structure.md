@@ -114,6 +114,14 @@ La resolucion vive en un solo punto por capa: `BoneDatabase._type_id`,
 `generated_limb_definition_for`. Por eso cualquier API que aceptaba un
 `bone_id` acepta ahora un `instance_id` sin cambios en el llamador.
 
+Los builds guardan el TIPO por slot, no una pieza concreta. Atarlos a un
+`instance_id` los volvia casi inservibles: perder o cambiar la pieza exacta que
+estaba puesta al guardar rompia el build. Al aplicar, `_resolve_build_to_instances`
+elige la MEJOR calidad disponible de ese tipo entre lo que llevas encima
+(`frail < worn < normal < strong < pristine`), y si un tipo ocupa dos slots toma
+dos piezas distintas, las dos mejores. Si no llevas ninguna copia del tipo, el
+build falla y lo dice; no sustituye por otro tipo.
+
 Los stacks agrupan por `bone_id + quality_id + mutacion`
 (`BoneInstanceService.stack_key_for`), no solo por `bone_id`: apilar dos brazos
 de calidad distinta ocultaria que tienen stats efectivos distintos.

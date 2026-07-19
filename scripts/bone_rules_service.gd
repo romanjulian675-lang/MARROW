@@ -516,10 +516,18 @@ static func adjusted_player_bonus_for(bone_id: String) -> Dictionary:
 	}
 
 
-static func aggregate_player_bonuses(equipment_state: Dictionary) -> Dictionary:
-	var total: Dictionary = PLAYER_BONUS_DEFAULTS.duplicate()
-	var attack_damage_total := 0.0
-	var max_health_total := 0.0
+# Exact, fully decimal totals. This is the internal calculation layer: nothing
+# here rounds, so downstream maths (percentage modifiers in particular) work on
+# the real numbers. Rounding the sum here and THEN applying a percentage would
+# compound two approximations -- e.g. a 5.5 bonus rounds to 6, and +10% turns
+# 7 into 7.7 -> 8, where the exact path gives 6.5 * 1.1 = 7.15 -> 7.
+static func aggregate_player_bonuses_exact(equipment_state: Dictionary) -> Dictionary:
+	var total: Dictionary = {
+		"move_speed": 0.0,
+		"attack_range": 0.0,
+		"attack_damage": 0.0,
+		"max_health": 0.0,
+	}
 	for slot_id in equipment_state:
 		var bone_id: String = str(equipment_state[slot_id])
 		if bone_id == "":
@@ -527,10 +535,21 @@ static func aggregate_player_bonuses(equipment_state: Dictionary) -> Dictionary:
 		var bonus: Dictionary = adjusted_player_bonus_for(bone_id)
 		total["move_speed"] = float(total["move_speed"]) + float(bonus["move_speed"])
 		total["attack_range"] = float(total["attack_range"]) + float(bonus["attack_range"])
-		attack_damage_total += float(bonus["attack_damage"])
-		max_health_total += float(bonus["max_health"])
-	total["attack_damage"] = roundi(attack_damage_total)
-	total["max_health"] = roundi(max_health_total)
+		total["attack_damage"] = float(total["attack_damage"]) + float(bonus["attack_damage"])
+		total["max_health"] = float(total["max_health"]) + float(bonus["max_health"])
+	return total
+
+
+# Presentation-layer view of the same totals: whole numbers for the stats that
+# are integers to the player. Callers that feed further maths should use
+# aggregate_player_bonuses_exact instead, so the rounding happens once, last.
+static func aggregate_player_bonuses(equipment_state: Dictionary) -> Dictionary:
+	var exact: Dictionary = aggregate_player_bonuses_exact(equipment_state)
+	var total: Dictionary = PLAYER_BONUS_DEFAULTS.duplicate()
+	total["move_speed"] = float(exact["move_speed"])
+	total["attack_range"] = float(exact["attack_range"])
+	total["attack_damage"] = roundi(float(exact["attack_damage"]))
+	total["max_health"] = roundi(float(exact["max_health"]))
 	return total
 
 
@@ -564,7 +583,9 @@ static func aggregate_player_stat_modifiers(equipment_state: Dictionary) -> Dict
 
 
 static func player_stats_with_equipment(base_move_speed: float, base_attack_range: float, base_attack_damage: int, base_max_health: int, equipment_state: Dictionary) -> Dictionary:
-	var bonus: Dictionary = aggregate_player_bonuses(equipment_state)
+	# Exact bonuses: the percentage modifiers below multiply the real totals,
+	# and the single rounding happens at the very end of each stat.
+	var bonus: Dictionary = aggregate_player_bonuses_exact(equipment_state)
 	var modifiers: Dictionary = aggregate_player_stat_modifiers(equipment_state)
 
 	var move_before_percent := base_move_speed + float(bonus["move_speed"])
@@ -572,8 +593,8 @@ static func player_stats_with_equipment(base_move_speed: float, base_attack_rang
 		0.1,
 		(1.0 + float(modifiers["speed_percent"])) * (1.0 - float(modifiers["load_speed_penalty"]))
 	)
-	var damage_before_percent := float(base_attack_damage + int(bonus["attack_damage"]))
-	var health_before_percent := float(base_max_health + int(bonus["max_health"]))
+	var damage_before_percent := float(base_attack_damage) + float(bonus["attack_damage"])
+	var health_before_percent := float(base_max_health) + float(bonus["max_health"])
 	return {
 		"move_speed": maxf(0.0, move_before_percent * move_multiplier),
 		"attack_range": base_attack_range + float(bonus["attack_range"]),

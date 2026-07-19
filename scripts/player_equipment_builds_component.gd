@@ -50,14 +50,21 @@ func apply_build(index: int) -> Dictionary:
 		return validation
 
 	var target_state: Dictionary = validation.get("state", {})
+	# The build stores types; turn them into the concrete best-quality pieces
+	# to equip. Everything past this point works on exact instances, which is
+	# what lets the rollback below restore precisely what was worn before.
+	var resolved_state := _resolve_build_to_instances(target_state)
+	if resolved_state.size() != target_state.size():
+		return _result(false, "Missing carried pieces for build " + str(index) + ".", target_state)
+
 	# Snapshot before mutating anything, so a failed apply can be rolled
 	# back to exactly what was equipped a moment ago.
 	var previous_state := equipment_component.get_equipment_state()
 
-	_apply_validated_state(target_state)
+	_apply_validated_state(resolved_state)
 
-	if _matches_equipment_state(target_state):
-		return _result(true, "Applied build " + str(index) + ".", target_state)
+	if _matches_equipment_state(resolved_state):
+		return _result(true, "Applied build " + str(index) + ".", resolved_state)
 
 	# Apply did not fully take (e.g. a late equip rejection not caught by
 	# pre-validation). Restore the pre-apply state instead of leaving the
@@ -81,19 +88,18 @@ func validate_build_state(raw_state: Dictionary, inventory_items: Array) -> Dict
 	if owner_player != null and owner_player.has_method("is_head_detached_from_torso") and bool(owner_player.call("is_head_detached_from_torso")):
 		return _result(false, "Return to your detached torso before applying builds.", state)
 
-	# A saved build stores the equipment state, which holds instance_ids, so
-	# these counts match on exact piece identity. That is what keeps a build
-	# from silently resolving to a different-quality copy of the same bone: if
-	# the exact piece is no longer carried the build refuses to apply and says
-	# so, instead of quietly equipping a Frail arm where a Pristine one was
-	# saved. Builds written before instances existed hold plain bone_ids and
-	# land here the same way -- reported as missing, never substituted.
+	# Matched by TYPE, not by exact piece: a build asks for "an arm bone", and
+	# any carried arm bone satisfies it whatever its quality. Requiring the
+	# exact instance made builds nearly unusable, because losing or swapping
+	# the specific piece that was worn when the build was saved broke it.
+	# Which copy actually gets equipped is decided in
+	# _resolve_build_to_instances, which takes the best quality available.
 	var required_counts := _bone_counts(state.values())
 	var inventory_counts := _bone_counts(inventory_items)
 
 	for bone_id in required_counts:
 		if int(required_counts[bone_id]) > int(inventory_counts.get(bone_id, 0)):
-			return _result(false, "Missing carried copies for " + BoneRulesService.quality_display_name_for(str(bone_id)) + " " + BoneRulesService.display_name_with_slot(str(bone_id)) + ".", state)
+			return _result(false, "Missing carried copies for " + BoneRulesService.display_name_with_slot(str(bone_id)) + ".", state)
 
 	for slot in state:
 		var slot_id := str(slot)
@@ -164,18 +170,59 @@ func _sanitize_build_state(raw_state: Dictionary) -> Dictionary:
 			continue
 		if slot_id == EquipmentRulesService.SLOT_HEAD:
 			continue
-		state[slot_id] = bone_id
+		# Builds are loadout templates: they remember the TYPE of piece per
+		# slot, never one exact piece. Storing an instance_id would tie a build
+		# to the individual bone that happened to be worn when it was saved, so
+		# the build would stop applying as soon as that piece was dropped or
+		# replaced by an equivalent one. Resolving to the type here also
+		# migrates builds saved before this rule, and keeps quality out of a
+		# build's identity.
+		state[slot_id] = BoneInstanceService.bone_id_of(bone_id)
 	return state
 
 
+# Counted by TYPE, so any carried copy satisfies a build's requirement
+# regardless of its quality.
 func _bone_counts(items: Array) -> Dictionary:
 	var counts: Dictionary = {}
 	for item in items:
-		var bone_id := str(item)
+		var bone_id := BoneInstanceService.bone_id_of(str(item))
 		if bone_id == "":
 			continue
 		counts[bone_id] = int(counts.get(bone_id, 0)) + 1
 	return counts
+
+
+# Picks the concrete pieces a build will actually equip: for each slot, the
+# best-quality carried copy of that slot's type, following the ladder
+# frail < worn < normal < strong < pristine. Pieces already claimed by an
+# earlier slot are skipped, so a build needing two arms takes the two best
+# arms rather than the same one twice.
+func _resolve_build_to_instances(type_state: Dictionary) -> Dictionary:
+	var carried: Array = _inventory_items()
+	var claimed: Dictionary = {}
+	var resolved: Dictionary = {}
+
+	for slot_id in APPLY_ORDER:
+		var wanted_type := str(type_state.get(slot_id, ""))
+		if wanted_type == "":
+			continue
+		var best_id := ""
+		var best_rank := -1
+		for item in carried:
+			var candidate := str(item)
+			if claimed.has(candidate):
+				continue
+			if BoneInstanceService.bone_id_of(candidate) != wanted_type:
+				continue
+			var rank := BoneQualityService.rank_for(BoneInstanceService.quality_id_of(candidate))
+			if rank > best_rank:
+				best_rank = rank
+				best_id = candidate
+		if best_id != "":
+			claimed[best_id] = true
+			resolved[slot_id] = best_id
+	return resolved
 
 
 func _inventory_items() -> Array:

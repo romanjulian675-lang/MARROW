@@ -21,6 +21,15 @@ const INVENTORY_FILTER_OPTIONS: Array = [
 	{"category": "group_legs", "text": "Legs"},
 ]
 
+# Sort modes for the item grid. "default" keeps the existing body-slot /
+# rarity / quality / name ordering; the quality modes re-rank by the quality
+# ladder first and fall back to the default order inside a tier.
+const INVENTORY_SORT_OPTIONS: Array = [
+	{"mode": "default", "text": "Default"},
+	{"mode": "quality_asc", "text": "Quality: Lowest first"},
+	{"mode": "quality_desc", "text": "Quality: Highest first"},
+]
+
 const PAPER_DOLL_BASE_SIZE := Vector2(406.0, 470.0)
 const PAPER_DOLL_SLOT_SIZE := Vector2(88.0, 88.0)
 const PAPER_DOLL_FRAME_POSITION := Vector2(94.0, 92.0)
@@ -85,6 +94,13 @@ var inventory_title_label: Label = null
 var inventory_tabs_container: HBoxContainer = null
 var inventory_filter_dropdown: OptionButton = null
 var inventory_filter_label: Label = null
+var inventory_quality_dropdown: OptionButton = null
+var inventory_quality_label: Label = null
+var inventory_sort_dropdown: OptionButton = null
+var inventory_sort_label_control: Label = null
+# Independent of the body-slot filter: both narrow the same grid together.
+var inventory_quality_filter: String = "all"
+var inventory_sort_mode: String = "default"
 var inventory_body: HBoxContainer = null
 var inventory_left_panel: VBoxContainer = null
 var inventory_grid_panel: PanelContainer = null
@@ -340,11 +356,64 @@ func show_bone_info(bone_id: String) -> void:
 	# where the dragged piece can land.
 	if dragging_bone_id != "":
 		return
-	var text := BoneRulesService.quality_display_name_for(bone_id) + " " + BoneRulesService.display_name_with_slot(bone_id) + "  [slot: " + EquipmentRulesService.slot_display_name(EquipmentRulesService.slot_for_bone(bone_id)) + "]\n"
-	text += BoneRulesService.effect_text_for(bone_id)
+	var quality_id := BoneInstanceService.quality_id_of(bone_id)
+	var multiplier := BoneQualityService.multiplier_for(quality_id)
+	var text := BoneRulesService.display_name_with_slot(bone_id) + "  [slot: " + EquipmentRulesService.slot_display_name(EquipmentRulesService.slot_for_bone(bone_id)) + "]\n"
+	text += "%s  (x%s)\n" % [BoneQualityService.display_name_for(quality_id), _format_number(multiplier)]
+	text += _base_vs_effective_text(bone_id)
 	text += BoneRulesService.description_for(bone_id)
 	text += _bone_comparison_text(bone_id)
 	hover_info_label.text = text
+
+
+# Base stats and the quality-scaled numbers side by side, so the multiplier is
+# something the player can check rather than take on faith. Only the four
+# stats that actually exist are listed; nothing is invented here.
+func _base_vs_effective_text(bone_id: String) -> String:
+	var base: Dictionary = BoneRulesService.player_bonus_for(bone_id)
+	var effective: Dictionary = BoneRulesService.adjusted_player_bonus_for(bone_id)
+	var rows: Array[String] = []
+	for entry in [["move_speed", "Speed"], ["attack_range", "Reach"], ["attack_damage", "Damage"], ["max_health", "HP"]]:
+		var key := str(entry[0])
+		var label := str(entry[1])
+		var base_value := float(base.get(key, 0.0))
+		var effective_value := float(effective.get(key, 0.0))
+		if absf(base_value) < 0.001 and absf(effective_value) < 0.001:
+			continue
+		if absf(base_value - effective_value) < 0.001:
+			rows.append("%s %s" % [label, _format_number(effective_value)])
+		else:
+			rows.append("%s %s -> %s" % [label, _format_number(base_value), _format_number(effective_value)])
+	var text := ""
+	if not rows.is_empty():
+		text = "base -> effective: " + ", ".join(rows) + "\n"
+
+	# This piece's own percentage modifiers, which apply to the WHOLE player
+	# total rather than to this bone's numbers. They are the reason a total can
+	# exceed the sum of the pieces, so they belong on the piece that causes it.
+	var percent_bits: Array[String] = []
+	for entry in [
+		[BoneRulesService.quality_damage_percent_for(bone_id), "damage"],
+		[BoneRulesService.quality_speed_percent_for(bone_id), "speed"],
+		[BoneRulesService.quality_health_percent_for(bone_id), "max HP"],
+		[BoneRulesService.quality_weight_percent_for(bone_id), "weight"],
+	]:
+		var value := float(entry[0])
+		if absf(value) < 0.0005:
+			continue
+		percent_bits.append("%+.0f%% %s" % [value * 100.0, str(entry[1])])
+	if not percent_bits.is_empty():
+		text += "while equipped: " + ", ".join(percent_bits) + "\n"
+	return text
+
+
+func _format_number(value: float) -> String:
+	var text := "%.2f" % value
+	while text.ends_with("0"):
+		text = text.substr(0, text.length() - 1)
+	if text.ends_with("."):
+		text = text.substr(0, text.length() - 1)
+	return text
 
 
 # Compares against whatever is equipped in the same side/slot the hovered
@@ -637,33 +706,43 @@ func _build_inventory_tabs(parent: VBoxContainer) -> void:
 	inventory_filter_label.add_theme_color_override("font_color", Color(0.03, 0.33, 0.38, 1.0))
 	inventory_tabs_container.add_child(inventory_filter_label)
 
-	inventory_filter_dropdown = OptionButton.new()
+	inventory_filter_dropdown = _make_inventory_dropdown()
 	inventory_filter_dropdown.name = "InventoryFilterDropdown"
-	inventory_filter_dropdown.process_mode = Node.PROCESS_MODE_ALWAYS
-	inventory_filter_dropdown.focus_mode = Control.FOCUS_NONE
-	# Match the parchment styling the rest of the panel uses; the stock
-	# OptionButton theme is dark grey and reads as a different application.
-	for state in ["normal", "hover", "pressed", "focus", "disabled"]:
-		var background := Color(1.0, 1.0, 1.0, 0.55)
-		var border := Color(0.87, 0.63, 0.19, 0.85)
-		if state == "hover" or state == "pressed":
-			background = Color(1.0, 1.0, 1.0, 0.78)
-			border = Color(0.0, 0.78, 0.78, 0.85)
-		inventory_filter_dropdown.add_theme_stylebox_override(state, _make_inventory_style(background, border, 1, 0))
-	for color_role in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
-		inventory_filter_dropdown.add_theme_color_override(color_role, Color(0.03, 0.33, 0.38, 1.0))
-
-	var popup := inventory_filter_dropdown.get_popup()
-	popup.add_theme_stylebox_override("panel", _make_inventory_style(Color(0.99, 0.985, 0.955, 0.99), Color(0.87, 0.63, 0.19, 0.96), 2, 0))
-	popup.add_theme_stylebox_override("hover", _make_inventory_style(Color(0.0, 0.78, 0.78, 0.22), Color(0.0, 0.78, 0.78, 0.0), 0, 0))
-	popup.add_theme_color_override("font_color", Color(0.03, 0.33, 0.38, 1.0))
-	popup.add_theme_color_override("font_hover_color", Color(0.03, 0.33, 0.38, 1.0))
-
 	for entry in INVENTORY_FILTER_OPTIONS:
 		inventory_filter_dropdown.add_item(str(entry["text"]))
 		inventory_filter_dropdown.set_item_metadata(inventory_filter_dropdown.item_count - 1, str(entry["category"]))
 	inventory_filter_dropdown.item_selected.connect(_on_inventory_filter_selected)
 	inventory_tabs_container.add_child(inventory_filter_dropdown)
+
+	inventory_quality_label = Label.new()
+	inventory_quality_label.text = "Quality"
+	inventory_quality_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	inventory_quality_label.add_theme_color_override("font_color", Color(0.03, 0.33, 0.38, 1.0))
+	inventory_tabs_container.add_child(inventory_quality_label)
+
+	inventory_quality_dropdown = _make_inventory_dropdown()
+	inventory_quality_dropdown.name = "InventoryQualityDropdown"
+	inventory_quality_dropdown.add_item("All")
+	inventory_quality_dropdown.set_item_metadata(0, "all")
+	for quality_id in BoneQualityService.QUALITY_ORDER:
+		inventory_quality_dropdown.add_item(BoneQualityService.display_name_for(str(quality_id)))
+		inventory_quality_dropdown.set_item_metadata(inventory_quality_dropdown.item_count - 1, str(quality_id))
+	inventory_quality_dropdown.item_selected.connect(_on_inventory_quality_selected)
+	inventory_tabs_container.add_child(inventory_quality_dropdown)
+
+	inventory_sort_label_control = Label.new()
+	inventory_sort_label_control.text = "Sort"
+	inventory_sort_label_control.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	inventory_sort_label_control.add_theme_color_override("font_color", Color(0.03, 0.33, 0.38, 1.0))
+	inventory_tabs_container.add_child(inventory_sort_label_control)
+
+	inventory_sort_dropdown = _make_inventory_dropdown()
+	inventory_sort_dropdown.name = "InventorySortDropdown"
+	for entry in INVENTORY_SORT_OPTIONS:
+		inventory_sort_dropdown.add_item(str(entry["text"]))
+		inventory_sort_dropdown.set_item_metadata(inventory_sort_dropdown.item_count - 1, str(entry["mode"]))
+	inventory_sort_dropdown.item_selected.connect(_on_inventory_sort_selected)
+	inventory_tabs_container.add_child(inventory_sort_dropdown)
 
 	# Builds and Settings stay as they were: they switch the whole panel's
 	# mode, they are not filters over the item grid, so they do not belong in
@@ -680,6 +759,46 @@ func _build_inventory_tabs(parent: VBoxContainer) -> void:
 	end_pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	inventory_tabs_container.add_child(end_pad)
 	_refresh_inventory_tabs()
+
+
+# Shared styling for every dropdown in the panel; the stock OptionButton theme
+# is dark grey and reads as a different application dropped into the parchment.
+func _make_inventory_dropdown() -> OptionButton:
+	var dropdown := OptionButton.new()
+	dropdown.process_mode = Node.PROCESS_MODE_ALWAYS
+	dropdown.focus_mode = Control.FOCUS_NONE
+	for state in ["normal", "hover", "pressed", "focus", "disabled"]:
+		var background := Color(1.0, 1.0, 1.0, 0.55)
+		var border := Color(0.87, 0.63, 0.19, 0.85)
+		if state == "hover" or state == "pressed":
+			background = Color(1.0, 1.0, 1.0, 0.78)
+			border = Color(0.0, 0.78, 0.78, 0.85)
+		dropdown.add_theme_stylebox_override(state, _make_inventory_style(background, border, 1, 0))
+	for color_role in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+		dropdown.add_theme_color_override(color_role, Color(0.03, 0.33, 0.38, 1.0))
+
+	var popup := dropdown.get_popup()
+	popup.add_theme_stylebox_override("panel", _make_inventory_style(Color(0.99, 0.985, 0.955, 0.99), Color(0.87, 0.63, 0.19, 0.96), 2, 0))
+	popup.add_theme_stylebox_override("hover", _make_inventory_style(Color(0.0, 0.78, 0.78, 0.22), Color(0.0, 0.78, 0.78, 0.0), 0, 0))
+	popup.add_theme_color_override("font_color", Color(0.03, 0.33, 0.38, 1.0))
+	popup.add_theme_color_override("font_hover_color", Color(0.03, 0.33, 0.38, 1.0))
+	return dropdown
+
+
+func _on_inventory_quality_selected(index: int) -> void:
+	if inventory_quality_dropdown == null:
+		return
+	inventory_quality_filter = str(inventory_quality_dropdown.get_item_metadata(index))
+	rebuild_item_tiles()
+	update_inventory_ui()
+
+
+func _on_inventory_sort_selected(index: int) -> void:
+	if inventory_sort_dropdown == null:
+		return
+	inventory_sort_mode = str(inventory_sort_dropdown.get_item_metadata(index))
+	rebuild_item_tiles()
+	update_inventory_ui()
 
 
 func _on_inventory_filter_selected(index: int) -> void:
@@ -878,9 +997,20 @@ func _apply_inventory_responsive_layout() -> void:
 	if inventory_filter_label != null:
 		inventory_filter_label.add_theme_font_size_override("font_size", tab_font_size)
 		inventory_filter_label.custom_minimum_size = Vector2(0, tab_height)
-	if inventory_filter_dropdown != null:
-		inventory_filter_dropdown.custom_minimum_size = Vector2(clampf(float(content_width) * 0.16, 130.0, 260.0), float(tab_height))
-		inventory_filter_dropdown.add_theme_font_size_override("font_size", tab_font_size)
+	# Three dropdowns share the row now, so each takes a smaller slice and the
+	# secondary labels drop out first when the row gets tight.
+	var dropdown_width := clampf(float(content_width) * 0.13, 104.0, 210.0)
+	for dropdown in [inventory_filter_dropdown, inventory_quality_dropdown, inventory_sort_dropdown]:
+		if dropdown == null:
+			continue
+		dropdown.custom_minimum_size = Vector2(dropdown_width, float(tab_height))
+		dropdown.add_theme_font_size_override("font_size", tab_font_size)
+	for secondary_label in [inventory_quality_label, inventory_sort_label_control]:
+		if secondary_label == null:
+			continue
+		secondary_label.add_theme_font_size_override("font_size", tab_font_size)
+		secondary_label.custom_minimum_size = Vector2(0, tab_height)
+		secondary_label.visible = not very_compact
 	if inventory_tabs_container != null:
 		inventory_tabs_container.add_theme_constant_override("separation", int(clampf(float(tab_gap) * 0.5, 6.0, 18.0)))
 
@@ -2218,6 +2348,10 @@ func rebuild_item_tiles() -> void:
 		var id := str(bone_id)
 		if not _bone_matches_inventory_category(id):
 			continue
+		# Quality filter stacks on top of the body-slot filter: both must
+		# pass, so "Arms" + "Strong" shows only strong arms.
+		if not _bone_matches_quality_filter(id):
+			continue
 		var equipped_count := int(equipped_counts.get(id, 0))
 		var skipped_count := int(skipped_equipped_counts.get(id, 0))
 		if skipped_count < equipped_count:
@@ -2262,7 +2396,20 @@ func _bone_matches_inventory_category(bone_id: String) -> bool:
 	return EquipmentRulesService.inventory_filter_matches_bone(inventory_category, bone_id)
 
 
+func _bone_matches_quality_filter(bone_id: String) -> bool:
+	if inventory_quality_filter == "all":
+		return true
+	return BoneInstanceService.quality_id_of(bone_id) == inventory_quality_filter
+
+
 func _compare_inventory_items(a: String, b: String) -> bool:
+	if inventory_sort_mode == "quality_asc" or inventory_sort_mode == "quality_desc":
+		var rank_a := BoneQualityService.rank_for(BoneInstanceService.quality_id_of(a))
+		var rank_b := BoneQualityService.rank_for(BoneInstanceService.quality_id_of(b))
+		if rank_a != rank_b:
+			return rank_a < rank_b if inventory_sort_mode == "quality_asc" else rank_a > rank_b
+		# Same tier: fall through to the existing ordering so the grid stays
+		# stable instead of shuffling within a quality band.
 	return EquipmentRulesService.compare_bones_for_inventory(a, b)
 
 
@@ -2292,6 +2439,27 @@ func update_inventory_ui() -> void:
 	text += "   Reach " + str(stats.get("attack_range", 0.0))
 	text += "   Damage " + str(stats.get("attack_damage", 0))
 	text += "   HP " + str(stats.get("health", 0)) + "/" + str(stats.get("max_health", 0)) + "\n"
+	# Percentage modifiers are a SEPARATE mechanism from the quality
+	# multiplier and they move the final numbers, but nothing used to show
+	# them: a piece could add +10% max HP with no visible cause, making the
+	# totals impossible to reconcile by hand. Only non-zero ones are listed,
+	# so the line stays quiet when nothing is modifying anything.
+	var percent_bits: Array[String] = []
+	for entry in [
+		["quality_damage_percent", "Damage"],
+		["quality_speed_percent", "Speed"],
+		["quality_health_percent", "HP"],
+		["quality_weight_percent", "Weight"],
+	]:
+		var value := float(stats.get(str(entry[0]), 0.0))
+		if absf(value) < 0.0005:
+			continue
+		percent_bits.append("%s %+.0f%%" % [str(entry[1]), value * 100.0])
+	var load_penalty := float(stats.get("load_speed_penalty", 0.0))
+	if load_penalty > 0.0005:
+		percent_bits.append("Load -%.0f%% Speed" % (load_penalty * 100.0))
+	if not percent_bits.is_empty():
+		text += "From equipped quality: " + ", ".join(percent_bits) + "\n"
 	if compact_text:
 		text += "Drag to equip. Right-click worn slots to remove."
 	else:
