@@ -58,6 +58,10 @@ func _current_value(id: String) -> float:
 			return float(_player.base_move_speed) if _player != null else 0.0
 		"leap":
 			return float(_animator.ik_leap_height) if _animator != null else 0.0
+		"reach":
+			return float(_animator.ik_stride_reach_boost) if _animator != null else 0.0
+		"stance":
+			return float(_animator.ik_stance_width) if _animator != null else 0.0
 		"rot_x":
 			return float(_animator.whole_body_rotation_deg.x) if _animator != null else 0.0
 		"rot_y":
@@ -82,6 +86,12 @@ func _apply_value(id: String, value: float) -> void:
 		"leap":
 			if _animator != null:
 				_animator.ik_leap_height = value
+		"reach":
+			if _animator != null:
+				_animator.ik_stride_reach_boost = value
+		"stance":
+			if _animator != null:
+				_animator.ik_stance_width = value
 		"rot_x":
 			if _animator != null:
 				_animator.whole_body_rotation_deg.x = value
@@ -147,6 +157,8 @@ func _build_ui() -> void:
 
 	_add_row(box, "speed", "Walk speed (m/s)", 0.5, 6.0, 0.05)
 	_add_row(box, "leap", "Step jump height (m)", 0.0, 0.35, 0.005)
+	_add_row(box, "reach", "Leg forward reach (m)", 0.0, 0.6, 0.01)
+	_add_row(box, "stance", "Stance width (m)", 0.0, 0.3, 0.01)
 	_add_row(box, "rot_x", "Body pitch X (deg, - = back)", -60.0, 60.0, 0.5)
 	_add_row(box, "rot_y", "Body yaw Y (deg)", -180.0, 180.0, 1.0)
 	_add_row(box, "rot_z", "Body roll Z (deg)", -60.0, 60.0, 0.5)

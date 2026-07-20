@@ -115,6 +115,50 @@
 - `Orb`
 - `Label3D`
 
+## scenes/locomotion_combat.tscn
+
+### Attached Scripts
+- `scripts/locomotion/locomotion_combat.gd`
+
+### Instanced Scenes
+- none
+
+### Nodes
+- `LocomotionCombat`
+
+## scenes/locomotion_gallery.tscn
+
+### Attached Scripts
+- `scripts/locomotion/locomotion_gallery.gd`
+
+### Instanced Scenes
+- none
+
+### Nodes
+- `LocomotionGallery`
+
+## scenes/locomotion_lab.tscn
+
+### Attached Scripts
+- `scripts/locomotion/locomotion_lab.gd`
+
+### Instanced Scenes
+- none
+
+### Nodes
+- `LocomotionLab`
+
+## scenes/locomotion_walk.tscn
+
+### Attached Scripts
+- `scripts/locomotion/locomotion_walk.gd`
+
+### Instanced Scenes
+- none
+
+### Nodes
+- `LocomotionWalk`
+
 ## scenes/main.tscn
 
 ### Attached Scripts

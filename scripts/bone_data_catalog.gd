@@ -225,9 +225,9 @@ const DEFINITIONS := {
 			"score": 0.15,
 		},
 		"player_stats": {
-			# Speed bonuses are proportional to base_move_speed (was 6.0, now 2.6
-			# for the leap gait) — kept at the same +50%-of-base the design had.
-			"move_speed": 1.3,
+			# Speed bonuses are proportional to base_move_speed (6.0 originally,
+			# now 1.4 for the leap gait) — kept at the +50%-of-base the design had.
+			"move_speed": 0.7,
 			"max_health": 1,
 		},
 		"enemy_stats": {
@@ -289,7 +289,7 @@ const DEFINITIONS := {
 			"score": 0.25,
 		},
 		"player_stats": {
-			"move_speed": -0.65,  # rescaled with base_move_speed 6.0 -> 2.6
+			"move_speed": -0.35,  # rescaled with base_move_speed 6.0 -> 1.4
 			"attack_damage": 2,
 			"max_health": 2,
 		},
@@ -378,7 +378,7 @@ const DEFINITIONS := {
 			"description": "A bit of everything: some extra reach and speed.",
 		},
 		"player_stats": {
-			"move_speed": 0.65,  # rescaled with base_move_speed 6.0 -> 2.6
+			"move_speed": 0.35,  # rescaled with base_move_speed 6.0 -> 1.4
 			"attack_range": 1.0,
 			"max_health": 1,
 		},

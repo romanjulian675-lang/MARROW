@@ -21,6 +21,7 @@ config/features=PackedStringArray("4.7")
 [autoload]
 
 GameEvents="*res://scripts/game_events.gd"
+LocomotionDemoLauncher="*res://scripts/locomotion_demo_launcher.gd"
 
 [display]
 
@@ -2163,6 +2164,427 @@ funcional.
 - drops
 - equipamiento
 
+## docs/generic_locomotion.md
+
+# MARROW Procedural Animation — plan & progress
+
+A ground-up **morphology-driven** procedural animation system: it accepts a
+creature assembled at runtime from interchangeable, differently-proportioned,
+detachable rigid parts and produces locomotion, balance, attacks and damage
+reactions with NO authored clips and no fixed rig. It replaces — for these
+bodies — the hardcoded biped in `scripts/rig/procedural_player_animator.gd`,
+which stays as-is and keeps driving the current player while this grows beside it
+under `scripts/locomotion/`, built and tested stage by stage. A later milestone
+adds an adapter so the shipping rig can feed this system.
+
+## Authoritative design — the Morphology-Driven TDD
+
+The spec is **`Morphology_Driven_Procedural_Animation_Godot.pdf`** (Technical
+Design Document, 2026-07-18; the user's copy lives in `~/Downloads/`). This
+document tracks our implementation against it. Extract the PDF's text with
+`python3` + `pypdf` (poppler / `pdftotext` are not installed on this machine).
+
+Its load-bearing decisions, which everything here follows:
+
+- **The body is a runtime graph; the connected component containing the active
+  head IS the character.** Identity and control belong to a persistent **Core
+  Agent** represented by the head, not to the torso.
+- **Pipeline:** compile the creature into a kinematic body graph → discover
+  viable support configurations → schedule contacts → solve balance and root
+  pose → solve each chain with topology-appropriate IK → switch disconnected
+  components to physics. **Possession always follows the head.**
+- **Animate tasks, not poses.** Never store "the knee is at 42°"; store "the foot
+  must reach this contact while the knee bends toward this pole within its
+  limits." IK/constraint solvers turn tasks into joint transforms valid for the
+  *current* body.
+- **The custom BodyGraph is authoritative.** Godot's `Skeleton3D`,
+  `TwoBoneIK3D`, `FABRIK3D`, `SkeletonModifier3D` may be used as calculation
+  helpers, but must not define ownership or anatomy.
+
+## Our modules ↔ TDD components
+
+Our headless `RefCounted` classes implement the TDD's compiler/planner concepts.
+(Renaming the classes to the TDD's names is a deferred mechanical refactor; the
+concepts map 1:1 today.)
+
+| TDD component | Our class (`scripts/locomotion/`) | Status |
+|---|---|---|
+| BodyGraph (parts, links, traversal) | `body_graph.gd` + `body_part.gd` | ✅ (tree; no cut/components yet) |
+| MorphologyCompiler / CompiledMorphology | `body_measure.gd` | ✅ (mass, COM, chains, reach, joint limits) |
+| Support-polygon / stability math | `geom2d.gd` | ✅ |
+| StanceSelector | `stance_generator.gd` (+ `resting_stance`) | ✅ (margin scoring; comfort/energy terms pending) |
+| ContactPlanner (foot lock) | `contact_lock.gd` | ✅ (lock + reach bookkeeping) |
+| GenericIKController | `chain_ik.gd` | ✅ (hinge / two-bone / FABRIK) |
+| GaitGenerator / oscillators | `gait_oscillator.gd` + `gait_controller.gd` + `gait_pattern.gd` | ✅ (walk / trot / tripod / wave) |
+| BalanceController / RootPoseSolver | `gait_controller.gd` + `root_pose_solver.gd` | ✅ (lateral sway + pitch/roll/height from contacts) |
+| DetachmentManager / ConnectedComponentFinder | `body_graph.gd` (components/subgraph) + `detachment.gd` | ✅ cut + recompile (physics hand-off = scene layer) |
+| CoreAgent / PossessionController | — | ◻ M8 |
+| Attack task system | `attack_controller.gd` | ✅ (task-space paths, reach policy; hit detection = scene layer) |
+| Debug visualization | `locomotion_gallery.gd` + `locomotion_zoo.gd` | ✅ (stances, support polygons, CoM) |
+
+## Roadmap — TDD milestones
+
+This supersedes the earlier ad-hoc "12 stages" (whose numbers the code/tests
+still use; the mapping is noted per milestone).
+
+| Milestone | Deliverable | Our coverage | Status |
+|---|---|---|---|
+| **M1 Modular assembly** | Part scenes, sockets, connection validation, graph traversal | stages 1–2 topology | ✅ (pure-class; scene parts + `AttachmentLink`s deferred to M7) |
+| **M2 Compilation** | Measure chains, mass, COM, reach, supports; debug viz | stage 2 + gallery | ✅ |
+| **M3 Static stance** | Generate & score stable biped + quadruped poses | stage 3 | ✅ |
+| **M4 One procedural leg** | Lock one contact, solve one chain, place rigid visible segments | stage 4 (lock ✅) + stage 5 (IK ✅) | ✅ |
+| **M5 Biped locomotion** | Alternating gait phase, contact prediction, root/pelvis correction, turning | stage 6 (walk + terrain + turning ✅, all tested) | ✅ |
+| **M6 Generalized supports** | 4+ limbs, quadruped walk/trot, topology-independent oscillator sets | stages 7-9 (walk/trot/tripod/wave + torso pose ✅) | ✅ |
+| **M7 Damage & detachment** | Graph cuts, physics transfer, collision grace, live recompilation | `detachment.gd` (cut + recompile ✅; physics/possession = scene layer) | ◨ |
+| **M8 Head possession** | Detach head, head-only movement, compatible-socket search, reattachment | (new — not in old plan) | ◻ |
+| **M9 Procedural attacks** | Task-space attack paths, root stepping, hit windows, missing-limb fallback | `attack_controller.gd` (paths + reach + impact ✅; hit/damage wiring = scene layer) | ◨ |
+| **M10 Polish & scale** | Emergency reactions, LOD, pooling, networking, save/load, tools | stage 12 | ◻ |
+
+**Minimum viable prototype** (TDD §16.1): two torso types, three interchangeable
+limb lengths, automatic biped/quadruped stance selection, one walk gait each, one
+severable limb, head detachment, and one reattachable body. Prove topology
+changes recompile locomotion without authored clips — *before* chasing every
+creature family or advanced physics.
+
+## Key design decisions carried from the TDD
+
+- **IK by topology (§8):** 1 segment → direct/hinge; 2 → analytical two-bone IK
+  with a **pole target**; 3+ → constrained CCD / FABRIK; spine/tail → spline or
+  multi-joint iterative. Clamp the target distance to `[|a−b|, a+b]`; never
+  silently stretch a part unless it declares scaling.
+- **Avoid singular fully-extended poses.** Derive a stable pole from the socket
+  bend axis + torso orientation + previous-frame direction and smooth it so knees
+  don't flip. Addressed in the gallery via `StanceGenerator`'s `reach_fraction`
+  (stand at 90% of full reach → the two-segment legs land on a bent knee instead
+  of the singular straight pose). The default is still 1.0; a gait/comfort profile
+  lowers it.
+- **Visible-segment placement (§4.4):** put the rigid mesh at the midpoint of two
+  solved joints, orient it start→end, scale ONLY along its length axis and only if
+  allowed. Prefer moving joints to the true socket-to-socket length over stretching
+  meshes. (The gallery already draws bones this way.)
+- **Attached vs detached physics (§10.3):** an attached part is driven by the
+  solver and contributes to the assembled COM; a detached part/subassembly becomes
+  a `RigidBody3D` under gravity/impulse. Detachment = deactivate a graph edge →
+  find connected components → transfer velocity+impulse → recompile the head's
+  component → new stance or collapse.
+- **Possession rule (§11.1):** the connected component containing the Core Agent's
+  head receives input, camera, abilities and identity — this one rule covers head
+  on a biped, on a quadruped, on a single arm, or alone.
+- **Stance scoring (§6.2):** the full score is
+  `stability_margin·w + joint_comfort·w + ground_clearance·w + orientation_pref −
+  energy_cost − joint_limit_penalty − self_collision_penalty`. We currently score
+  on margin + tiebreaks only; the other terms are a natural M3 enrichment.
+- **Locomotion families (§6.4):** biped, quadruped, multi-leg, hop, crawl,
+  serpentine, rolling, head-only. The stance selector chooses a *compatible*
+  family rather than forcing one formula. (Our snake is the serpentine seed.)
+
+---
+
+# Built so far
+
+## M1 / stage 1 (done) — the body graph
+- **`body_part.gd` (BodyPart)** — one rigid box: `size`, `mass`, `center_offset`,
+  and named **sockets** (each a `Transform3D` frame in the part's own origin
+  space). Carries NO notion of "arm"/"leg" — a torso is a part with five sockets,
+  a leg a part with two (`root` mount, `tip` endpoint).
+- **`body_graph.gd` (BodyGraph)** — parts + **joints**. A joint pins a child's
+  mount socket onto a parent's socket; `assemble(root_transform)` walks the tree
+  and returns a world `Transform3D` per part:
+  `child_world = parent_world * parentSocket * childSocket⁻¹`. `validate()`
+  rejects no/unknown root, two parents, orphan, cycle, missing socket. Tree-only
+  for now; closed loops and the `AttachmentLink`/`cut_link`/`connected_component`
+  machinery arrive with **M7 detachment**.
+- **Tested**: `test_body_graph.gd` builds a biped and quadruped from the SAME
+  assembler and checks placement, coplanar stances, rotated-socket propagation and
+  all four validation failures. `BODY_GRAPH_TEST: ALL PASS`.
+
+## M2 / stage 2 (done) — compilation / measure
+- **Model extension**: `BodyPart.endpoints` (`mark_endpoint()`), and joints carry
+  a `dof` Array — `{axis, min, max}` rotational freedoms in the parent-socket
+  frame; `[]` = rigid weld. Helpers `BodyGraph.hinge` and `.ball`. `assemble()`
+  uses the rest pose (all angles 0); dof is metadata until the IK solver drives it.
+- **Topology queries**: `parent_joint_of`, `leaves`, `joints_to`, `endpoints_world`.
+- **`body_measure.gd` (BodyMeasure)** — name-agnostic `total_mass()`,
+  `center_of_mass()`, `chains()` (per endpoint: `reach_rest`,
+  `reach_max` = Σ segment lengths, `limb_mass`, `limb_com`, per-joint DOF/limits)
+  and `describe()`. This is the TDD's MorphologyCompiler.
+- **Tested**: `test_body_measure.gd` — 2-segment legs (thigh+shin+knee), a 50°
+  bent knee proves `reach_rest < reach_max`. `BODY_MEASURE_TEST: ALL PASS`.
+
+## M3 / stage 3 (done) — static stance selection
+- **`geom2d.gd` (Geom2d)** — `convex_hull` (monotone chain), `signed_margin`
+  (positive inside a convex CCW polygon; handles 1-/2-point hulls), `area`,
+  `centroid`.
+- **`stance_generator.gd` (StanceGenerator / StanceSelector)** — the torso stands
+  at height H; each endpoint drops to the ground within reach and splays outward by
+  fraction s. It sweeps (H, s), builds the support polygon from foot patches
+  (`contact_radius` 0.08), projects the CoM, and keeps the largest balance MARGIN.
+  **Tiebreaks: least spread, then tallest torso** — a biped's margin is
+  foot-radius-capped fore-aft so spread AND height tie; least-spread stops the
+  splits, tallest-torso stands it at near-full extension (valid for rigid legs;
+  see the ⚠ above — bent knees arrive with M4 IK). A quadruped's margin grows with
+  spread, so it still splays wide. **`reach_fraction`** sets how upright it stands
+  (leg usage) and **`stance_width`** (optional; default lets the search choose)
+  fixes the lateral splay as a fraction of the reach available at that height — two
+  independent knobs, verified by `test_stance_generator.gd` (same height, splay
+  0.46→0.74).
+- **`resting_stance()`** (static) — the LIMBLESS family (snake): drop the body
+  until its lowest endpoints touch, run the SAME hull/margin check with no
+  height/spread search. Same return shape as `generate()` plus a centring
+  `root_offset`.
+- **Tested**: `test_stance_generator.gd` — stable hip-width biped (+0.08), wide
+  4-corner quadruped (+0.45), stub legs → none, off-centre load → `unstable`
+  (−0.31). `STANCE_TEST: ALL PASS`.
+
+## M4 / stage 4 (done — the lock half) — contact locking
+- **`contact_lock.gd` (ContactLock / ContactPlanner)** — once a stance plants the
+  endpoints, their world positions are LOCKED. The torso can sway, bob, lean and
+  turn while every foot stays exactly put; it reports, per proposed torso pose,
+  whether each limb can still REACH its contact and how much reach it has to spare
+  (the signal the gait scheduler reads to decide when a foot must be lifted). It
+  does NOT bend the legs — that's the IK half (below).
+- **Rests on one fact**: a limb's base is a socket on the ROOT part, so
+  `hip_world = root_transform * base_local` — no re-assembly as the torso moves.
+  Per contact: `hip`, `foot` (locked), `dist`, `margin` (= reach_max − dist),
+  `strain` (= dist / reach_max), `reachable`; per body: `all_reachable` + tightest
+  limb. `max_travel(dir)` bisects how far the torso can move before a lock breaks;
+  `set_contact()` re-plants a foot after a step.
+- **Tested**: `test_contact_lock.gd` — under translation feet stay fixed and hips
+  move by exactly the same vector; crouch adds margin, over-extension breaks a
+  lock; the standing biped crouches ~1.24 m but rises ~0.001 m and sways ±0.035 m
+  (full-extension); yaw keeps feet planted; a quadruped locks four the same way.
+  `CONTACT_LOCK_TEST: ALL PASS`.
+
+## M4 (done — the IK half) / stage 5 — generic chain IK
+- **`chain_ik.gd` (ChainIK)** — bend a limb so its tip reaches a target, solving by
+  TOPOLOGY: 1 segment → hinge (point at target); 2 → **analytical two-bone IK with
+  a pole target** (deterministic, exact); 3+ → **FABRIK** (pole-seeded iterative).
+  Pure static math on world points + segment lengths — knows nothing about
+  BodyGraph, so `test_chain_ik.gd` unit-tests it directly. Reachability per TDD
+  §8.2: a target beyond `a+b` straightens the chain toward it, a target too close
+  folds as far as it can; segments never stretch (verified to ±1e-4).
+- **Fed by** `BodyMeasure.chains()[i].segments` — the per-segment lengths (thigh,
+  shin, …) added this stage; the hip is the chain `base`.
+- **Two-segment legs**: `LocomotionZoo.add_leg()` now builds thigh + shin + a
+  hinged knee (same total reach, so the stance search is unchanged). The gallery
+  stands each creature at `reach_fraction` 0.9 and runs `ChainIK` from hip to
+  planted foot with a forward pole, drawing one bone per solved segment plus a
+  knee joint — so **the biped, quadruped and hexapod now stand on visibly bent
+  knees** instead of straight sticks.
+- **Tested**: `test_chain_ik.gd` (two-bone exact + clamped + pole flips the knee
+  side + mirror symmetry; 1-segment hinge; 3-segment FABRIK converges) →
+  `CHAIN_IK_TEST: ALL PASS`; and `test_gallery.gd` now asserts every leg's IK
+  reaches its planted foot. Re-run:
+  `<godot> --headless --path . --script res://scripts/locomotion/test_chain_ik.gd`
+
+## M5 (walk done) / stage 6 — gait: it walks
+- **`gait_oscillator.gd` (GaitOscillator)** — one normalised phase per support
+  limb (TDD §7.4). A global phase advances with cadence; each limb reads it through
+  its own OFFSET and is in STANCE for `duty` of the cycle, then SWING. Coupled
+  offsets ARE the gait: biped walk = two limbs half a cycle apart; quadruped trot =
+  diagonal pairs together — no recorded poses.
+- **`gait_controller.gd` (GaitController)** — the per-frame walk (TDD §7). Planted
+  feet are **world-locked** (no sliding); a swing foot arcs (`sin` lift, smoothed
+  lerp) to the next predicted plant **ahead** of the body; the root advances by the
+  desired velocity and **sways laterally toward its support** for balance; every leg
+  is posed by `ChainIK`. All distances scale from morphology (§7.5): `stride` and
+  `step_height` from reach. Not biped-specific — hand it N offsets and it schedules
+  N supports (that's how the quadruped trots).
+- **Bug the test caught**: feet were planting at the last *sampled* swing point (a
+  discrete `t≈0.9`, ~3 cm up) and then floating through stance. Fixed by planting at
+  the planned **landing** (exactly on the ground).
+- **Tested** (`test_gait.gd`): walking a biped 5 s — at least one foot always down,
+  planted feet never move (0 slip), planted feet exactly on the ground, swing feet
+  lift to exactly the step height, the body advances at the commanded 0.6 m/s, and
+  no foot ever leaves reach. `GAIT_TEST: ALL PASS`. Re-run:
+  `<godot> --headless --path . --script res://scripts/locomotion/test_gait.gd`
+- **Terrain-following** (M5 refinement): `GaitController.set_ground(height_fn)` drops
+  each plant onto the terrain and re-projects the stance; the `RootPoseSolver` pitch
+  built in M6 then tilts the torso to the slope. `test_terrain.gd` walks a quadruped
+  up a 0.12 ramp — it **climbs 0.39 m over 3 m, feet exactly on the slope, torso
+  nose-up (0.11 rad), no slide, still 3+ supported**. `TERRAIN_TEST: ALL PASS`.
+- **Turning** (M5 finish): `GaitController.set_intent(speed, turn_rate)` turns a
+  heading over time; the body walks where it faces, feet plant under the turned hips
+  (`facing * rest_offset`), and `RootPoseSolver` yaws the torso to match. `test_turning.gd`
+  turns a walking quadruped ~100°: the path curves, the torso yaws, feet don't slide,
+  and it stays 3+ supported and in reach. `TURNING_TEST: ALL PASS`.
+- **Only longer-horizon trajectory prediction** remains as an M5 nicety; walk,
+  terrain and turning are done.
+
+## M6 (done) / stages 7-9 — generalized supports & torso pose
+- **`gait_pattern.gd` (GaitPattern)** — classify each leg by side and column
+  (front/mid/rear) from its ground position, then emit the phase offsets + duty for
+  a FAMILY: `biped_walk`, `quadruped_walk` (lateral-sequence, statically stable —
+  duty 0.78, one foot swinging at a time → 3 always down), `quadruped_trot`
+  (diagonal pairs), `tripod` (alternating insect gait), and a metachronal `wave`
+  for any N. `recommend()` picks by leg count. Coupled offsets are the only thing
+  that differs between families.
+- **`root_pose_solver.gd` (RootPoseSolver)** — derive the torso pose from the
+  PLANTED contacts (TDD §7.6): height rides the mean contact; PITCH comes from the
+  front-vs-rear contact groups, ROLL from right-vs-left. Level on flat ground, tilts
+  on a slope/step. Wired into `GaitController` (a lifted swing foot is excluded, so
+  it can't tilt the body).
+- **Tuning learned**: a walking quadruped stands more upright than the splayed
+  max-stability stance (`reach_fraction` ~0.72) with a shorter stride, and a
+  statically stable body barely weight-shifts. That last point is now **automatic**:
+  `GaitController` scales the sway by support count (`_balance_base * (3 − planted)/2`),
+  so a biped in single support swings fully and a 3+-foot body ~0 — no manual
+  `balance_gain` to mis-set. (Stance splay is now its own `stance_width` knob,
+  independent of `reach_fraction`; see Stage 3.)
+- **Tested**: `test_gait_pattern.gd` — classification; each family's support count
+  (walk 3+, trot 2, tripod 3+); and a live quadruped WALK and hexapod TRIPOD (both
+  stay 3+ supported, never slide, keep feet in reach — max strain 0.92 / 0.86 — and
+  hold the torso level). `test_root_pose.gd` — flat→level, front-higher→nose-up,
+  right-higher→roll, height rides the mean. Both `ALL PASS`.
+
+## M7 (core done) — damage, detachment & recompilation
+- **`body_graph.gd`** grew `connected_components(cut_joint)`, `component_containing`,
+  and `subgraph(part_ids, root, cut_joint)` — treat joints as undirected
+  attachments, so cutting one edge of the tree yields exactly two connected groups,
+  and a group can be rebuilt into a fresh standalone `BodyGraph`.
+- **`detachment.gd` (Detachment)** — `sever(graph, joint, core_id)` (TDD §10): split
+  the graph, keep the component holding the CORE part (the head — identity, §11) as
+  `controlled`, recompile it (fresh sub-graph + a new `StanceGenerator` pass →
+  `standing` or `collapsed`), and hand every other component back as `detached`.
+  `joint_attaching(part)` lets a caller sever a limb by name.
+- **Tested** (`test_detachment.gd`): a biped that loses a leg keeps the head but
+  **collapses** (can't stand on one); when the **head detaches**, control follows
+  the head (a headless body is just `detached` debris, no longer the character); and
+  a **quadruped that loses a leg recompiles into a stable tripod** (fresh stance,
+  margin +0.14). `DETACHMENT_TEST: ALL PASS`.
+- **Deferred to the scene/node layer**: turning detached components into
+  `RigidBody3D` physics (gravity, inherited velocity, hit impulse), collision grace,
+  and transferring player possession — those need the node architecture (§12), not
+  the pure-`RefCounted` core. The graph "brain" of M7 is done and headless-tested.
+
+## M9 (core done) — procedural attacks
+- **Manipulation effectors**: `BodyPart.manipulators` (a hand) parallel to support
+  `endpoints` (a foot) — `graph.manipulators_world()`, `BodyMeasure.manipulation_chains()`.
+  Hands are reached by attacks but **never planted**, so an armed biped still stands
+  on its two feet. `LocomotionZoo.add_arm` / `biped_with_arms(arm_len)`.
+- **`attack_controller.gd` (AttackController)** — an attack is a TASK-SPACE path, not
+  a clip (TDD §9): the hand runs **wind-up → strike → follow-through** in a frame
+  aimed at the target, sampled by phase and fed to `ChainIK`. `plan()` is the reach
+  policy — hit in place, or report the `root_step` needed to close the distance;
+  `sample()` gives the hand target, the **impact window**, and a torso lunge.
+  `pick_chain()` selects the longest-reach hand, or returns none so a body without a
+  hand falls back. Everything scales from morphology: a long arm hits what a short
+  arm must step toward.
+- **Tested** (`test_attack.gd`): hands don't bear weight; reach policy (in-reach vs a
+  0.95 m root step); the swing winds up high & back and lands on the target; the
+  impact window opens only at the strike; arm IK reaches every point on the path
+  (err 0.0); and long-arm-hits / short-arm-steps. `ATTACK_TEST: ALL PASS`.
+- **Deferred to the scene layer**: actual hit detection / sever damage during the
+  impact window, and weapon meshes — those need the node architecture (§12).
+
+## Watch it walk — the walk demo
+`scenes/locomotion_walk.tscn`. In a running build press **6** anywhere to open it
+(the `LocomotionDemoLauncher` autoload, `scripts/locomotion_demo_launcher.gd`);
+**Esc** returns to the main menu, **R** resets. From the editor you can also open
+the scene and press F6. A biped WALKS, a quadruped WALKS (statically stable), and a
+hexapod does a TRIPOD gait — all across a striped ground from the SAME
+`GaitController` + `GaitPattern`, differing only in family/offsets; swing feet glow
+green, planted feet are amber, and the side-view camera tracks them.
+
+Controls note: key **6** is a global demo hotkey, so the dummy testing
+environment's ranged-enemy spawn moved from 6 to **7** (`testing_environment.gd`),
+losing nothing. Headless scene-loads contend with an open editor's import lock, so
+the walk *logic* is verified by `test_gait.gd`, not a scene smoke.
+
+## Tuning it — the locomotion lab
+`scenes/locomotion_lab.tscn` — in a running build press **8** (LocomotionDemoLauncher).
+One creature walks while a live menu (top-right) exposes **every M2–M6 variable** and a
+readout (top-left) shows the consequences: measured reach/mass (M2), the chosen stance's
+height/margin/foot-count (M3), and the live support count / max reach strain / heading
+(M5–M6). **Tab** hides the menu, **Esc** returns, **R** resets. The whole variable set is
+the `SPEC` array at the top of `scripts/locomotion/locomotion_lab.gd` — the single place
+to add or drop a knob:
+- **M2 morphology**: creature (biped/quadruped/hexapod), leg_length.
+- **M3 stance**: reach_fraction (height), **stance_width** (lateral splay, independent of
+  height), contact_radius (foot patch).
+- **M5 gait**: speed, turn_rate, stride_ratio, step_ratio, duty. *(Balance is now automatic —
+  the sway is scaled by support count, so a biped in single support swings fully and a
+  statically-stable quadruped barely sways; no manual knob.)*
+- **M6**: family (auto / walk / trot / tripod / wave), slope (terrain).
+
+Motion knobs (speed, turn_rate) apply live; structural ones re-stance and rebuild without
+teleporting the creature. The variable set has been cleaned up from the first draft:
+`stance_width` was **added** (previously `reach_fraction` conflated height and splay);
+`balance_gain` was **removed** as a manual knob (now auto). `contact_radius` is kept but is a
+weak knob for wide bases (it's the biped's whole margin, though). A cadence decoupled from
+speed was considered and **skipped** — `stride_ratio` already trades step length for frequency
+at a fixed speed.
+
+### Gotcha: a short stride makes the legs look GLUED to the ground
+Cadence is derived (`speed / stride`), so a **short stride means a high cadence and a
+very brief swing**. The quadruped demo originally used `stride_ratio` 0.28 → stride
+0.14 m → 3.6 Hz → each swing lasted **3.7 frames** at 60 fps: the foot did lift 8 cm,
+but too briefly to see, so the legs read as glued. (The hexapod was the same at 5.6
+frames; the biped was fine at 9.6.)
+
+The stride couldn't simply be lengthened — the max-stability stance splays feet near
+the reach limit, so a longer stride pushed them out of reach. The fix is
+**`stance_width`**: rein the splay in (0.40) and the feet sit under the body, freeing
+fore-aft room for a long stride. Demo/lab walkers now use `reach_fraction` 0.80,
+`stance_width` 0.40, `stride_ratio` 0.75, `step_ratio` 0.28 → **11 frames of swing for
+the quadruped, 22 for the hexapod**, larger foot lift (0.14 m), *lower* strain (0.89)
+and a *better* stability margin than before. `test_gait_pattern.gd` now asserts
+swing ≥ 8 frames and that feet visibly leave the ground, so this can't regress.
+
+## Hitting things — the combat lab (action & reaction)
+`scenes/locomotion_combat.tscn` — press **9** in a running build. An armed biped
+swings a task-space attack at a receiver; at the impact window **the hand's world
+position IS the contact point**.
+
+- **`impact_response.gd` (ImpactResponse)** — an impulse at a contact point kicks a
+  spring-damper that offsets a body's root: LINEAR knockback from the impulse, and
+  ANGULAR tilt/twist from the torque **`r × F` about the centre of mass**. So *where*
+  the blow lands shapes the motion — high hit → pitches away, side hit → twists, hit
+  through the CoM → pure knockback — then it decays back to neutral (flinch → recover).
+  Scales with morphology via `BodyMeasure.total_mass()` and the new
+  `inertia_about_com()` (Σ m·r², TDD §4.3 "inertia hints").
+- **Action AND reaction**: the receiver takes `+impulse` and the attacker takes
+  `−impulse` at the same contact point (Newton's third law), each through its own
+  `ImpactResponse`, so recoil is free and scaled by the attacker's own mass.
+- **Tested** (`test_impact.gd`): a high hit pitches the top the way of the push
+  (+0.385 rad), a side hit yaws instead, a CoM hit rotates ~0 but still knocks back,
+  a 4× heavier body moves 4× less, the attacker recoils opposite, and it settles.
+  `IMPACT_TEST: ALL PASS`.
+- **Menu** (Space: strike · A: auto-repeat · Tab: hide · R: reset): aim
+  (`target_height` / `target_side` / `target_distance` — move these to see the
+  contact point change the reaction), attack (style, duration, impulse), receiver
+  reaction (knockback/torque scale, stiffness, damping) and attacker `recoil_scale`.
+- **Save / bake** → `res://data/locomotion_profiles/`:
+  - **Save profile (.json)** — the tuned numbers, reusable and morphology-independent
+    (the motion is regenerated procedurally on any body). This is the real output.
+  - **Bake last strike (.tres)** — records the strike into a Godot `Animation` with
+    position/rotation tracks per part, for inspection or export. ⚠ A baked clip is
+    tied to the exact body it was recorded on and breaks on different proportions or
+    after limb loss — the thing this system exists to avoid. Use it as a reference,
+    not as the pipeline.
+
+## Viewing it — the locomotion gallery
+`scenes/locomotion_gallery.tscn` — press **F6** (Play Scene). For every creature
+in `locomotion_zoo.gd` it runs the real StanceSelector and draws, per ground
+tile: parts as their assembled boxes, each leg as a bone from hip to planted foot,
+the support polygon, foot patches, and the CoM plumb line — **green inside the
+base (stable), red outside (tips over)**. Biped, quadruped and hexapod stand from
+the SAME code; a **snake** (curved 10-segment chain, no legs) rests on its belly;
+a biped with a heavy off-centre boom reads red. Legs are two-segment (thigh +
+shin) and solved with `ChainIK`, so knees bend from hip to planted foot. Data-layer
+smoke test:
+`<godot> --headless --path . --script res://scripts/locomotion/test_gallery.gd`
+(`GALLERY_TEST: ALL PASS`).
+
+### Conventions later milestones rely on
+- A part's ORIGIN is its own local (0,0,0); `size` is the full box centred at
+  `center_offset`. Sockets and CoM are all in that origin frame, so a part is
+  self-describing and reusable wherever it is socketed.
+- Endpoint sockets (a leg's `tip`) are the contact candidates the stance selector
+  plants and the contact planner locks.
+- All new modules are pure `RefCounted` and headless-testable; the shipping
+  animator is never touched.
+
 ## docs/godot_signal_guidelines.md
 
 # Godot Signal Guidelines
@@ -3063,12 +3485,185 @@ with **4** (Esc or 4 closes; the testing environment's ranged-enemy spawn moved
 from 4 to 6 to free the key) and live-edits the most-tuned values without
 hunting exports: walk speed (`base_move_speed`, routed through
 `recalculate_player_stats()` so bone bonuses keep stacking), step jump height
-(`ik_leap_height`), and the whole-body rotation on all three axes
+(`ik_leap_height`), leg forward reach (`ik_stride_reach_boost`), stance
+width (`ik_stance_width`), and the whole-body rotation on all three axes
 (`whole_body_rotation_deg`, a new animator export applied to the rig node —
 zero for enemies, guarded so their transform never dirties). Values are LIVE
 only — "Reset to defaults" restores what the scene loaded with; to make a value
 permanent, copy it into the export/scene. The mouse is released while the menu
 is open and re-captured on close.
+
+## Running spine arch (waist vertical, chest pitched forward)
+Author-directed 2026-07-16: *"make the waist be a little more vertical than the
+chest so there is an arch, when moving or running."* The spine has two visible
+segments: the `body` socket carries the ABDOMEN (the waist region), and its child
+`waist_joint` carries the CHEST — so **`waist_joint.rotation.x` IS the
+chest-relative-to-waist differential, i.e. the arch**. `run_arch_deg` (20) adds a
+steady FORWARD chest pitch through `_waist_target_angle`, scaled by speed_ratio
+so it is 0 when idle and grows into the run; the abdomen (`body` socket) stays
+vertical because `torso_lean_amount` is 0 on the player. Measured: STAND
+waist +13.9° / chest +13.9° (idle guard leans the whole torso together, no arch);
+**WALK waist +0.0° / chest +9.8°; RUN waist +0.0° / chest +8.1°** — the chest sits
+~8-10° forward of the vertical waist, consistently (never dips back), 0.0% skate.
+The old `waist_bend_lean` back-tilt (−0.08, from the superseded "tilt back"
+request) is now 0. `ik_leap_pitch_up_deg` was gentled 32→20 so the push-off
+bounce no longer swings the chest back past the steady arch — the leap cycle is
+preserved, just re-centred forward. `waist_bend_limit` raised 0.35→0.55 rad for
+headroom. Gated on the waist joint, so enemies (no waist) are untouched.
+
+## Smooth brake — feet do not fuss when stopping
+Author-reported 2026-07-16: *"smooth out the brake on moving forward, feet adjust
+too much."* Trace of a stop showed the feet re-centring AFTER the body halted: a
+settling step plus the underdamped magnet overshooting the now-still target and
+springing back. Two fixes:
+- **Settle SLIDE not step** (`_ik_update_steps`): below `ik_idle_settle_speed`
+  (0.22) each planted foot gently LERPs its plant toward the idle anchor
+  (`ik_idle_settle_rate` 5) instead of the trigger firing a discrete adjustment
+  step — the magnet just follows the drifting plant. Settling steps per stop
+  3 → 1. The idle step-trigger could then stay loose (0.14).
+- **Speed-scaled magnet damping**: the moving spring is underdamped (bouncy,
+  `ik_magnet_damping` 20) which OVERSHOT the stopped target. `_ik_magnet_foot`
+  now blends toward `ik_magnet_damping_idle` (46, ~critical) as speed_ratio
+  falls, so the stop settles without oscillation while the walk keeps its bounce.
+Measured: brake post-stop peak foot-move 0.034 → 0.020-0.024, overshoot
+direction-reversals → 0, walk bounce preserved (0.077), walk skate still 0%.
+
+**Direction changes** (author follow-up "fix the change in direction in feet")
+whip the foot targets to the new heading; the feet chased at ~2× normal speed
+(reverse 0.152, 90-turn 0.140 vs steady 0.094). Two more pieces:
+- A **transition detector** (`_ik_transition`): the magnet damping now blends to
+  critical when the move velocity CHANGES sharply (brake, turn, reversal — not
+  just when slow), spiking on the change and decaying over the catch-up
+  (`ik_magnet_transition_thresh`/`_decay`). Kills overshoot in all three.
+- A **foot-speed ceiling** (`ik_foot_max_speed` 6 m/s) on the magnet velocity: a
+  whipped target can no longer snap the foot — it slides over at a walk-step pace.
+  A normal swing sits under the cap, so it is untouched.
+Measured after: reverse/turn peak 0.15/0.14 → **0.10** (≈ the 0.094 steady step),
+steady walk unchanged, no non-finite.
+
+## Standing feet sit under the (tilted) body, biased behind the hips
+Author-reported 2026-07-16, in two passes: first *"feet are set a little more
+forward than the body when standing"*, then — after pulling them to under the hip
+POINTS — *"they still have to be set a little more behind ... because of the
+tiltation of the body ... so it makes the perspective of being under the body."*
+The insight: the socket ORIGINS all sit at z≈0, but the torso's forward tilt
+shifts the visible MESH forward, so feet under the hip points read as forward of
+the body. `idle_foot_forward` (**−0.10**) is the standing +Z foot offset, negative
+= behind the hips to sit under the leaning mass; `_ik_anchor_world` blends it to the socket's
+natural offset with speed (`lerpf(idle_foot_forward, rest_foot.z, stance_engage)`),
+so moving is unchanged. The step trigger also TIGHTENS at idle
+(`lerpf(0.05, ik_step_trigger, ...)`) — the stride's 0.18 m deadzone would leave a
+stopped foot resting up to that far forward of the pulled-back anchor, so without
+it the feet never fully settle. Measured: fresh stand −0.102 m vs hip (behind); three walk-then-stop cycles
+settle to −0.07..−0.09 (the idle trigger deadzone); leg extension 89%; walking
+stride (−0.36..+0.23) and 0.0% skate preserved. The bias is one tunable knob
+(idle_foot_forward) — toward 0 for feet under the hip points, more negative for
+further back.
+
+## Bug sweep (2026-07-18) — found & fixed
+Author-requested "check for bugs" over the recent magnet-gait / altitude work.
+- **SETTLE-SLIDE broke altitude** (`_ik_update_steps`): the idle settle-slide
+  lerped the WHOLE plant toward `_ik_anchor_world`, whose Y is a rig-rest height
+  not the probed ground — it sank standing feet ~8 mm on flat ground and would
+  pull them to the wrong altitude on a slope/step. Fixed to slide XZ only, keeping
+  each plant's own ground Y. Measured: stand foot Y −0.008 → ~0.
+- **MAGNET re-seeded at the plant on IK activation** (`_ik_reset_plants`),
+  snapping the leg to the plant in one frame when the IK turned on from a
+  different pose (the head-only→full transition when the legs are equipped).
+  Fixed to seed at the foot socket's CURRENT world position so the magnet springs
+  in at the capped speed. Measured: activation foot move 0.56 → 0.10.
+Ruled out (verified, not bugs): a fresh player is HEAD-ONLY by design (only the
+head equipped), so `_ik_active()` is correctly false until a body+legs are
+equipped through progression — the gait runs only on the fully-equipped player.
+Idle-stance/arch are bit-clean when disabled (chest 0.0°, waist 0.4°). No NaN
+through a 0.5 s delta spike or a 1200-frame speed/turn/jump run. The foot-speed
+cap sits right at the sprint swing speed (6.0 m/s) but feet still converge — raise
+`ik_foot_max_speed` if sprint ever feels throttled.
+
+## Per-foot altitude / uneven ground (was crashing)
+Author-directed 2026-07-18: *"fix the altitude offset — each foot has a different
+target; if either foot's target is at a different altitude, account for it."* The
+whole uneven-ground path had never actually run: the foot-to-ground-normal
+alignment in `_ik_solve_leg` built a degenerate/non-rotation Basis whenever the
+spherecast returned a non-vertical normal (a step EDGE or ledge returns the
+vertical FACE normal), which crashed `get_quaternion` in the slerp — only ever
+hit off flat ground. Fixes:
+- **Reject non-walkable normals** (`up.y < 0.5` → keep the foot level) so a step
+  face never feeds the basis.
+- **Re-derive the basis orthonormal** (forward = right×up, `.orthonormalized()`)
+  and slerp on the rotation QUATERNION preserving the foot's scale — a hair of
+  float non-orthogonality or a chain scale can no longer make it a non-rotation.
+Altitude itself was already correct once it stopped crashing: each foot probes
+its OWN ground (`_ik_probe_ground` per foot at step time), the magnet springs to
+that per-foot plant, the foot tilts to the ground normal, and the pelvis rides
+the AVERAGE foot Y (`_ik_update_pelvis`), with the capsule owning the gross climb.
+Verified: standing straddling a 0.12 m lateral step each foot reaches its ground
+(±0.01 m) and the pelvis rises 0.10 m; walking up an 8° ramp the character climbs
+0.77 m, feet track the slope and tilt to it (~9° ≈ the ramp), 0 non-finite. Note
+the foot-speed cap makes a foot lag briefly when stepping UP a slope (max ~0.19 m
+transient) — raise `ik_foot_max_speed` if that reads badly on steep terrain.
+
+## Cartoon MAGNET feet (jump-like walk)
+Author-directed 2026-07-16: *"make a jump like / walk animation. set the targets
+for the foot (the foot must touch the target) but it works more like a magnet
+than a fix point. cartoonish look."* This is a MODE switch (`ik_foot_magnet`,
+default on) in the foot-IK solve, replacing the rigid-plant + skate-guard with a
+spring.
+
+- **`_ik_magnet_foot`**: each foot is a semi-implicit spring (`ik_magnet_stiffness`
+  500, `ik_magnet_damping` 20 → underdamped, bouncy) chasing its target
+  (`_ik_foot_world` = plant or swing arc). It CONVERGES to a still, in-range
+  target — a planted foot touches the ground and holds (measured stand foot y
+  0.001) — but LAGS and overshoots in motion: the loose cartoon foot.
+- **The reach shortfall became the look, not a bug**: after the spring, the foot
+  is clamped to the leg's reach (only the outward velocity is killed, so it slides
+  along the reach sphere toward the target). An out-of-reach target leaves the
+  foot STRETCHED to the limit reaching for it — never a dragged plant. Measured
+  skate **0.0%** at walk and sprint (the whole skate saga is moot in this mode).
+- **This unlocked tall, extended legs**: with no skate to fear, `ik_hip_drop_moving`
+  dropped to 0.05 (near-zero crouch) — planted-leg extension **90%→98%**, which
+  also answers the earlier "extend the legs more".
+- **Cartoon tuning**: `ik_leap_height` 0.10 (body bounce ~0.09; THIS is the
+  jump-vs-walk dial — 0.18 → 10% ground contact/very hoppy, 0.08 → 29%/grounded),
+  `ik_step_height` 0.20 (high 0.22 m foot lift). Magnet stiffness/damping are the
+  looseness dial (lower damping = bouncier).
+- Idle, jumps, enemies unaffected (gated inside the split-player IK path; magnet
+  seeds at the plant on reset, falls back to `target` on any non-finite).
+- Set `ik_foot_magnet=false` to restore the rigid-plant realistic gait.
+
+## Idle combat stance
+
+## Idle combat stance (key: standing still is a READY pose)
+Author-directed 2026-07-16: *"the still stance has to be legs spread, the chest,
+not the waist, the chest leaning forward and moving slightly to simulate
+breathing, and both arms in a ready to fight pose guard down."* This SUPERSEDES
+the earlier "feet under the hips so the character stands normally" — standing is
+now a fighting stance, not a neutral stand. `_apply_idle_stance()`, all of it
+faded by `_idle_stance_blend()` = `1 - speed_ratio*2.5` and gated on
+`_ik_active()`, so it is the split player only and every enemy / head-only /
+torso / crawl / demo mode stays bit-identical.
+
+- **Legs spread**: `idle_stance_width` (0.10) is blended against the moving
+  `ik_stance_width` (0.08) inside `_ik_anchor_world` — the anchor re-aims with
+  speed, the old plants exceed `ik_step_trigger`, and the feet re-settle on their
+  own. Measured (after a 2026-07-16 "feet a little more under the body" pull-in that
+  took idle_stance_width 0.10→0.05 and ik_stance_width 0.08→0.04): **0.333 m
+  standing, 0.305 walking** (hips are 0.24 apart) — still a slight athletic
+  spread, closer to under the body; 0.0% skate (narrower = less lateral reach).
+- **CHEST, not the waist**: the author was explicit, so the lean rides the `body`
+  socket's own rotation (`idle_chest_lean_deg` 14) and the waist joint is left to
+  the gait. Measured: **chest +14.0°, waist −0.1°**.
+- **Breathing**: `idle_chest_breath_deg` (2.2) oscillates the chest LEAN rather
+  than bobbing it, so the ribcage swells and settles. Measured: chest pitch
+  cycles **11.8°..16.2°**.
+- **Guard down**: shoulders forward (`idle_guard_arm_raise_deg` 42) and tucked in
+  (`idle_guard_arm_tuck_deg` 13 — note the +Z-forward handedness flips the roll
+  sign per side), elbows folded up (`idle_guard_elbow_deg` 68). Measured: arms
+  +43°/+40°, both elbows −75°.
+- **ORDER**: runs after `_animate_limbs`/`_animate_joints` (so it overrides the
+  idle rest pose) but BEFORE the attack/aim overlays, which must stay free to
+  take the arms. Verified: an attack from the guard sweeps the arm 85.7° away
+  (−21.6°..64.1°) and the guard restores afterwards.
 
 ## How to test
 Open `scenes/rig_test.tscn` in Godot and run it (F6 / "Run Current Scene").
@@ -3744,6 +4339,166 @@ Lives entirely in `procedural_player_animator.gd` (`_update_foot_ik` and the
   ~2.3× faster — they likely need their own pass.** `ik_stride_dip` raised to
   0.16 (full-ratio posture + leap lift both draw on the dip budget). Residual
   walk skate 1.8% — millimetre-scale drags, visually negligible.
+- **Less crouch / normal-walking look (author-directed 2026-07-16: "legs not
+  crouch as much when moving, simulate normal walking").** The unlock was the
+  LEAP: `ik_leap_height` (0.10) lifted the hips each step, stealing reach from the
+  planted foot, which forced the crouch to avoid skate. Halving it (**0.05**) freed
+  that reach, so the crouch could ease (`ik_hip_drop_moving` 0.17→**0.12**) and the
+  stride shrink a touch (`ik_step_reach` 0.36→**0.34**, `ik_stride_dip` 0.10→0.14)
+  WITHOUT adding skate. Measured: walk knee **89%→91% avg, deepest bend 74%→79%**
+  (visibly straighter), hipY 0.447→0.461 (−4 cm from the 0.500 stand vs −5.4 cm
+  before), hop flatter, skate 3.5% (was 3.7%), 2.64 steps/m, sprint skate 0.9%.
+  A fully upright walk is still not reachable: with the stride kept ≥⅓ m for the
+  3-steps/m cap, a 0.59 m leg must bend to plant it — going straighter means a
+  smaller stride (more steps/m, past the cap) or accepting skate. Tried and
+  rejected: a purely DYNAMIC crouch (tiny constant drop, big reach-driven dip)
+  straightened the legs to 95% but the smoothed dip lagged the plant → 11-15%
+  skate.
+
+- **Raise the hips when walking + more airtime (author-directed 2026-07-16:
+  "raise the hips more ... feet feel staggered with very little room ... to
+  maintain smoothness just give more airtime").** A HIP-HEIGHT vs SKATE trade,
+  and a tight one: with the stride fixed by the 3-steps/m cap, the planted legs
+  are already near their reach limit, so raising the hips straightens them into
+  a drag. Measured: `ik_hip_drop_moving` 0.20→hipY 0.428/0.3% skate,
+  **0.17→0.447 (+2 cm)/3.7%**, 0.15→0.458 (+3 cm)/5.7%. Chose 0.17 (visible
+  raise, skate still low). Reducing the stride to raise them more breaks the
+  cap; reducing the stride LEAD made it WORSE (the foot then only trails back,
+  further from the hip) — the straddle lead is optimal. The airtime is
+  `ik_step_overlap` 0.30→0.40 and `ik_step_duration` 0.42→0.48: swing-foot speed
+  2.64→2.29 m/s, tele 0.095→0.081, planted 33%→25% (still a real stance),
+  2.50 steps/m, sprint skate 0.7%. The ~2-3 cm hip ceiling is inherent to a
+  0.59 m leg with a stride this size — the only way past it is a smaller stride
+  (more steps/m) or a longer leg.
+
+- **Slower feet, take 4 (author-reported "legs still moving too fast", 2026-07-16).**
+  With the 3-steps/m cap the stride can't shrink, so the levers are walk speed and
+  swing airtime. Raising `ik_step_duration` (0.32→0.42) is the enabler: it lets a
+  SLOWER walk keep its cadence under the cap instead of the duration-ceiling forcing
+  extra steps. `base_move_speed` 2.0→**1.4** (sprint 2.17), bone speed bonuses
+  rescaled ×0.7. Measured: swing-foot speed **3.75→2.64 m/s (−29%)**, tele
+  0.134→0.095, while the stance holds (33% planted) and cadence stays legal
+  (2.57 steps/m walk, 2.58 sprint), 0.3% skate. Slowest levers if still too fast:
+  drop speed toward 1.2 with `ik_step_duration`→0.50 (measured 2.25 m/s swing, still
+  ~2.6 steps/m and 32% planted), or raise `ik_step_overlap` for more airtime at the
+  cost of stance.
+
+- **THE STANCE FIX — the gait had no ground contact at all (author-reported
+  2026-07-16: "legs still kind of teleporting… is the back leg able to be behind
+  the hip when the hip moves forward?").** That question exposed the real bug.
+  Measured: **right foot PLANTED 0% of frames, BOTH feet airborne 100%** — at
+  `ik_step_overlap` 0.5 each foot relaunches the instant it lands, so the figure
+  never planted anything; it cycled its legs in the air. Every "0.0% skate" win
+  reported before this was VACUOUS — there were no planted frames to skate. Two
+  root causes, both now fixed:
+  1. LAUNCH SPIKE. `sin(pow(t,0.8)*PI)` in the reach boost: an exponent BELOW 1
+     has an INFINITE derivative at t=0, so the reach snapped on ~0.12 m in ONE
+     frame at every swing start (traced: arcMove 0.133 at t≈0.05 = 3x body speed,
+     decaying to 0.011 — a spike, not sustained speed). Exactly the old
+     `pow(t,0.7)` lift trap, reintroduced. Fixed with a smoothstep feed and an
+     exponent ABOVE 1: `sin(pow(smoothstep(0,1,t),1.3)*PI)` — smooth at both ends
+     AND peaks late (~0.55) as originally intended (0.8 actually peaked EARLY, at
+     0.42; the comment claiming otherwise was wrong).
+  2. NO STANCE. Overlap 0.5 → 0.3, so each foot is planted ~33% of its cycle and
+     the body rides over it. This instantly exposed 35%+ skate, which led to:
+- **THE CROUCH — why a jumping gait needs bent legs.** Pure geometry: a planted
+  foot 0.36 m from its hip on a 0.587 m leg requires the hip BELOW 0.455 m
+  (`sqrt(0.36² + h²) ≤ 0.58`), but a straight-legged rig stands at 0.53 and the
+  leap lift pushed it higher still — so every planted frame the foot was out of
+  reach and got dragged. **You cannot raise the pelvis 0.18 m while a foot is
+  planted far from the hip on a leg with no bend.** Real legs solve it by being
+  bent: crouch, then extend the planted leg to push off. New
+  `ik_hip_drop_moving` (0.20) vs `ik_hip_drop` (0.05), blended by
+  `_ik_hip_drop_now()` on the same speed ramp as the stance width — so standing
+  stays TALL and straight-legged (author's "stands normally") and the crouch only
+  engages to walk. Sweep at walk: hip_drop 0.05→0.20 took skate 35%→3% and the
+  planted knee from 99% to ~62% extension (real bend, reserve to push with).
+  Jump-height sweep at the crouch: leap 0.06→3.8%, **0.10→5.7%**, 0.14→14.4%,
+  0.18→22% skate — 0.10 is the most jump the leg reserve affords.
+  Final config (walk 2.0 / sprint 3.1): **2.55 steps/m, 33% planted, back foot
+  0.33 m BEHIND its hip, forward reach +0.28, tele 0.135 (was 0.226), skate
+  0.0%, knee 75%, jump-catch 0.021**; standing bodyY 0.846 at 87% leg extension,
+  stance 0.243 (under hips), returning to 0.873 after stopping. `base_move_speed`
+  2.6→**2.0**: slower is strictly better here — it lengthens the swing, so it cut
+  tele AND raised forward reach at once. Bone speed bonuses rescaled ×0.77 to hold
+  their percent-of-base.
+- **Bigger, wider steps (author-directed 2026-07-16: "maximum three steps per
+  metre; legs well separated / good distance between them; target points not
+  under the hips").** NOTE: the 0.42 reach / 0.12 stance / 0.22 dip tuned here
+  were re-swept by the stance fix above (0.36 / 0.08 / 0.10) — the numbers below
+  describe the method, the values above are what ships. Two coordinated changes, both measured:
+  1. STEPS/METRE cap. Steps/metre ≈ 1/`ik_step_reach` (each launch interval
+     covers `ik_step_reach` of ground). 0.32 measured 2.81/m — just under the
+     cap. Raised to **0.42** → **2.35/m walk, 2.13/m sprint**, a comfortable
+     margin under 3, with bigger strides. `ik_stride_dip` 0.16→**0.22** pays the
+     extra leg reach the longer stride demands (skate stayed 0.0%).
+  2. STANCE WIDTH. The anchor planted each foot directly under its hip (±0.12),
+     a narrow 0.24 m stance. New `ik_stance_width` (0.12) pushes each target
+     OUTBOARD along its own hip's side (right_leg at +X, left at −X via
+     `signf(leg_rest.x)`), so feet plant **0.46 m apart** while moving. It costs
+     leg reach (foot farther from hip laterally), which the same dip covers.
+     MOVEMENT-GATED (author-directed: "when standing still the targets have to be
+     under the hips so the character stands normally"): the width scales by
+     `clampf(speed_ratio * 2.5, 0, 1)` — the same quick ramp the leap uses — so
+     it is 0 at a standstill and full once past ~40% of walk speed. No extra
+     state was needed for the settle: when the player stops, the anchor narrows,
+     the wide plants exceed `ik_step_trigger` on their own, and the feet take a
+     natural little step inward. Measured: fresh stand 0.243 m (= hip width),
+     walking 0.459 m, settles back under the hips 0.63 s after stopping, then
+     dead still (0.0000 m/frame foot movement, no oscillation).
+  Measured after, walk+sprint: 0.0% skate, 99% extension, no collapse, no
+  non-finite, idle feet wide-and-still, jump-catch 0.020, reversals bounded.
+  Cost of the bigger stride: the pelvis dips ~0.20 m mid-stride (weight
+  transfer) to keep the wide/long plants reachable — a pronounced athletic bob,
+  the honest price of big steps on a 0.59 m leg. `ik_stance_width` is a live
+  slider ("Stance width") in the tuning menu; `ik_step_reach` stays an export
+  (it is the steps/metre constraint, not a feel dial).
+- **Forward leg reach — the swing overshoots ahead (author-directed
+  2026-07-16: "exaggerate the extension of the legs when moving forward, really
+  noticeable").** Baseline measurement exposed the real gap: the foot **never
+  reached ahead of its hip** (max +0.00 m), it planted under the hip and only
+  trailed back to −0.30 — legs read as dragging, never reaching. The obvious
+  levers all failed: bigger `ik_stride_lead` throws the plant past leg reach so
+  it clamps and the stride COLLAPSES over ~10 s (span 0.24→0.08, pelvis crouches
+  0.37 m — a short probe misses it, a 600-frame one catches it); bigger
+  `ik_step_reach` sends the foot further BEHIND. Both move where the foot
+  *plants*, which must stay stable. The fix moves the *swing arc* instead:
+  `ik_stride_reach_boost` (0.42) bulges the airborne foot forward along the
+  rig's facing, peaking just after mid-swing (`sin(pow(t,0.8)*PI)`) so the leg
+  is at full forward extension on the way down into the plant, scaled by
+  speed_ratio (inert standing) and zero at both swing ends. The PLANT is
+  untouched, so it costs no skate and cannot collapse the stride — the reach is
+  a pure mid-air flourish, which is also how a real reaching stride works (the
+  foot overreaches, then draws back to contact). Measured, foot-ahead-of-hip:
+  boost 0→+0.00, 0.20→+0.07, 0.34→+0.20, **0.42→+0.25 (default)**, 0.48→+0.33 —
+  and skate stayed 2.7% at 0.42 / 0.0% at sprint (baseline was worse), span
+  healthy, idle inert, jump-catch 0.03, reversals bounded. Exposed as a live
+  slider ("Leg forward reach") in the F3/key-4 tuning menu.
+- **The jump-height knob was cancelling itself (author-reported "step jump
+  doesn't do anything", fixed 2026-07-16).** The stride-dip estimator subtracted
+  `_ik_leap_lift` for EVERY foot each frame, so raising the jump dipped the
+  pelvis by the same amount — net body-Y barely moved, and what did move was
+  drowned in up to 27% skate. Three coupled fixes so the knob has real,
+  measured authority now:
+  1. The dip clause skips IN-FLIGHT feet (`_ik_step_t < 1.0`) — a swinging foot
+     that can't reach its arc just clamps in the solve (a tucked leg under a
+     jump), it is not what the skate guard drags. Only PLANTED feet still
+     subtract the lift.
+  2. `_ik_snap_dip_for_landing()` fires on the plant event: the smoothed lift
+     lags its zero-at-touchdown target, so a still-high pelvis would hand the
+     fresh plant to the skate guard; snapping the dip down at the landing is the
+     compression thud and keeps the foot reachable on the frame it lands.
+  3. The lift target tapers to 0 over t∈[0.72,0.96] (`1 - smoothstep`), so the
+     smoothed lift is already low before touchdown instead of lagging high into
+     it.
+  Measured, body-Y jump amplitude vs `ik_leap_height` at walk 2.6: 0.05→0.067,
+  0.12→0.103, 0.18→0.192, 0.24→0.274, 0.30→0.295 — a 4.4× span the slider now
+  visibly drives (was a compressed 1.6× buried in skate). Cost: the taller the
+  jump the more per-frame foot travel (tele 0.064 at 0.12, 0.195 at 0.18) and a
+  little skate returns (3–4.6% above ~0.18) — inherent, the foot arcs higher in
+  the same swing time. So `ik_leap_height` is now the smooth-vs-jumpy dial
+  itself: low = smoothest feet, high = bigger hop. Jump-catch landing 0.021,
+  unchanged.
 - **Landing re-grounds the plants (found by adversarial review, fixed
   2026-07-16).** The airborne hang leaves each plant ~v/14 m above the floor at
   touchdown, and nothing else restores plant Y — steps fire on XZ error alone, so
@@ -3793,12 +4548,12 @@ Lives entirely in `procedural_player_animator.gd` (`_update_foot_ik` and the
   slow-the-feet knob; above 0.32 plants start to slide, see the sweep),
   `ik_stride_dip` (0.10 — extra pelvis give at stride extremes; the weight bob),
   `ik_step_duration_min` (0.06 — cadence floor; past ~4 m/s the feet scurry),
-  `ik_step_overlap` (0.5 — the zero-stance limit; lower toward 0.25 for a
-  planted walk),
-  `ik_leap_height` (0.18), `ik_leap_pitch_up_deg` (32),
+  `ik_step_overlap` (0.3 — each foot planted ~(1-2*ovl) of its swing; 0.5 is a
+  ZERO-STANCE degenerate that never plants a foot),
+  `ik_leap_height` (0.10 — more than the crouch's leg reserve affords with a real stance), `ik_leap_pitch_up_deg` (32),
   `ik_leap_pitch_down_deg` (0), `ik_leap_pitch_response` (14 — raise for a
   snappier chest sweep),
-  `ik_step_height` (0.14), `ik_stride_lead` (1.5 launch-interval travels),
+  `ik_step_height` (0.14), `ik_stride_lead` (1.7 launch-interval travels),
   `ik_run_lean` (0.07), `ik_body_follow` (1.0),
   `ik_step_drive` (0.85 — raise toward 1.0 for a harder per-step surge),
   `ik_body_follow_max` (0.45), `ik_body_follow_response` (22),

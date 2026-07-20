@@ -1464,6 +1464,2024 @@
 ### Node Path Lookups
 - `PromptLabel`
 
+## AttackController
+
+- Source file: `scripts/locomotion/attack_controller.gd`
+- Extends: `RefCounted`
+- System: Combat and enemies
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- none
+
+### Key Variables
+- `chain_reach`
+- `weapon_reach`
+- `defn`
+- `d`
+- `reach`
+- `to`
+- `dist`
+- `aim`
+- `strike_dist`
+- `up`
+- `side`
+- `wf`
+- `ff`
+- `ip`
+- `windup`
+- `strike`
+- `follow`
+- `hand`
+- `window`
+- `lunge_amt`
+- `best`
+
+### Functions
+- `_init(arm_reach: float, weapon: float = 0.0, definition: Variant = null) -> void`
+- `total_reach() -> float`
+- `plan(shoulder: Vector3, target: Vector3) -> Dictionary`
+- `sample(phase: float, shoulder: Vector3, target: Vector3) -> Dictionary`
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- none
+
+## BodyGraph
+
+- Source file: `scripts/locomotion/body_graph.gd`
+- Extends: `RefCounted`
+- System: Supporting gameplay
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- none
+
+### Key Variables
+- `parts`
+- `root_id`
+- `joints`
+- `out`
+- `kids`
+- `queue`
+- `pid`
+- `parent_world`
+- `cid`
+- `ps`
+- `cs`
+- `errors`
+- `parent_count`
+- `reached`
+- `has_child`
+- `rev`
+- `cur`
+- `guard`
+- `j`
+- `adj`
+- `seen`
+- `comps`
+- `comp`
+- `idset`
+- `g`
+
+### Functions
+- `add_part(part: BodyPart) -> void`
+- `set_root(id: String) -> void`
+- `join(parent_id: String, parent_socket: String, child_id: String, child_socket: String, dof: Array = []) -> bool`
+- `assemble(root_transform: Transform3D = Transform3D.IDENTITY) -> Dictionary`
+- `socket_world(assembly: Dictionary, part_id: String, socket_name: String) -> Vector3`
+- `validate() -> Array`
+- `is_valid() -> bool`
+- `part_count() -> int`
+- `_children_by_parent() -> Dictionary`
+- `parent_joint_of(id: String) -> Dictionary`
+- `leaves() -> Array`
+- `joints_to(id: String) -> Array`
+- `endpoints_world(assembly: Dictionary) -> Array`
+- `manipulators_world(assembly: Dictionary) -> Array`
+- `connected_components(cut_joint: int = -1) -> Array`
+- `component_containing(part_id: String, cut_joint: int = -1) -> Array`
+- `subgraph(part_ids: Array, root_id: String, cut_joint: int = -1) -> BodyGraph`
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- none
+
+## BodyMeasure
+
+- Source file: `scripts/locomotion/body_measure.gd`
+- Extends: `RefCounted`
+- System: Supporting gameplay
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- none
+
+### Key Variables
+- `graph`
+- `_asm`
+- `m`
+- `acc`
+- `part`
+- `world_com`
+- `out`
+- `com`
+- `total`
+- `chain_joints`
+- `tip`
+- `waypoints`
+- `j0`
+- `jk`
+- `segments`
+- `reach_max`
+- `seg_len`
+- `base`
+- `reach_rest`
+- `limb_mass`
+- `limb_acc`
+- `joints_info`
+- `limb_parts`
+- `cid`
+- `wcom`
+- `dof`
+- `limb_com`
+- `lines`
+- `cs`
+- `ranges`
+
+### Functions
+- `_init(g: BodyGraph, assembly: Variant = null) -> void`
+- `total_mass() -> float`
+- `center_of_mass() -> Vector3`
+- `chains() -> Array`
+- `inertia_about_com() -> float`
+- `manipulation_chains() -> Array`
+- `_measure_chain(part_id: String, socket_name: String) -> Dictionary`
+- `describe() -> String`
+- `_fmt(v: Vector3) -> String`
+- `_axis_name(a: Vector3) -> String`
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- none
+
+## BodyPart
+
+- Source file: `scripts/locomotion/body_part.gd`
+- Extends: `RefCounted`
+- System: Supporting gameplay
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- none
+
+### Key Variables
+- `id`
+- `size`
+- `mass`
+- `center_offset`
+- `sockets`
+- `endpoints`
+- `manipulators`
+- `p`
+
+### Functions
+- `_init(part_id: String = "", part_size: Vector3 = Vector3.ONE, part_mass: float = 1.0) -> void`
+- `add_socket(socket_name: String, xform) -> void`
+- `has_socket(socket_name: String) -> bool`
+- `mark_endpoint(socket_name: String) -> void`
+- `mark_manipulator(socket_name: String) -> void`
+- `socket(socket_name: String) -> Transform3D`
+- `socket_names() -> Array`
+- `local_center_of_mass() -> Vector3`
+- `duplicate_part() -> BodyPart`
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- none
+
+## ChainIK
+
+- Source file: `scripts/locomotion/chain_ik.gd`
+- Extends: `RefCounted`
+- System: Supporting gameplay
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- none
+
+### Key Variables
+- `n`
+- `dir`
+- `to_target`
+- `d`
+- `u`
+- `pole_dir`
+- `v`
+- `cos_hip`
+- `sin_hip`
+- `knee`
+- `tip`
+- `total`
+- `pts`
+- `acc`
+- `t`
+- `bow`
+- `dir_b`
+- `dir_f`
+
+### Functions
+- none
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- none
+
+## ContactLock
+
+- Source file: `scripts/locomotion/contact_lock.gd`
+- Extends: `RefCounted`
+- System: Supporting gameplay
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- none
+
+### Key Variables
+- `graph`
+- `base_root`
+- `_hip_local`
+- `_reach`
+- `_foot`
+- `_order`
+- `m`
+- `height`
+- `key`
+- `contacts`
+- `all_ok`
+- `min_margin`
+- `worst`
+- `hip`
+- `foot`
+- `dist`
+- `rmax`
+- `margin`
+- `reachable`
+- `d`
+- `lo`
+- `hi`
+- `mid`
+- `lines`
+
+### Functions
+- `_init(g: BodyGraph, stance: Dictionary, measure: BodyMeasure = null) -> void`
+- `set_contact(part: String, socket: String, world_pos: Vector3) -> void`
+- `locked_keys() -> Array`
+- `contact_count() -> int`
+- `contact_world(part: String, socket: String) -> Vector3`
+- `hip_world(part: String, socket: String, root_xf: Transform3D) -> Vector3`
+- `evaluate(root_xf: Transform3D) -> Dictionary`
+- `evaluate_shift(delta: Vector3) -> Dictionary`
+- `evaluate_rotated(basis: Basis) -> Dictionary`
+- `max_travel(dir: Vector3, start: Transform3D = base_root, limit: float = 3.0, tol: float = 0.001) -> float`
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- none
+
+## Detachment
+
+- Source file: `scripts/locomotion/detachment.gd`
+- Extends: `RefCounted`
+- System: Supporting gameplay
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- none
+
+### Key Variables
+- `comps`
+- `controlled_ids`
+- `detached_ids`
+- `controlled`
+- `detached`
+- `droot`
+- `root_id`
+- `sub`
+- `stance`
+- `standing`
+- `j`
+
+### Functions
+- none
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- none
+
+## GaitController
+
+- Source file: `scripts/locomotion/gait_controller.gd`
+- Extends: `RefCounted`
+- System: Supporting gameplay
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- none
+
+### Key Variables
+- `graph`
+- `osc`
+- `root_transform`
+- `stride`
+- `step_height`
+- `_stance_height`
+- `_forward`
+- `_velocity`
+- `_heading`
+- `_turn_rate`
+- `_speed`
+- `_balance_base`
+- `_travel`
+- `_ground`
+- `_base_local`
+- `_segments`
+- `_reach`
+- `_rest_offset`
+- `_foot`
+- `_planted`
+- `_liftoff`
+- `_landing`
+- `_was_stance`
+- `measure`
+- `contacts`
+- `offsets`
+- `ct`
+- `chain_by_key`
+- `max_reach`
+- `key`
+- `c`
+- `foot`
+- `flat`
+- `p`
+- `facing`
+- `cadence`
+- `root_ground`
+- `swing_dur`
+- `stance_now`
+- `predicted`
+
+### Functions
+- `_init(g: BodyGraph, stance: Dictionary, opts: Dictionary = {}) -> void`
+- `set_velocity(v: Vector3) -> void`
+- `set_intent(speed: float, turn_rate: float) -> void`
+- `set_turn_rate(turn_rate: float) -> void`
+- `heading() -> float`
+- `adopt_motion(travel: Vector3, head: float) -> void`
+- `set_ground(height_fn: Callable) -> void`
+- `_ground_h(p: Vector3) -> float`
+- `speed() -> float`
+- `step(dt: float) -> void`
+- `_support_centroid() -> Variant`
+- `limbs() -> Array`
+- `is_planted(key: String) -> bool`
+- `planted_count() -> int`
+- `foot_position(key: String) -> Vector3`
+- `hip_position(key: String) -> Vector3`
+- `leg_points(key: String) -> PackedVector3Array`
+- `reach_strain(key: String) -> float`
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- none
+
+## GaitOscillator
+
+- Source file: `scripts/locomotion/gait_oscillator.gd`
+- Extends: `RefCounted`
+- System: Supporting gameplay
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- none
+
+### Key Variables
+- `phase`
+- `duty`
+- `_offsets`
+- `over`
+
+### Functions
+- `_init(limb_offsets: Dictionary, duty_factor: float = 0.65) -> void`
+- `advance(cycles: float) -> void`
+- `limb_phase(key: String) -> float`
+- `is_stance(key: String) -> bool`
+- `stance_t(key: String) -> float`
+- `swing_t(key: String) -> float`
+- `keys() -> Array`
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- none
+
+## GaitPattern
+
+- Source file: `scripts/locomotion/gait_pattern.gd`
+- Extends: `RefCounted`
+- System: Supporting gameplay
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- none
+
+### Key Variables
+- `max_z`
+- `band`
+- `out`
+- `p`
+- `col`
+- `cls`
+- `keys`
+- `offsets`
+- `c`
+- `off`
+- `diag_a`
+- `tripod_a`
+- `ordered`
+- `n`
+
+### Functions
+- none
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- none
+
+## Geom2d
+
+- Source file: `scripts/locomotion/geom2d.gd`
+- Extends: `RefCounted`
+- System: Supporting gameplay
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- none
+
+### Key Variables
+- `pts`
+- `lower`
+- `upper`
+- `p`
+- `n`
+- `inside`
+- `min_edge_dist`
+- `a`
+- `b`
+- `q`
+- `acc`
+- `ab`
+- `len2`
+- `t`
+- `out`
+- `dup`
+
+### Functions
+- none
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- none
+
+## ImpactResponse
+
+- Source file: `scripts/locomotion/impact_response.gd`
+- Extends: `RefCounted`
+- System: Supporting gameplay
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- none
+
+### Key Variables
+- `stiffness`
+- `damping`
+- `ang_stiffness`
+- `ang_damping`
+- `knockback_scale`
+- `torque_scale`
+- `max_tilt`
+- `max_shift`
+- `_lin`
+- `_lin_vel`
+- `_ang`
+- `_ang_vel`
+- `r`
+- `b`
+- `a`
+
+### Functions
+- `apply_impulse(contact: Vector3, impulse: Vector3, com: Vector3, mass: float, inertia: float) -> void`
+- `step(dt: float) -> void`
+- `offset() -> Transform3D`
+- `displacement() -> Vector3`
+- `tilt() -> Vector3`
+- `is_settled() -> bool`
+- `reset() -> void`
+- `configure(p: Dictionary) -> void`
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- none
+
+## locomotion_combat
+
+- Source file: `scripts/locomotion/locomotion_combat.gd`
+- Extends: `Node3D`
+- System: Supporting gameplay
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- `SPEC`
+- `OUT_DIR`
+
+### Key Variables
+- `_params`
+- `_value_labels`
+- `_readout`
+- `_menu`
+- `_cam`
+- `_status`
+- `_attacker`
+- `_receiver`
+- `_attack`
+- `_phase`
+- `_auto`
+- `_struck`
+- `_last_contact`
+- `_last_impulse`
+- `_hit_marker`
+- `_recording`
+- `_samples`
+- `_rec_time`
+- `k`
+- `measure`
+- `stance`
+- `holder`
+- `body`
+- `limb_ids`
+- `key`
+- `arm`
+- `mi`
+- `segs`
+- `asegs`
+- `g`
+- `base`
+- `off`
+- `d`
+- `ab`
+- `rr`
+- `ar`
+- `root`
+- `asm`
+- `part`
+- `chain_base`
+
+### Functions
+- `_ready() -> void`
+- `_unhandled_input(event: InputEvent) -> void`
+- `_strike() -> void`
+- `_reset() -> void`
+- `_make_body(g: BodyGraph, at: Vector3, is_attacker: bool) -> Dictionary`
+- `_place_bodies() -> void`
+- `_target_point() -> Vector3`
+- `_shoulder() -> Vector3`
+- `_root_of(body: Dictionary) -> Transform3D`
+- `_process(dt: float) -> void`
+- `_apply_body(body: Dictionary) -> void`
+- `_land_hit(contact: Vector3) -> void`
+- `_update_camera() -> void`
+- `_save_profile() -> void`
+- `_record_sample() -> void`
+- `_bake_clip() -> void`
+- `_ensure_dir() -> void`
+- `_build_ui() -> void`
+- `_slider_row(e: Dictionary) -> Control`
+- `_enum_row(e: Dictionary) -> Control`
+- `_on_slider(v: float, pname: String) -> void`
+- `_on_enum(idx: int, e: Dictionary) -> void`
+- `_update_readout() -> void`
+- `_box(parent: Node3D, size: Vector3, color: Color) -> MeshInstance3D`
+- `_cyl(parent: Node3D, radius: float, height: float, color: Color) -> MeshInstance3D`
+- `_ball(parent: Node3D, radius: float, color: Color) -> MeshInstance3D`
+- `_orient(mi: MeshInstance3D, a: Vector3, b: Vector3) -> void`
+- `_mat(color: Color) -> StandardMaterial3D`
+- `_ground() -> void`
+- `_setup_environment() -> void`
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- none
+
+## locomotion_gallery
+
+- Source file: `scripts/locomotion/locomotion_gallery.gd`
+- Extends: `Node3D`
+- System: Supporting gameplay
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- `SPACING`
+- `FOOT_R`
+
+### Key Variables
+- `_camera`
+- `_orbit_center`
+- `_orbit_radius`
+- `_orbit_height`
+- `_orbit_t`
+- `zoo`
+- `span`
+- `x`
+- `graph`
+- `measure`
+- `resting`
+- `stance`
+- `chains`
+- `H`
+- `stable`
+- `off`
+- `root`
+- `asm`
+- `limb_ids`
+- `part`
+- `box_xf`
+- `chain_by_key`
+- `c`
+- `hip`
+- `foot`
+- `pole`
+- `pts`
+- `com`
+- `com_ground`
+- `com_color`
+- `tag`
+- `mi`
+- `m`
+- `d`
+- `length`
+- `dot`
+- `axis`
+- `y`
+- `center`
+- `verts`
+
+### Functions
+- `_ready() -> void`
+- `_process(delta: float) -> void`
+- `_spawn(entry: Dictionary, offset: Vector3) -> void`
+- `_ground_tile(parent: Node3D) -> void`
+- `_box(parent: Node3D, xf: Transform3D, size: Vector3, color: Color) -> void`
+- `_bone(parent: Node3D, a: Vector3, b: Vector3, radius: float, color: Color) -> void`
+- `_basis_from_up(dir: Vector3) -> Basis`
+- `_sphere(parent: Node3D, pos: Vector3, radius: float, color: Color) -> void`
+- `_foot_dot(parent: Node3D, pos: Vector3) -> void`
+- `_support_polygon(parent: Node3D, hull: Array, stable: bool) -> void`
+- `_label(parent: Node3D, pos: Vector3, text: String) -> void`
+- `_mat(color: Color) -> StandardMaterial3D`
+- `_setup_environment() -> void`
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- none
+
+## locomotion_lab
+
+- Source file: `scripts/locomotion/locomotion_lab.gd`
+- Extends: `Node3D`
+- System: Supporting gameplay
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- `SPEC`
+- `LIVE`
+
+### Key Variables
+- `_params`
+- `_value_labels`
+- `_readout`
+- `_menu`
+- `_cam`
+- `_ground_node`
+- `_graph`
+- `_measure`
+- `_stance`
+- `_gait`
+- `_creature`
+- `_body_boxes`
+- `_legs`
+- `_seg_by_key`
+- `_status`
+- `_min_support`
+- `_max_strain`
+- `key`
+- `carry_travel`
+- `carry_head`
+- `fam`
+- `pat`
+- `l`
+- `limb_ids`
+- `segs`
+- `h`
+- `asm`
+- `part`
+- `mi`
+- `pts`
+- `n`
+- `foot`
+- `focus`
+- `facing`
+- `back`
+- `layer`
+- `rpanel`
+- `rmargin`
+- `scroll`
+- `vbox`
+
+### Functions
+- `_ready() -> void`
+- `_terrain(p: Vector3) -> float`
+- `_unhandled_input(event: InputEvent) -> void`
+- `_rebuild(reset := false) -> void`
+- `_build_creature() -> BodyGraph`
+- `_process(dt: float) -> void`
+- `_spawn_render() -> void`
+- `_spawn_static() -> void`
+- `_update_render() -> void`
+- `_update_camera() -> void`
+- `_build_ui() -> void`
+- `_slider_row(e: Dictionary) -> Control`
+- `_enum_row(e: Dictionary) -> Control`
+- `_on_slider(value: float, pname: String) -> void`
+- `_on_enum(idx: int, e: Dictionary) -> void`
+- `_update_readout() -> void`
+- `_fmt(v: float) -> String`
+- `_box(size: Vector3, color: Color) -> MeshInstance3D`
+- `_cyl(radius: float, height: float, color: Color) -> MeshInstance3D`
+- `_ball(radius: float, color: Color) -> MeshInstance3D`
+- `_orient(mi: MeshInstance3D, a: Vector3, b: Vector3) -> void`
+- `_mat(color: Color) -> StandardMaterial3D`
+- `_build_ground() -> void`
+- `_setup_environment() -> void`
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- none
+
+## locomotion_walk
+
+- Source file: `scripts/locomotion/locomotion_walk.gd`
+- Extends: `Node3D`
+- System: Supporting gameplay
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- `PLANTED`
+- `SWINGING`
+
+### Key Variables
+- `_walkers`
+- `_cam`
+- `_center_x`
+- `key`
+- `avg_z`
+- `measure`
+- `sopts`
+- `stance`
+- `pat`
+- `gait`
+- `lane`
+- `limb_ids`
+- `seg_by_key`
+- `body_boxes`
+- `part`
+- `legs`
+- `segs`
+- `g`
+- `asm`
+- `pts`
+- `nodes`
+- `foot`
+- `mi`
+- `m`
+- `d`
+- `length`
+- `dot`
+- `l`
+- `mat`
+- `plane`
+- `pm`
+- `s`
+- `sm`
+- `light`
+- `sky_mat`
+- `sky`
+- `env`
+- `we`
+
+### Functions
+- `_ready() -> void`
+- `_unhandled_input(event: InputEvent) -> void`
+- `_process(dt: float) -> void`
+- `_make_walker(g: BodyGraph, x_off: float, speed: float, cfg: Dictionary, label: String) -> Dictionary`
+- `_update_walker(w: Dictionary) -> void`
+- `_box(parent: Node3D, size: Vector3, color: Color) -> MeshInstance3D`
+- `_cyl(parent: Node3D, radius: float, height: float, color: Color) -> MeshInstance3D`
+- `_ball(parent: Node3D, radius: float, color: Color) -> MeshInstance3D`
+- `_orient(mi: MeshInstance3D, a: Vector3, b: Vector3) -> void`
+- `_basis_from_up(dir: Vector3) -> Basis`
+- `_label(parent: Node3D, pos: Vector3, text: String) -> void`
+- `_mat(color: Color) -> StandardMaterial3D`
+- `_ground() -> void`
+- `_setup_environment() -> void`
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- none
+
+## LocomotionZoo
+
+- Source file: `scripts/locomotion/locomotion_zoo.gd`
+- Extends: `RefCounted`
+- System: Supporting gameplay
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- none
+
+### Key Variables
+- `half`
+- `thigh`
+- `shin`
+- `g`
+- `torso`
+- `head`
+- `zc`
+- `xc`
+- `zs`
+- `upper`
+- `fore`
+- `seg_count`
+- `seg_len`
+- `yaw`
+- `t`
+- `w`
+- `seg`
+- `weight`
+
+### Functions
+- none
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- none
+
+## RootPoseSolver
+
+- Source file: `scripts/locomotion/root_pose_solver.gd`
+- Extends: `RefCounted`
+- System: Supporting gameplay
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- none
+
+### Key Variables
+- `fwd`
+- `right`
+- `centroid`
+- `mean_y`
+- `front_y`
+- `front_n`
+- `rear_y`
+- `rear_n`
+- `right_y`
+- `right_n`
+- `left_y`
+- `left_n`
+- `fore_span`
+- `lat_span`
+- `rel`
+- `af`
+- `al`
+- `pitch`
+- `roll`
+- `yaw`
+- `basis`
+
+### Functions
+- none
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- none
+
+## StanceGenerator
+
+- Source file: `scripts/locomotion/stance_generator.gd`
+- Extends: `RefCounted`
+- System: Supporting gameplay
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- none
+
+### Key Variables
+- `graph`
+- `_chains`
+- `_total_mass`
+- `_nonlimb_mass`
+- `_nonlimb_com_xz`
+- `m`
+- `limb_ids`
+- `nl_mass`
+- `nl_acc`
+- `rest`
+- `part`
+- `wcom`
+- `foot_r`
+- `hsteps`
+- `ssteps`
+- `ground_y`
+- `reach_fraction`
+- `stance_width`
+- `h_lo`
+- `h_hi`
+- `base_y`
+- `best`
+- `H`
+- `fixed`
+- `s`
+- `cand`
+- `dm`
+- `ds`
+- `contacts`
+- `corners`
+- `com_acc`
+- `base`
+- `base_ground`
+- `base_height`
+- `reach`
+- `horiz2`
+- `horiz`
+- `outward`
+- `foot`
+- `leg_mid`
+
+### Functions
+- `_init(g: BodyGraph, measure: BodyMeasure = null) -> void`
+- `generate(opts: Dictionary = {}) -> Dictionary`
+- `_better(cand: Dictionary, best: Dictionary) -> bool`
+- `_evaluate(H: float, s: float, foot_r: float, ground_y: float, reach_fraction: float = 1.0) -> Dictionary`
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- none
+
+## test_attack
+
+- Source file: `scripts/locomotion/test_attack.gd`
+- Extends: `SceneTree`
+- System: Combat and enemies
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- none
+
+### Key Variables
+- `_fail`
+- `g`
+- `m`
+- `stance`
+- `arm`
+- `shoulder`
+- `atk`
+- `near`
+- `far`
+- `pn`
+- `pf`
+- `target`
+- `s0`
+- `si`
+- `s1`
+- `segs`
+- `worst`
+- `s`
+- `pts`
+- `short_arm`
+- `long_arm`
+- `short_atk`
+- `long_atk`
+
+### Functions
+- `_initialize() -> void`
+- `_check(label: String, cond: bool) -> void`
+- `_test_effectors_and_stance() -> void`
+- `_test_reach_policy() -> void`
+- `_test_swing_path() -> void`
+- `_test_ik_follows_path() -> void`
+- `_test_morphology() -> void`
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- none
+
+## test_body_graph
+
+- Source file: `scripts/locomotion/test_body_graph.gd`
+- Extends: `SceneTree`
+- System: Supporting gameplay
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- none
+
+### Key Variables
+- `_fail`
+- `leg`
+- `t`
+- `g`
+- `head`
+- `a`
+- `feet`
+- `y0`
+- `flat`
+- `g1`
+- `g2`
+- `g3`
+- `b`
+- `g4`
+- `base`
+- `arm`
+- `arm_x`
+
+### Functions
+- `_initialize() -> void`
+- `_check(label: String, cond: bool) -> void`
+- `_near(label: String, got: Vector3, want: Vector3, eps := 0.001) -> void`
+- `_make_leg(id: String, length: float) -> BodyPart`
+- `_torso(sockets: Dictionary) -> BodyPart`
+- `_test_biped() -> void`
+- `_test_quadruped() -> void`
+- `_test_validation() -> void`
+- `_test_socket_orientation() -> void`
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- none
+
+## test_body_measure
+
+- Source file: `scripts/locomotion/test_body_measure.gd`
+- Extends: `SceneTree`
+- System: Supporting gameplay
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- none
+
+### Key Variables
+- `_fail`
+- `s`
+- `g`
+- `torso`
+- `thigh`
+- `shin`
+- `head`
+- `m`
+- `com`
+- `chains`
+- `leg`
+- `zc`
+- `xc`
+
+### Functions
+- `_initialize() -> void`
+- `_check(label: String, cond: bool) -> void`
+- `_approx(label: String, got: float, want: float, eps := 0.005) -> void`
+- `_segment(id: String, length: float, mass: float, knee_bend := 0.0) -> BodyPart`
+- `_biped(knee_bend := 0.0) -> BodyGraph`
+- `_test_biped_measure() -> void`
+- `_test_bent_reach() -> void`
+- `_test_quadruped_measure_and_display() -> void`
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- none
+
+## test_chain_ik
+
+- Source file: `scripts/locomotion/test_chain_ik.gd`
+- Extends: `SceneTree`
+- System: Supporting gameplay
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- none
+
+### Key Variables
+- `_fail`
+- `base`
+- `lengths`
+- `target`
+- `pole`
+- `pts`
+- `straight`
+- `far`
+- `front`
+- `back`
+
+### Functions
+- `_initialize() -> void`
+- `_check(label: String, cond: bool) -> void`
+- `_segments_preserved(pts: PackedVector3Array, lengths: Array) -> bool`
+- `_test_two_bone_reachable() -> void`
+- `_test_two_bone_limits() -> void`
+- `_test_pole_controls_bend() -> void`
+- `_test_one_segment() -> void`
+- `_test_fabrik_three() -> void`
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- none
+
+## test_contact_lock
+
+- Source file: `scripts/locomotion/test_contact_lock.gd`
+- Extends: `SceneTree`
+- System: Supporting gameplay
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- none
+
+### Key Variables
+- `_fail`
+- `g`
+- `stance`
+- `lock`
+- `base`
+- `delta`
+- `moved`
+- `feet_fixed`
+- `hips_tracked`
+- `b`
+- `m`
+- `base_margin`
+- `crouch`
+- `reach_up`
+- `down`
+- `up`
+- `right`
+- `left`
+- `turned`
+- `hips_moved`
+- `t`
+- `key`
+- `parts`
+- `new_pos`
+- `after`
+- `found`
+- `swayed`
+
+### Functions
+- `_initialize() -> void`
+- `_check(label: String, cond: bool) -> void`
+- `_biped_lock() -> ContactLock`
+- `_test_lock_holds_feet() -> void`
+- `_test_reach_bookkeeping() -> void`
+- `_test_travel_limits() -> void`
+- `_test_rotation_and_replant() -> void`
+- `_test_quadruped_generality() -> void`
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- none
+
+## test_detachment
+
+- Source file: `scripts/locomotion/test_detachment.gd`
+- Extends: `SceneTree`
+- System: Supporting gameplay
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- none
+
+### Key Variables
+- `_fail`
+- `g`
+- `cut`
+- `comps`
+- `sizes`
+- `r`
+- `ctrl`
+- `body`
+- `margin`
+
+### Functions
+- `_initialize() -> void`
+- `_check(label: String, cond: bool) -> void`
+- `_test_components() -> void`
+- `_test_biped_loses_a_leg() -> void`
+- `_test_head_detaches() -> void`
+- `_test_quadruped_loses_a_leg() -> void`
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- none
+
+## test_gait
+
+- Source file: `scripts/locomotion/test_gait.gd`
+- Extends: `SceneTree`
+- System: Supporting gameplay
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- none
+
+### Key Variables
+- `_fail`
+- `g`
+- `stance`
+- `keys`
+- `offsets`
+- `gait`
+- `dt`
+- `steps`
+- `start_z`
+- `always_supported`
+- `no_slide`
+- `reachable`
+- `feet_on_ground`
+- `max_slide`
+- `max_planted_y`
+- `swing_lift`
+- `swing_seen`
+- `prev_foot`
+- `prev_planted`
+- `planted`
+- `foot`
+- `slid`
+- `advanced`
+- `expected`
+
+### Functions
+- `_initialize() -> void`
+- `_check(label: String, cond: bool) -> void`
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- none
+
+## test_gait_pattern
+
+- Source file: `scripts/locomotion/test_gait_pattern.gd`
+- Extends: `SceneTree`
+- System: Supporting gameplay
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- none
+
+### Key Variables
+- `_fail`
+- `offsets`
+- `osc`
+- `m`
+- `n`
+- `cls`
+- `quad`
+- `walk`
+- `trot`
+- `tripod`
+- `rf`
+- `sw`
+- `speed`
+- `sopts`
+- `stance`
+- `pat`
+- `gait`
+- `max_lift`
+- `dt`
+- `start_z`
+- `min_support`
+- `no_slide`
+- `reachable`
+- `max_strain`
+- `prev`
+- `prevp`
+- `advanced`
+- `cadence`
+- `swing_frames`
+
+### Functions
+- `_initialize() -> void`
+- `_check(label: String, cond: bool) -> void`
+- `_contacts(g: BodyGraph) -> Array`
+- `_min_support(pat: Dictionary) -> int`
+- `_test_classification() -> void`
+- `_test_pattern_support() -> void`
+- `_walk_check(name: String, g: BodyGraph, family: String, cfg: Dictionary, min_supp: int) -> void`
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- none
+
+## test_gallery
+
+- Source file: `scripts/locomotion/test_gallery.gd`
+- Extends: `SceneTree`
+- System: Supporting gameplay
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- none
+
+### Key Variables
+- `_fail`
+- `expect_stable`
+- `nm`
+- `g`
+- `resting`
+- `st`
+- `want`
+- `measure`
+- `chain_by_key`
+- `H`
+- `c`
+- `hip`
+- `pts`
+
+### Functions
+- `_initialize() -> void`
+- `_check(label: String, cond: bool) -> void`
+- `_ik_reaches(g: BodyGraph, st: Dictionary) -> bool`
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- none
+
+## test_impact
+
+- Source file: `scripts/locomotion/test_impact.gd`
+- Extends: `SceneTree`
+- System: Supporting gameplay
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- none
+
+### Key Variables
+- `_fail`
+- `g`
+- `m`
+- `com`
+- `mass`
+- `inertia`
+- `push`
+- `high`
+- `top_after`
+- `side`
+- `centre`
+- `heavy`
+- `recoil`
+- `settling`
+- `r`
+
+### Functions
+- `_initialize() -> void`
+- `_kicked(contact: Vector3, impulse: Vector3, com: Vector3, mass: float, inertia: float, frames: int) -> ImpactResponse`
+- `_v(v: Vector3) -> String`
+- `_check(label: String, cond: bool) -> void`
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- none
+
+## test_root_pose
+
+- Source file: `scripts/locomotion/test_root_pose.gd`
+- Extends: `SceneTree`
+- System: Supporting gameplay
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- none
+
+### Key Variables
+- `_fail`
+- `up`
+- `flat`
+- `pf`
+- `frontup`
+- `pn`
+- `rightup`
+- `pr`
+
+### Functions
+- `_initialize() -> void`
+- `_check(label: String, cond: bool) -> void`
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- none
+
+## test_stance_generator
+
+- Source file: `scripts/locomotion/test_stance_generator.gd`
+- Extends: `SceneTree`
+- System: Supporting gameplay
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- none
+
+### Key Variables
+- `_fail`
+- `biped_margin`
+- `quad_margin`
+- `g`
+- `narrow`
+- `wide`
+- `m`
+- `p`
+- `leg`
+- `torso`
+- `head`
+- `st`
+- `cs`
+- `zc`
+- `xc`
+- `weight`
+
+### Functions
+- `_initialize() -> void`
+- `_check(label: String, cond: bool) -> void`
+- `_test_stance_width() -> void`
+- `_spread(st: Dictionary) -> float`
+- `_leg(id: String, length: float, mass: float) -> BodyPart`
+- `_test_biped() -> float`
+- `_test_quadruped() -> float`
+- `_test_no_stance() -> void`
+- `_test_offcenter_instability() -> void`
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- none
+
+## test_terrain
+
+- Source file: `scripts/locomotion/test_terrain.gd`
+- Extends: `SceneTree`
+- System: Supporting gameplay
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- `SLOPE`
+
+### Key Variables
+- `_fail`
+- `g`
+- `stance`
+- `pat`
+- `gait`
+- `dt`
+- `start`
+- `min_support`
+- `no_slide`
+- `reachable`
+- `feet_on_terrain`
+- `max_pitch`
+- `prev`
+- `prevp`
+- `foot`
+- `climbed`
+- `advanced`
+
+### Functions
+- `_ramp(p: Vector3) -> float`
+- `_initialize() -> void`
+- `_check(label: String, cond: bool) -> void`
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- none
+
+## test_turning
+
+- Source file: `scripts/locomotion/test_turning.gd`
+- Extends: `SceneTree`
+- System: Supporting gameplay
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- none
+
+### Key Variables
+- `_fail`
+- `g`
+- `stance`
+- `pat`
+- `gait`
+- `turn`
+- `dt`
+- `steps`
+- `start`
+- `min_support`
+- `no_slide`
+- `reachable`
+- `prev`
+- `prevp`
+- `expected_heading`
+- `torso_forward`
+- `torso_heading`
+- `disp`
+
+### Functions
+- `_initialize() -> void`
+- `_check(label: String, cond: bool) -> void`
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- none
+
+## locomotion_demo_launcher
+
+- Source file: `scripts/locomotion_demo_launcher.gd`
+- Extends: `Node`
+- System: Supporting gameplay
+
+### Signals
+- none
+
+### Exported Tuning
+- none
+
+### Constants
+- `WALK_DEMO`
+- `LAB`
+- `COMBAT`
+
+### Key Variables
+- `key`
+- `tree`
+
+### Functions
+- `_input(event: InputEvent) -> void`
+- `_open(path: String) -> void`
+
+### Resource Dependencies
+- none
+
+### GameEvents Usage
+- none
+
+### Input Actions
+- none
+
+### Node Path Lookups
+- none
+
 ## main_menu
 
 - Source file: `scripts/main_menu.gd`
@@ -2496,11 +4514,22 @@
 - `combo_finisher_torso_twist`
 - `combo_finisher_lunge`
 - `demo_settle_time`
+- `run_arch_deg`
 - `waist_bend_lean`
 - `waist_bend_step`
 - `waist_bend_breath`
 - `waist_bend_limit`
 - `waist_response`
+- `idle_stance_enabled`
+- `idle_stance_width`
+- `idle_foot_forward`
+- `idle_chest_lean_deg`
+- `idle_chest_breath_deg`
+- `idle_breath_speed`
+- `idle_guard_arm_raise_deg`
+- `idle_guard_arm_tuck_deg`
+- `idle_guard_elbow_deg`
+- `idle_guard_blend_speed`
 - `whole_body_rotation_deg`
 - `aim_overlay_blend_speed`
 - `aim_right_arm_forward`
@@ -2510,12 +4539,26 @@
 - `aim_torso_lean`
 - `aim_head_dip`
 - `ik_feet_enabled`
+- `ik_foot_magnet`
+- `ik_magnet_stiffness`
+- `ik_magnet_damping`
+- `ik_magnet_damping_idle`
+- `ik_magnet_transition_thresh`
+- `ik_magnet_transition_decay`
+- `ik_foot_max_speed`
 - `ik_hip_drop`
+- `ik_hip_drop_moving`
 - `ik_step_trigger`
+- `ik_idle_step_trigger`
+- `ik_idle_settle_enabled`
+- `ik_idle_settle_speed`
+- `ik_idle_settle_rate`
 - `ik_step_duration`
 - `ik_step_reach`
 - `ik_step_duration_min`
 - `ik_step_overlap`
+- `ik_stride_reach_boost`
+- `ik_stance_width`
 - `ik_leap_height`
 - `ik_leap_pitch_up_deg`
 - `ik_leap_pitch_down_deg`
@@ -2661,6 +4704,9 @@
 - `_animate_torso_spring(sway: float, breath: float) -> void`
 - `_anchor_socket_to_body(key: String, body: Node3D) -> void`
 - `_animate_limbs() -> void`
+- `_idle_stance_blend() -> float`
+- `_update_idle_stance(delta: float) -> void`
+- `_apply_idle_stance() -> void`
 - `_animate_crawl_body() -> void`
 - `_animate_crawl_limbs() -> void`
 - `_apply_lizard_wall_climb_limb_pose() -> void`
@@ -2711,9 +4757,12 @@
 - `_ik_step_error(foot_key: String) -> float`
 - `_ik_begin_step(foot_key: String) -> void`
 - `_ik_foot_world(foot_key: String) -> Vector3`
+- `_ik_snap_dip_for_landing(foot_key: String) -> void`
 - `_swing_forward_curve(t: float) -> float`
 - `_ik_foot_normal(foot_key: String) -> Vector3`
+- `_ik_magnet_foot(foot_key: String, target: Vector3, delta: float) -> Vector3`
 - `_ik_reachable_target(foot_key: String) -> Vector3`
+- `_ik_hip_drop_now() -> float`
 - `_ik_update_pelvis(delta: float, grounded: bool) -> void`
 - `_ik_pelvis_offset() -> Vector3`
 - `_apply_pelvis_carry() -> void`
@@ -2906,6 +4955,7 @@
 - `stats`
 - `slider`
 - `label`
+- `style`
 - `box`
 - `title`
 - `reset`

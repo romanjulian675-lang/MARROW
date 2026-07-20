@@ -50,8 +50,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_3:
 				if not dummy_only_mode:
 					_spawn_enemy_at_next_marker("lizard")
-			# KEY_4 belongs to the tuning menu (TuningMenuUI) — ranged moved to 6.
-			KEY_6:
+			# KEY_4 = tuning menu (TuningMenuUI); KEY_6 = locomotion walk demo
+			# (LocomotionDemoLauncher autoload) — so ranged spawn lives on 7.
+			KEY_7:
 				if not dummy_only_mode:
 					_spawn_enemy_at_next_marker("ranged")
 			KEY_5:
@@ -364,6 +365,6 @@ func _update_status() -> void:
 		else:
 			status_label.text += "2 or 5: respawn dummy target\n"
 	else:
-		status_label.text += "1 Normal   2 Gorilla   3 Lizard   6 Ranged   5 Dummy\n"
-	status_label.text += "4: tuning menu   Backspace: remove latest enemy   R: reset scene   Esc: menu\n"
+		status_label.text += "1 Normal   2 Gorilla   3 Lizard   7 Ranged   5 Dummy\n"
+	status_label.text += "4: tuning menu   6: walk demo   8: locomotion lab   9: combat lab   Backspace: remove latest enemy   R: reset scene   Esc: menu\n"
 	status_label.text += "Edit EnemySpawnPoints in this scene to add/remove default enemy positions."

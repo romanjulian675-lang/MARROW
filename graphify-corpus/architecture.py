@@ -1543,6 +1543,1786 @@ class LimbBonePickup:
         """Relationship: references class DropPickupRulesService."""
         return DropPickupRulesService
 
+class AttackController:
+    """Godot script: scripts/locomotion/attack_controller.gd
+    class_name: AttackController
+    extends: RefCounted
+    system: Combat and enemies
+    """
+    source_file = 'scripts/locomotion/attack_controller.gd'
+    godot_class_name = 'AttackController'
+    godot_extends = 'RefCounted'
+    gameplay_system = 'Combat and enemies'
+
+    def gd_func__init(self):
+        """GDScript function: _init(arm_reach: float, weapon: float = 0.0, definition: Variant = null) -> void"""
+        pass
+
+    def gd_func_total_reach(self):
+        """GDScript function: total_reach() -> float"""
+        pass
+
+    def gd_func_plan(self):
+        """GDScript function: plan(shoulder: Vector3, target: Vector3) -> Dictionary"""
+        pass
+
+    def gd_func_sample(self):
+        """GDScript function: sample(phase: float, shoulder: Vector3, target: Vector3) -> Dictionary"""
+        pass
+
+    def depends_on_BodyMeasure(self):
+        """Relationship: references class BodyMeasure."""
+        return BodyMeasure
+
+    def depends_on_ChainIK(self):
+        """Relationship: references class ChainIK."""
+        return ChainIK
+
+class BodyGraph:
+    """Godot script: scripts/locomotion/body_graph.gd
+    class_name: BodyGraph
+    extends: RefCounted
+    system: Supporting gameplay
+    """
+    source_file = 'scripts/locomotion/body_graph.gd'
+    godot_class_name = 'BodyGraph'
+    godot_extends = 'RefCounted'
+    gameplay_system = 'Supporting gameplay'
+
+    def gd_func_add_part(self):
+        """GDScript function: add_part(part: BodyPart) -> void"""
+        pass
+
+    def gd_func_set_root(self):
+        """GDScript function: set_root(id: String) -> void"""
+        pass
+
+    def gd_func_join(self):
+        """GDScript function: join(parent_id: String, parent_socket: String, child_id: String, child_socket: String, dof: Array = []) -> bool"""
+        pass
+
+    def gd_func_assemble(self):
+        """GDScript function: assemble(root_transform: Transform3D = Transform3D.IDENTITY) -> Dictionary"""
+        pass
+
+    def gd_func_socket_world(self):
+        """GDScript function: socket_world(assembly: Dictionary, part_id: String, socket_name: String) -> Vector3"""
+        pass
+
+    def gd_func_validate(self):
+        """GDScript function: validate() -> Array"""
+        pass
+
+    def gd_func_is_valid(self):
+        """GDScript function: is_valid() -> bool"""
+        pass
+
+    def gd_func_part_count(self):
+        """GDScript function: part_count() -> int"""
+        pass
+
+    def gd_func__children_by_parent(self):
+        """GDScript function: _children_by_parent() -> Dictionary"""
+        pass
+
+    def gd_func_parent_joint_of(self):
+        """GDScript function: parent_joint_of(id: String) -> Dictionary"""
+        pass
+
+    def gd_func_leaves(self):
+        """GDScript function: leaves() -> Array"""
+        pass
+
+    def gd_func_joints_to(self):
+        """GDScript function: joints_to(id: String) -> Array"""
+        pass
+
+    def gd_func_endpoints_world(self):
+        """GDScript function: endpoints_world(assembly: Dictionary) -> Array"""
+        pass
+
+    def gd_func_manipulators_world(self):
+        """GDScript function: manipulators_world(assembly: Dictionary) -> Array"""
+        pass
+
+    def gd_func_connected_components(self):
+        """GDScript function: connected_components(cut_joint: int = -1) -> Array"""
+        pass
+
+    def gd_func_component_containing(self):
+        """GDScript function: component_containing(part_id: String, cut_joint: int = -1) -> Array"""
+        pass
+
+    def gd_func_subgraph(self):
+        """GDScript function: subgraph(part_ids: Array, root_id: String, cut_joint: int = -1) -> BodyGraph"""
+        pass
+
+    def depends_on_BodyPart(self):
+        """Relationship: references class BodyPart."""
+        return BodyPart
+
+class BodyMeasure:
+    """Godot script: scripts/locomotion/body_measure.gd
+    class_name: BodyMeasure
+    extends: RefCounted
+    system: Supporting gameplay
+    """
+    source_file = 'scripts/locomotion/body_measure.gd'
+    godot_class_name = 'BodyMeasure'
+    godot_extends = 'RefCounted'
+    gameplay_system = 'Supporting gameplay'
+
+    def gd_func__init(self):
+        """GDScript function: _init(g: BodyGraph, assembly: Variant = null) -> void"""
+        pass
+
+    def gd_func_total_mass(self):
+        """GDScript function: total_mass() -> float"""
+        pass
+
+    def gd_func_center_of_mass(self):
+        """GDScript function: center_of_mass() -> Vector3"""
+        pass
+
+    def gd_func_chains(self):
+        """GDScript function: chains() -> Array"""
+        pass
+
+    def gd_func_inertia_about_com(self):
+        """GDScript function: inertia_about_com() -> float"""
+        pass
+
+    def gd_func_manipulation_chains(self):
+        """GDScript function: manipulation_chains() -> Array"""
+        pass
+
+    def gd_func__measure_chain(self):
+        """GDScript function: _measure_chain(part_id: String, socket_name: String) -> Dictionary"""
+        pass
+
+    def gd_func_describe(self):
+        """GDScript function: describe() -> String"""
+        pass
+
+    def gd_func__fmt(self):
+        """GDScript function: _fmt(v: Vector3) -> String"""
+        pass
+
+    def gd_func__axis_name(self):
+        """GDScript function: _axis_name(a: Vector3) -> String"""
+        pass
+
+    def depends_on_BodyGraph(self):
+        """Relationship: references class BodyGraph."""
+        return BodyGraph
+
+    def depends_on_BodyPart(self):
+        """Relationship: references class BodyPart."""
+        return BodyPart
+
+class BodyPart:
+    """Godot script: scripts/locomotion/body_part.gd
+    class_name: BodyPart
+    extends: RefCounted
+    system: Supporting gameplay
+    """
+    source_file = 'scripts/locomotion/body_part.gd'
+    godot_class_name = 'BodyPart'
+    godot_extends = 'RefCounted'
+    gameplay_system = 'Supporting gameplay'
+
+    def gd_func__init(self):
+        """GDScript function: _init(part_id: String = "", part_size: Vector3 = Vector3.ONE, part_mass: float = 1.0) -> void"""
+        pass
+
+    def gd_func_add_socket(self):
+        """GDScript function: add_socket(socket_name: String, xform) -> void"""
+        pass
+
+    def gd_func_has_socket(self):
+        """GDScript function: has_socket(socket_name: String) -> bool"""
+        pass
+
+    def gd_func_mark_endpoint(self):
+        """GDScript function: mark_endpoint(socket_name: String) -> void"""
+        pass
+
+    def gd_func_mark_manipulator(self):
+        """GDScript function: mark_manipulator(socket_name: String) -> void"""
+        pass
+
+    def gd_func_socket(self):
+        """GDScript function: socket(socket_name: String) -> Transform3D"""
+        pass
+
+    def gd_func_socket_names(self):
+        """GDScript function: socket_names() -> Array"""
+        pass
+
+    def gd_func_local_center_of_mass(self):
+        """GDScript function: local_center_of_mass() -> Vector3"""
+        pass
+
+    def gd_func_duplicate_part(self):
+        """GDScript function: duplicate_part() -> BodyPart"""
+        pass
+
+class ChainIK:
+    """Godot script: scripts/locomotion/chain_ik.gd
+    class_name: ChainIK
+    extends: RefCounted
+    system: Supporting gameplay
+    """
+    source_file = 'scripts/locomotion/chain_ik.gd'
+    godot_class_name = 'ChainIK'
+    godot_extends = 'RefCounted'
+    gameplay_system = 'Supporting gameplay'
+
+    def depends_on_BodyGraph(self):
+        """Relationship: references class BodyGraph."""
+        return BodyGraph
+
+class ContactLock:
+    """Godot script: scripts/locomotion/contact_lock.gd
+    class_name: ContactLock
+    extends: RefCounted
+    system: Supporting gameplay
+    """
+    source_file = 'scripts/locomotion/contact_lock.gd'
+    godot_class_name = 'ContactLock'
+    godot_extends = 'RefCounted'
+    gameplay_system = 'Supporting gameplay'
+
+    def gd_func__init(self):
+        """GDScript function: _init(g: BodyGraph, stance: Dictionary, measure: BodyMeasure = null) -> void"""
+        pass
+
+    def gd_func_set_contact(self):
+        """GDScript function: set_contact(part: String, socket: String, world_pos: Vector3) -> void"""
+        pass
+
+    def gd_func_locked_keys(self):
+        """GDScript function: locked_keys() -> Array"""
+        pass
+
+    def gd_func_contact_count(self):
+        """GDScript function: contact_count() -> int"""
+        pass
+
+    def gd_func_contact_world(self):
+        """GDScript function: contact_world(part: String, socket: String) -> Vector3"""
+        pass
+
+    def gd_func_hip_world(self):
+        """GDScript function: hip_world(part: String, socket: String, root_xf: Transform3D) -> Vector3"""
+        pass
+
+    def gd_func_evaluate(self):
+        """GDScript function: evaluate(root_xf: Transform3D) -> Dictionary"""
+        pass
+
+    def gd_func_evaluate_shift(self):
+        """GDScript function: evaluate_shift(delta: Vector3) -> Dictionary"""
+        pass
+
+    def gd_func_evaluate_rotated(self):
+        """GDScript function: evaluate_rotated(basis: Basis) -> Dictionary"""
+        pass
+
+    def gd_func_max_travel(self):
+        """GDScript function: max_travel(dir: Vector3, start: Transform3D = base_root, limit: float = 3.0, tol: float = 0.001) -> float"""
+        pass
+
+    def depends_on_BodyGraph(self):
+        """Relationship: references class BodyGraph."""
+        return BodyGraph
+
+    def depends_on_BodyMeasure(self):
+        """Relationship: references class BodyMeasure."""
+        return BodyMeasure
+
+class Detachment:
+    """Godot script: scripts/locomotion/detachment.gd
+    class_name: Detachment
+    extends: RefCounted
+    system: Supporting gameplay
+    """
+    source_file = 'scripts/locomotion/detachment.gd'
+    godot_class_name = 'Detachment'
+    godot_extends = 'RefCounted'
+    gameplay_system = 'Supporting gameplay'
+
+    def depends_on_BodyGraph(self):
+        """Relationship: references class BodyGraph."""
+        return BodyGraph
+
+    def depends_on_StanceGenerator(self):
+        """Relationship: references class StanceGenerator."""
+        return StanceGenerator
+
+class GaitController:
+    """Godot script: scripts/locomotion/gait_controller.gd
+    class_name: GaitController
+    extends: RefCounted
+    system: Supporting gameplay
+    """
+    source_file = 'scripts/locomotion/gait_controller.gd'
+    godot_class_name = 'GaitController'
+    godot_extends = 'RefCounted'
+    gameplay_system = 'Supporting gameplay'
+
+    def gd_func__init(self):
+        """GDScript function: _init(g: BodyGraph, stance: Dictionary, opts: Dictionary = {}) -> void"""
+        pass
+
+    def gd_func_set_velocity(self):
+        """GDScript function: set_velocity(v: Vector3) -> void"""
+        pass
+
+    def gd_func_set_intent(self):
+        """GDScript function: set_intent(speed: float, turn_rate: float) -> void"""
+        pass
+
+    def gd_func_set_turn_rate(self):
+        """GDScript function: set_turn_rate(turn_rate: float) -> void"""
+        pass
+
+    def gd_func_heading(self):
+        """GDScript function: heading() -> float"""
+        pass
+
+    def gd_func_adopt_motion(self):
+        """GDScript function: adopt_motion(travel: Vector3, head: float) -> void"""
+        pass
+
+    def gd_func_set_ground(self):
+        """GDScript function: set_ground(height_fn: Callable) -> void"""
+        pass
+
+    def gd_func__ground_h(self):
+        """GDScript function: _ground_h(p: Vector3) -> float"""
+        pass
+
+    def gd_func_speed(self):
+        """GDScript function: speed() -> float"""
+        pass
+
+    def gd_func_step(self):
+        """GDScript function: step(dt: float) -> void"""
+        pass
+
+    def gd_func__support_centroid(self):
+        """GDScript function: _support_centroid() -> Variant"""
+        pass
+
+    def gd_func_limbs(self):
+        """GDScript function: limbs() -> Array"""
+        pass
+
+    def gd_func_is_planted(self):
+        """GDScript function: is_planted(key: String) -> bool"""
+        pass
+
+    def gd_func_planted_count(self):
+        """GDScript function: planted_count() -> int"""
+        pass
+
+    def gd_func_foot_position(self):
+        """GDScript function: foot_position(key: String) -> Vector3"""
+        pass
+
+    def gd_func_hip_position(self):
+        """GDScript function: hip_position(key: String) -> Vector3"""
+        pass
+
+    def gd_func_leg_points(self):
+        """GDScript function: leg_points(key: String) -> PackedVector3Array"""
+        pass
+
+    def gd_func_reach_strain(self):
+        """GDScript function: reach_strain(key: String) -> float"""
+        pass
+
+    def depends_on_BodyGraph(self):
+        """Relationship: references class BodyGraph."""
+        return BodyGraph
+
+    def depends_on_BodyMeasure(self):
+        """Relationship: references class BodyMeasure."""
+        return BodyMeasure
+
+    def depends_on_ChainIK(self):
+        """Relationship: references class ChainIK."""
+        return ChainIK
+
+    def depends_on_GaitOscillator(self):
+        """Relationship: references class GaitOscillator."""
+        return GaitOscillator
+
+    def depends_on_RootPoseSolver(self):
+        """Relationship: references class RootPoseSolver."""
+        return RootPoseSolver
+
+class GaitOscillator:
+    """Godot script: scripts/locomotion/gait_oscillator.gd
+    class_name: GaitOscillator
+    extends: RefCounted
+    system: Supporting gameplay
+    """
+    source_file = 'scripts/locomotion/gait_oscillator.gd'
+    godot_class_name = 'GaitOscillator'
+    godot_extends = 'RefCounted'
+    gameplay_system = 'Supporting gameplay'
+
+    def gd_func__init(self):
+        """GDScript function: _init(limb_offsets: Dictionary, duty_factor: float = 0.65) -> void"""
+        pass
+
+    def gd_func_advance(self):
+        """GDScript function: advance(cycles: float) -> void"""
+        pass
+
+    def gd_func_limb_phase(self):
+        """GDScript function: limb_phase(key: String) -> float"""
+        pass
+
+    def gd_func_is_stance(self):
+        """GDScript function: is_stance(key: String) -> bool"""
+        pass
+
+    def gd_func_stance_t(self):
+        """GDScript function: stance_t(key: String) -> float"""
+        pass
+
+    def gd_func_swing_t(self):
+        """GDScript function: swing_t(key: String) -> float"""
+        pass
+
+    def gd_func_keys(self):
+        """GDScript function: keys() -> Array"""
+        pass
+
+class GaitPattern:
+    """Godot script: scripts/locomotion/gait_pattern.gd
+    class_name: GaitPattern
+    extends: RefCounted
+    system: Supporting gameplay
+    """
+    source_file = 'scripts/locomotion/gait_pattern.gd'
+    godot_class_name = 'GaitPattern'
+    godot_extends = 'RefCounted'
+    gameplay_system = 'Supporting gameplay'
+
+    pass
+
+class Geom2d:
+    """Godot script: scripts/locomotion/geom2d.gd
+    class_name: Geom2d
+    extends: RefCounted
+    system: Supporting gameplay
+    """
+    source_file = 'scripts/locomotion/geom2d.gd'
+    godot_class_name = 'Geom2d'
+    godot_extends = 'RefCounted'
+    gameplay_system = 'Supporting gameplay'
+
+    pass
+
+class ImpactResponse:
+    """Godot script: scripts/locomotion/impact_response.gd
+    class_name: ImpactResponse
+    extends: RefCounted
+    system: Supporting gameplay
+    """
+    source_file = 'scripts/locomotion/impact_response.gd'
+    godot_class_name = 'ImpactResponse'
+    godot_extends = 'RefCounted'
+    gameplay_system = 'Supporting gameplay'
+
+    def gd_func_apply_impulse(self):
+        """GDScript function: apply_impulse(contact: Vector3, impulse: Vector3, com: Vector3, mass: float, inertia: float) -> void"""
+        pass
+
+    def gd_func_step(self):
+        """GDScript function: step(dt: float) -> void"""
+        pass
+
+    def gd_func_offset(self):
+        """GDScript function: offset() -> Transform3D"""
+        pass
+
+    def gd_func_displacement(self):
+        """GDScript function: displacement() -> Vector3"""
+        pass
+
+    def gd_func_tilt(self):
+        """GDScript function: tilt() -> Vector3"""
+        pass
+
+    def gd_func_is_settled(self):
+        """GDScript function: is_settled() -> bool"""
+        pass
+
+    def gd_func_reset(self):
+        """GDScript function: reset() -> void"""
+        pass
+
+    def gd_func_configure(self):
+        """GDScript function: configure(p: Dictionary) -> void"""
+        pass
+
+    def depends_on_BodyMeasure(self):
+        """Relationship: references class BodyMeasure."""
+        return BodyMeasure
+
+class LocomotionCombat:
+    """Godot script: scripts/locomotion/locomotion_combat.gd
+    class_name: none
+    extends: Node3D
+    system: Supporting gameplay
+    """
+    source_file = 'scripts/locomotion/locomotion_combat.gd'
+    godot_class_name = ''
+    godot_extends = 'Node3D'
+    gameplay_system = 'Supporting gameplay'
+
+    def gd_func__ready(self):
+        """GDScript function: _ready() -> void"""
+        pass
+
+    def gd_func__unhandled_input(self):
+        """GDScript function: _unhandled_input(event: InputEvent) -> void"""
+        pass
+
+    def gd_func__strike(self):
+        """GDScript function: _strike() -> void"""
+        pass
+
+    def gd_func__reset(self):
+        """GDScript function: _reset() -> void"""
+        pass
+
+    def gd_func__make_body(self):
+        """GDScript function: _make_body(g: BodyGraph, at: Vector3, is_attacker: bool) -> Dictionary"""
+        pass
+
+    def gd_func__place_bodies(self):
+        """GDScript function: _place_bodies() -> void"""
+        pass
+
+    def gd_func__target_point(self):
+        """GDScript function: _target_point() -> Vector3"""
+        pass
+
+    def gd_func__shoulder(self):
+        """GDScript function: _shoulder() -> Vector3"""
+        pass
+
+    def gd_func__root_of(self):
+        """GDScript function: _root_of(body: Dictionary) -> Transform3D"""
+        pass
+
+    def gd_func__process(self):
+        """GDScript function: _process(dt: float) -> void"""
+        pass
+
+    def gd_func__apply_body(self):
+        """GDScript function: _apply_body(body: Dictionary) -> void"""
+        pass
+
+    def gd_func__land_hit(self):
+        """GDScript function: _land_hit(contact: Vector3) -> void"""
+        pass
+
+    def gd_func__update_camera(self):
+        """GDScript function: _update_camera() -> void"""
+        pass
+
+    def gd_func__save_profile(self):
+        """GDScript function: _save_profile() -> void"""
+        pass
+
+    def gd_func__record_sample(self):
+        """GDScript function: _record_sample() -> void"""
+        pass
+
+    def gd_func__bake_clip(self):
+        """GDScript function: _bake_clip() -> void"""
+        pass
+
+    def gd_func__ensure_dir(self):
+        """GDScript function: _ensure_dir() -> void"""
+        pass
+
+    def gd_func__build_ui(self):
+        """GDScript function: _build_ui() -> void"""
+        pass
+
+    def gd_func__slider_row(self):
+        """GDScript function: _slider_row(e: Dictionary) -> Control"""
+        pass
+
+    def gd_func__enum_row(self):
+        """GDScript function: _enum_row(e: Dictionary) -> Control"""
+        pass
+
+    def gd_func__on_slider(self):
+        """GDScript function: _on_slider(v: float, pname: String) -> void"""
+        pass
+
+    def gd_func__on_enum(self):
+        """GDScript function: _on_enum(idx: int, e: Dictionary) -> void"""
+        pass
+
+    def gd_func__update_readout(self):
+        """GDScript function: _update_readout() -> void"""
+        pass
+
+    def gd_func__box(self):
+        """GDScript function: _box(parent: Node3D, size: Vector3, color: Color) -> MeshInstance3D"""
+        pass
+
+    def gd_func__cyl(self):
+        """GDScript function: _cyl(parent: Node3D, radius: float, height: float, color: Color) -> MeshInstance3D"""
+        pass
+
+    def gd_func__ball(self):
+        """GDScript function: _ball(parent: Node3D, radius: float, color: Color) -> MeshInstance3D"""
+        pass
+
+    def gd_func__orient(self):
+        """GDScript function: _orient(mi: MeshInstance3D, a: Vector3, b: Vector3) -> void"""
+        pass
+
+    def gd_func__mat(self):
+        """GDScript function: _mat(color: Color) -> StandardMaterial3D"""
+        pass
+
+    def gd_func__ground(self):
+        """GDScript function: _ground() -> void"""
+        pass
+
+    def gd_func__setup_environment(self):
+        """GDScript function: _setup_environment() -> void"""
+        pass
+
+    def depends_on_AttackController(self):
+        """Relationship: references class AttackController."""
+        return AttackController
+
+    def depends_on_BodyGraph(self):
+        """Relationship: references class BodyGraph."""
+        return BodyGraph
+
+    def depends_on_BodyMeasure(self):
+        """Relationship: references class BodyMeasure."""
+        return BodyMeasure
+
+    def depends_on_BodyPart(self):
+        """Relationship: references class BodyPart."""
+        return BodyPart
+
+    def depends_on_ChainIK(self):
+        """Relationship: references class ChainIK."""
+        return ChainIK
+
+    def depends_on_ImpactResponse(self):
+        """Relationship: references class ImpactResponse."""
+        return ImpactResponse
+
+    def depends_on_LocomotionZoo(self):
+        """Relationship: references class LocomotionZoo."""
+        return LocomotionZoo
+
+    def depends_on_StanceGenerator(self):
+        """Relationship: references class StanceGenerator."""
+        return StanceGenerator
+
+class LocomotionGallery:
+    """Godot script: scripts/locomotion/locomotion_gallery.gd
+    class_name: none
+    extends: Node3D
+    system: Supporting gameplay
+    """
+    source_file = 'scripts/locomotion/locomotion_gallery.gd'
+    godot_class_name = ''
+    godot_extends = 'Node3D'
+    gameplay_system = 'Supporting gameplay'
+
+    def gd_func__ready(self):
+        """GDScript function: _ready() -> void"""
+        pass
+
+    def gd_func__process(self):
+        """GDScript function: _process(delta: float) -> void"""
+        pass
+
+    def gd_func__spawn(self):
+        """GDScript function: _spawn(entry: Dictionary, offset: Vector3) -> void"""
+        pass
+
+    def gd_func__ground_tile(self):
+        """GDScript function: _ground_tile(parent: Node3D) -> void"""
+        pass
+
+    def gd_func__box(self):
+        """GDScript function: _box(parent: Node3D, xf: Transform3D, size: Vector3, color: Color) -> void"""
+        pass
+
+    def gd_func__bone(self):
+        """GDScript function: _bone(parent: Node3D, a: Vector3, b: Vector3, radius: float, color: Color) -> void"""
+        pass
+
+    def gd_func__basis_from_up(self):
+        """GDScript function: _basis_from_up(dir: Vector3) -> Basis"""
+        pass
+
+    def gd_func__sphere(self):
+        """GDScript function: _sphere(parent: Node3D, pos: Vector3, radius: float, color: Color) -> void"""
+        pass
+
+    def gd_func__foot_dot(self):
+        """GDScript function: _foot_dot(parent: Node3D, pos: Vector3) -> void"""
+        pass
+
+    def gd_func__support_polygon(self):
+        """GDScript function: _support_polygon(parent: Node3D, hull: Array, stable: bool) -> void"""
+        pass
+
+    def gd_func__label(self):
+        """GDScript function: _label(parent: Node3D, pos: Vector3, text: String) -> void"""
+        pass
+
+    def gd_func__mat(self):
+        """GDScript function: _mat(color: Color) -> StandardMaterial3D"""
+        pass
+
+    def gd_func__setup_environment(self):
+        """GDScript function: _setup_environment() -> void"""
+        pass
+
+    def depends_on_BodyGraph(self):
+        """Relationship: references class BodyGraph."""
+        return BodyGraph
+
+    def depends_on_BodyMeasure(self):
+        """Relationship: references class BodyMeasure."""
+        return BodyMeasure
+
+    def depends_on_BodyPart(self):
+        """Relationship: references class BodyPart."""
+        return BodyPart
+
+    def depends_on_ChainIK(self):
+        """Relationship: references class ChainIK."""
+        return ChainIK
+
+    def depends_on_Geom2d(self):
+        """Relationship: references class Geom2d."""
+        return Geom2d
+
+    def depends_on_LocomotionZoo(self):
+        """Relationship: references class LocomotionZoo."""
+        return LocomotionZoo
+
+    def depends_on_StanceGenerator(self):
+        """Relationship: references class StanceGenerator."""
+        return StanceGenerator
+
+class LocomotionLab:
+    """Godot script: scripts/locomotion/locomotion_lab.gd
+    class_name: none
+    extends: Node3D
+    system: Supporting gameplay
+    """
+    source_file = 'scripts/locomotion/locomotion_lab.gd'
+    godot_class_name = ''
+    godot_extends = 'Node3D'
+    gameplay_system = 'Supporting gameplay'
+
+    def gd_func__ready(self):
+        """GDScript function: _ready() -> void"""
+        pass
+
+    def gd_func__terrain(self):
+        """GDScript function: _terrain(p: Vector3) -> float"""
+        pass
+
+    def gd_func__unhandled_input(self):
+        """GDScript function: _unhandled_input(event: InputEvent) -> void"""
+        pass
+
+    def gd_func__rebuild(self):
+        """GDScript function: _rebuild(reset := false) -> void"""
+        pass
+
+    def gd_func__build_creature(self):
+        """GDScript function: _build_creature() -> BodyGraph"""
+        pass
+
+    def gd_func__process(self):
+        """GDScript function: _process(dt: float) -> void"""
+        pass
+
+    def gd_func__spawn_render(self):
+        """GDScript function: _spawn_render() -> void"""
+        pass
+
+    def gd_func__spawn_static(self):
+        """GDScript function: _spawn_static() -> void"""
+        pass
+
+    def gd_func__update_render(self):
+        """GDScript function: _update_render() -> void"""
+        pass
+
+    def gd_func__update_camera(self):
+        """GDScript function: _update_camera() -> void"""
+        pass
+
+    def gd_func__build_ui(self):
+        """GDScript function: _build_ui() -> void"""
+        pass
+
+    def gd_func__slider_row(self):
+        """GDScript function: _slider_row(e: Dictionary) -> Control"""
+        pass
+
+    def gd_func__enum_row(self):
+        """GDScript function: _enum_row(e: Dictionary) -> Control"""
+        pass
+
+    def gd_func__on_slider(self):
+        """GDScript function: _on_slider(value: float, pname: String) -> void"""
+        pass
+
+    def gd_func__on_enum(self):
+        """GDScript function: _on_enum(idx: int, e: Dictionary) -> void"""
+        pass
+
+    def gd_func__update_readout(self):
+        """GDScript function: _update_readout() -> void"""
+        pass
+
+    def gd_func__fmt(self):
+        """GDScript function: _fmt(v: float) -> String"""
+        pass
+
+    def gd_func__box(self):
+        """GDScript function: _box(size: Vector3, color: Color) -> MeshInstance3D"""
+        pass
+
+    def gd_func__cyl(self):
+        """GDScript function: _cyl(radius: float, height: float, color: Color) -> MeshInstance3D"""
+        pass
+
+    def gd_func__ball(self):
+        """GDScript function: _ball(radius: float, color: Color) -> MeshInstance3D"""
+        pass
+
+    def gd_func__orient(self):
+        """GDScript function: _orient(mi: MeshInstance3D, a: Vector3, b: Vector3) -> void"""
+        pass
+
+    def gd_func__mat(self):
+        """GDScript function: _mat(color: Color) -> StandardMaterial3D"""
+        pass
+
+    def gd_func__build_ground(self):
+        """GDScript function: _build_ground() -> void"""
+        pass
+
+    def gd_func__setup_environment(self):
+        """GDScript function: _setup_environment() -> void"""
+        pass
+
+    def depends_on_BodyGraph(self):
+        """Relationship: references class BodyGraph."""
+        return BodyGraph
+
+    def depends_on_BodyMeasure(self):
+        """Relationship: references class BodyMeasure."""
+        return BodyMeasure
+
+    def depends_on_BodyPart(self):
+        """Relationship: references class BodyPart."""
+        return BodyPart
+
+    def depends_on_GaitController(self):
+        """Relationship: references class GaitController."""
+        return GaitController
+
+    def depends_on_GaitPattern(self):
+        """Relationship: references class GaitPattern."""
+        return GaitPattern
+
+    def depends_on_LocomotionZoo(self):
+        """Relationship: references class LocomotionZoo."""
+        return LocomotionZoo
+
+    def depends_on_StanceGenerator(self):
+        """Relationship: references class StanceGenerator."""
+        return StanceGenerator
+
+class LocomotionWalk:
+    """Godot script: scripts/locomotion/locomotion_walk.gd
+    class_name: none
+    extends: Node3D
+    system: Supporting gameplay
+    """
+    source_file = 'scripts/locomotion/locomotion_walk.gd'
+    godot_class_name = ''
+    godot_extends = 'Node3D'
+    gameplay_system = 'Supporting gameplay'
+
+    def gd_func__ready(self):
+        """GDScript function: _ready() -> void"""
+        pass
+
+    def gd_func__unhandled_input(self):
+        """GDScript function: _unhandled_input(event: InputEvent) -> void"""
+        pass
+
+    def gd_func__process(self):
+        """GDScript function: _process(dt: float) -> void"""
+        pass
+
+    def gd_func__make_walker(self):
+        """GDScript function: _make_walker(g: BodyGraph, x_off: float, speed: float, cfg: Dictionary, label: String) -> Dictionary"""
+        pass
+
+    def gd_func__update_walker(self):
+        """GDScript function: _update_walker(w: Dictionary) -> void"""
+        pass
+
+    def gd_func__box(self):
+        """GDScript function: _box(parent: Node3D, size: Vector3, color: Color) -> MeshInstance3D"""
+        pass
+
+    def gd_func__cyl(self):
+        """GDScript function: _cyl(parent: Node3D, radius: float, height: float, color: Color) -> MeshInstance3D"""
+        pass
+
+    def gd_func__ball(self):
+        """GDScript function: _ball(parent: Node3D, radius: float, color: Color) -> MeshInstance3D"""
+        pass
+
+    def gd_func__orient(self):
+        """GDScript function: _orient(mi: MeshInstance3D, a: Vector3, b: Vector3) -> void"""
+        pass
+
+    def gd_func__basis_from_up(self):
+        """GDScript function: _basis_from_up(dir: Vector3) -> Basis"""
+        pass
+
+    def gd_func__label(self):
+        """GDScript function: _label(parent: Node3D, pos: Vector3, text: String) -> void"""
+        pass
+
+    def gd_func__mat(self):
+        """GDScript function: _mat(color: Color) -> StandardMaterial3D"""
+        pass
+
+    def gd_func__ground(self):
+        """GDScript function: _ground() -> void"""
+        pass
+
+    def gd_func__setup_environment(self):
+        """GDScript function: _setup_environment() -> void"""
+        pass
+
+    def depends_on_BodyGraph(self):
+        """Relationship: references class BodyGraph."""
+        return BodyGraph
+
+    def depends_on_BodyMeasure(self):
+        """Relationship: references class BodyMeasure."""
+        return BodyMeasure
+
+    def depends_on_BodyPart(self):
+        """Relationship: references class BodyPart."""
+        return BodyPart
+
+    def depends_on_ChainIK(self):
+        """Relationship: references class ChainIK."""
+        return ChainIK
+
+    def depends_on_GaitController(self):
+        """Relationship: references class GaitController."""
+        return GaitController
+
+    def depends_on_GaitPattern(self):
+        """Relationship: references class GaitPattern."""
+        return GaitPattern
+
+    def depends_on_LocomotionZoo(self):
+        """Relationship: references class LocomotionZoo."""
+        return LocomotionZoo
+
+    def depends_on_StanceGenerator(self):
+        """Relationship: references class StanceGenerator."""
+        return StanceGenerator
+
+class LocomotionZoo:
+    """Godot script: scripts/locomotion/locomotion_zoo.gd
+    class_name: LocomotionZoo
+    extends: RefCounted
+    system: Supporting gameplay
+    """
+    source_file = 'scripts/locomotion/locomotion_zoo.gd'
+    godot_class_name = 'LocomotionZoo'
+    godot_extends = 'RefCounted'
+    gameplay_system = 'Supporting gameplay'
+
+    def depends_on_BodyGraph(self):
+        """Relationship: references class BodyGraph."""
+        return BodyGraph
+
+    def depends_on_BodyPart(self):
+        """Relationship: references class BodyPart."""
+        return BodyPart
+
+    def depends_on_Geom2d(self):
+        """Relationship: references class Geom2d."""
+        return Geom2d
+
+    def depends_on_StanceGenerator(self):
+        """Relationship: references class StanceGenerator."""
+        return StanceGenerator
+
+class RootPoseSolver:
+    """Godot script: scripts/locomotion/root_pose_solver.gd
+    class_name: RootPoseSolver
+    extends: RefCounted
+    system: Supporting gameplay
+    """
+    source_file = 'scripts/locomotion/root_pose_solver.gd'
+    godot_class_name = 'RootPoseSolver'
+    godot_extends = 'RefCounted'
+    gameplay_system = 'Supporting gameplay'
+
+    pass
+
+class StanceGenerator:
+    """Godot script: scripts/locomotion/stance_generator.gd
+    class_name: StanceGenerator
+    extends: RefCounted
+    system: Supporting gameplay
+    """
+    source_file = 'scripts/locomotion/stance_generator.gd'
+    godot_class_name = 'StanceGenerator'
+    godot_extends = 'RefCounted'
+    gameplay_system = 'Supporting gameplay'
+
+    def gd_func__init(self):
+        """GDScript function: _init(g: BodyGraph, measure: BodyMeasure = null) -> void"""
+        pass
+
+    def gd_func_generate(self):
+        """GDScript function: generate(opts: Dictionary = {}) -> Dictionary"""
+        pass
+
+    def gd_func__better(self):
+        """GDScript function: _better(cand: Dictionary, best: Dictionary) -> bool"""
+        pass
+
+    def gd_func__evaluate(self):
+        """GDScript function: _evaluate(H: float, s: float, foot_r: float, ground_y: float, reach_fraction: float = 1.0) -> Dictionary"""
+        pass
+
+    def depends_on_BodyGraph(self):
+        """Relationship: references class BodyGraph."""
+        return BodyGraph
+
+    def depends_on_BodyMeasure(self):
+        """Relationship: references class BodyMeasure."""
+        return BodyMeasure
+
+    def depends_on_BodyPart(self):
+        """Relationship: references class BodyPart."""
+        return BodyPart
+
+    def depends_on_Geom2d(self):
+        """Relationship: references class Geom2d."""
+        return Geom2d
+
+class TestAttack:
+    """Godot script: scripts/locomotion/test_attack.gd
+    class_name: none
+    extends: SceneTree
+    system: Combat and enemies
+    """
+    source_file = 'scripts/locomotion/test_attack.gd'
+    godot_class_name = ''
+    godot_extends = 'SceneTree'
+    gameplay_system = 'Combat and enemies'
+
+    def gd_func__initialize(self):
+        """GDScript function: _initialize() -> void"""
+        pass
+
+    def gd_func__check(self):
+        """GDScript function: _check(label: String, cond: bool) -> void"""
+        pass
+
+    def gd_func__test_effectors_and_stance(self):
+        """GDScript function: _test_effectors_and_stance() -> void"""
+        pass
+
+    def gd_func__test_reach_policy(self):
+        """GDScript function: _test_reach_policy() -> void"""
+        pass
+
+    def gd_func__test_swing_path(self):
+        """GDScript function: _test_swing_path() -> void"""
+        pass
+
+    def gd_func__test_ik_follows_path(self):
+        """GDScript function: _test_ik_follows_path() -> void"""
+        pass
+
+    def gd_func__test_morphology(self):
+        """GDScript function: _test_morphology() -> void"""
+        pass
+
+    def depends_on_AttackController(self):
+        """Relationship: references class AttackController."""
+        return AttackController
+
+    def depends_on_BodyMeasure(self):
+        """Relationship: references class BodyMeasure."""
+        return BodyMeasure
+
+    def depends_on_ChainIK(self):
+        """Relationship: references class ChainIK."""
+        return ChainIK
+
+    def depends_on_LocomotionZoo(self):
+        """Relationship: references class LocomotionZoo."""
+        return LocomotionZoo
+
+    def depends_on_StanceGenerator(self):
+        """Relationship: references class StanceGenerator."""
+        return StanceGenerator
+
+class TestBodyGraph:
+    """Godot script: scripts/locomotion/test_body_graph.gd
+    class_name: none
+    extends: SceneTree
+    system: Supporting gameplay
+    """
+    source_file = 'scripts/locomotion/test_body_graph.gd'
+    godot_class_name = ''
+    godot_extends = 'SceneTree'
+    gameplay_system = 'Supporting gameplay'
+
+    def gd_func__initialize(self):
+        """GDScript function: _initialize() -> void"""
+        pass
+
+    def gd_func__check(self):
+        """GDScript function: _check(label: String, cond: bool) -> void"""
+        pass
+
+    def gd_func__near(self):
+        """GDScript function: _near(label: String, got: Vector3, want: Vector3, eps := 0.001) -> void"""
+        pass
+
+    def gd_func__make_leg(self):
+        """GDScript function: _make_leg(id: String, length: float) -> BodyPart"""
+        pass
+
+    def gd_func__torso(self):
+        """GDScript function: _torso(sockets: Dictionary) -> BodyPart"""
+        pass
+
+    def gd_func__test_biped(self):
+        """GDScript function: _test_biped() -> void"""
+        pass
+
+    def gd_func__test_quadruped(self):
+        """GDScript function: _test_quadruped() -> void"""
+        pass
+
+    def gd_func__test_validation(self):
+        """GDScript function: _test_validation() -> void"""
+        pass
+
+    def gd_func__test_socket_orientation(self):
+        """GDScript function: _test_socket_orientation() -> void"""
+        pass
+
+    def depends_on_BodyGraph(self):
+        """Relationship: references class BodyGraph."""
+        return BodyGraph
+
+    def depends_on_BodyPart(self):
+        """Relationship: references class BodyPart."""
+        return BodyPart
+
+class TestBodyMeasure:
+    """Godot script: scripts/locomotion/test_body_measure.gd
+    class_name: none
+    extends: SceneTree
+    system: Supporting gameplay
+    """
+    source_file = 'scripts/locomotion/test_body_measure.gd'
+    godot_class_name = ''
+    godot_extends = 'SceneTree'
+    gameplay_system = 'Supporting gameplay'
+
+    def gd_func__initialize(self):
+        """GDScript function: _initialize() -> void"""
+        pass
+
+    def gd_func__check(self):
+        """GDScript function: _check(label: String, cond: bool) -> void"""
+        pass
+
+    def gd_func__approx(self):
+        """GDScript function: _approx(label: String, got: float, want: float, eps := 0.005) -> void"""
+        pass
+
+    def gd_func__segment(self):
+        """GDScript function: _segment(id: String, length: float, mass: float, knee_bend := 0.0) -> BodyPart"""
+        pass
+
+    def gd_func__biped(self):
+        """GDScript function: _biped(knee_bend := 0.0) -> BodyGraph"""
+        pass
+
+    def gd_func__test_biped_measure(self):
+        """GDScript function: _test_biped_measure() -> void"""
+        pass
+
+    def gd_func__test_bent_reach(self):
+        """GDScript function: _test_bent_reach() -> void"""
+        pass
+
+    def gd_func__test_quadruped_measure_and_display(self):
+        """GDScript function: _test_quadruped_measure_and_display() -> void"""
+        pass
+
+    def depends_on_BodyGraph(self):
+        """Relationship: references class BodyGraph."""
+        return BodyGraph
+
+    def depends_on_BodyMeasure(self):
+        """Relationship: references class BodyMeasure."""
+        return BodyMeasure
+
+    def depends_on_BodyPart(self):
+        """Relationship: references class BodyPart."""
+        return BodyPart
+
+class TestChainIk:
+    """Godot script: scripts/locomotion/test_chain_ik.gd
+    class_name: none
+    extends: SceneTree
+    system: Supporting gameplay
+    """
+    source_file = 'scripts/locomotion/test_chain_ik.gd'
+    godot_class_name = ''
+    godot_extends = 'SceneTree'
+    gameplay_system = 'Supporting gameplay'
+
+    def gd_func__initialize(self):
+        """GDScript function: _initialize() -> void"""
+        pass
+
+    def gd_func__check(self):
+        """GDScript function: _check(label: String, cond: bool) -> void"""
+        pass
+
+    def gd_func__segments_preserved(self):
+        """GDScript function: _segments_preserved(pts: PackedVector3Array, lengths: Array) -> bool"""
+        pass
+
+    def gd_func__test_two_bone_reachable(self):
+        """GDScript function: _test_two_bone_reachable() -> void"""
+        pass
+
+    def gd_func__test_two_bone_limits(self):
+        """GDScript function: _test_two_bone_limits() -> void"""
+        pass
+
+    def gd_func__test_pole_controls_bend(self):
+        """GDScript function: _test_pole_controls_bend() -> void"""
+        pass
+
+    def gd_func__test_one_segment(self):
+        """GDScript function: _test_one_segment() -> void"""
+        pass
+
+    def gd_func__test_fabrik_three(self):
+        """GDScript function: _test_fabrik_three() -> void"""
+        pass
+
+    def depends_on_ChainIK(self):
+        """Relationship: references class ChainIK."""
+        return ChainIK
+
+class TestContactLock:
+    """Godot script: scripts/locomotion/test_contact_lock.gd
+    class_name: none
+    extends: SceneTree
+    system: Supporting gameplay
+    """
+    source_file = 'scripts/locomotion/test_contact_lock.gd'
+    godot_class_name = ''
+    godot_extends = 'SceneTree'
+    gameplay_system = 'Supporting gameplay'
+
+    def gd_func__initialize(self):
+        """GDScript function: _initialize() -> void"""
+        pass
+
+    def gd_func__check(self):
+        """GDScript function: _check(label: String, cond: bool) -> void"""
+        pass
+
+    def gd_func__biped_lock(self):
+        """GDScript function: _biped_lock() -> ContactLock"""
+        pass
+
+    def gd_func__test_lock_holds_feet(self):
+        """GDScript function: _test_lock_holds_feet() -> void"""
+        pass
+
+    def gd_func__test_reach_bookkeeping(self):
+        """GDScript function: _test_reach_bookkeeping() -> void"""
+        pass
+
+    def gd_func__test_travel_limits(self):
+        """GDScript function: _test_travel_limits() -> void"""
+        pass
+
+    def gd_func__test_rotation_and_replant(self):
+        """GDScript function: _test_rotation_and_replant() -> void"""
+        pass
+
+    def gd_func__test_quadruped_generality(self):
+        """GDScript function: _test_quadruped_generality() -> void"""
+        pass
+
+    def depends_on_ContactLock(self):
+        """Relationship: references class ContactLock."""
+        return ContactLock
+
+    def depends_on_LocomotionZoo(self):
+        """Relationship: references class LocomotionZoo."""
+        return LocomotionZoo
+
+    def depends_on_StanceGenerator(self):
+        """Relationship: references class StanceGenerator."""
+        return StanceGenerator
+
+class TestDetachment:
+    """Godot script: scripts/locomotion/test_detachment.gd
+    class_name: none
+    extends: SceneTree
+    system: Supporting gameplay
+    """
+    source_file = 'scripts/locomotion/test_detachment.gd'
+    godot_class_name = ''
+    godot_extends = 'SceneTree'
+    gameplay_system = 'Supporting gameplay'
+
+    def gd_func__initialize(self):
+        """GDScript function: _initialize() -> void"""
+        pass
+
+    def gd_func__check(self):
+        """GDScript function: _check(label: String, cond: bool) -> void"""
+        pass
+
+    def gd_func__test_components(self):
+        """GDScript function: _test_components() -> void"""
+        pass
+
+    def gd_func__test_biped_loses_a_leg(self):
+        """GDScript function: _test_biped_loses_a_leg() -> void"""
+        pass
+
+    def gd_func__test_head_detaches(self):
+        """GDScript function: _test_head_detaches() -> void"""
+        pass
+
+    def gd_func__test_quadruped_loses_a_leg(self):
+        """GDScript function: _test_quadruped_loses_a_leg() -> void"""
+        pass
+
+    def depends_on_BodyGraph(self):
+        """Relationship: references class BodyGraph."""
+        return BodyGraph
+
+    def depends_on_Detachment(self):
+        """Relationship: references class Detachment."""
+        return Detachment
+
+    def depends_on_LocomotionZoo(self):
+        """Relationship: references class LocomotionZoo."""
+        return LocomotionZoo
+
+class TestGait:
+    """Godot script: scripts/locomotion/test_gait.gd
+    class_name: none
+    extends: SceneTree
+    system: Supporting gameplay
+    """
+    source_file = 'scripts/locomotion/test_gait.gd'
+    godot_class_name = ''
+    godot_extends = 'SceneTree'
+    gameplay_system = 'Supporting gameplay'
+
+    def gd_func__initialize(self):
+        """GDScript function: _initialize() -> void"""
+        pass
+
+    def gd_func__check(self):
+        """GDScript function: _check(label: String, cond: bool) -> void"""
+        pass
+
+    def depends_on_GaitController(self):
+        """Relationship: references class GaitController."""
+        return GaitController
+
+    def depends_on_LocomotionZoo(self):
+        """Relationship: references class LocomotionZoo."""
+        return LocomotionZoo
+
+    def depends_on_StanceGenerator(self):
+        """Relationship: references class StanceGenerator."""
+        return StanceGenerator
+
+class TestGaitPattern:
+    """Godot script: scripts/locomotion/test_gait_pattern.gd
+    class_name: none
+    extends: SceneTree
+    system: Supporting gameplay
+    """
+    source_file = 'scripts/locomotion/test_gait_pattern.gd'
+    godot_class_name = ''
+    godot_extends = 'SceneTree'
+    gameplay_system = 'Supporting gameplay'
+
+    def gd_func__initialize(self):
+        """GDScript function: _initialize() -> void"""
+        pass
+
+    def gd_func__check(self):
+        """GDScript function: _check(label: String, cond: bool) -> void"""
+        pass
+
+    def gd_func__contacts(self):
+        """GDScript function: _contacts(g: BodyGraph) -> Array"""
+        pass
+
+    def gd_func__min_support(self):
+        """GDScript function: _min_support(pat: Dictionary) -> int"""
+        pass
+
+    def gd_func__test_classification(self):
+        """GDScript function: _test_classification() -> void"""
+        pass
+
+    def gd_func__test_pattern_support(self):
+        """GDScript function: _test_pattern_support() -> void"""
+        pass
+
+    def gd_func__walk_check(self):
+        """GDScript function: _walk_check(name: String, g: BodyGraph, family: String, cfg: Dictionary, min_supp: int) -> void"""
+        pass
+
+    def depends_on_BodyGraph(self):
+        """Relationship: references class BodyGraph."""
+        return BodyGraph
+
+    def depends_on_GaitController(self):
+        """Relationship: references class GaitController."""
+        return GaitController
+
+    def depends_on_GaitOscillator(self):
+        """Relationship: references class GaitOscillator."""
+        return GaitOscillator
+
+    def depends_on_GaitPattern(self):
+        """Relationship: references class GaitPattern."""
+        return GaitPattern
+
+    def depends_on_LocomotionZoo(self):
+        """Relationship: references class LocomotionZoo."""
+        return LocomotionZoo
+
+    def depends_on_StanceGenerator(self):
+        """Relationship: references class StanceGenerator."""
+        return StanceGenerator
+
+class TestGallery:
+    """Godot script: scripts/locomotion/test_gallery.gd
+    class_name: none
+    extends: SceneTree
+    system: Supporting gameplay
+    """
+    source_file = 'scripts/locomotion/test_gallery.gd'
+    godot_class_name = ''
+    godot_extends = 'SceneTree'
+    gameplay_system = 'Supporting gameplay'
+
+    def gd_func__initialize(self):
+        """GDScript function: _initialize() -> void"""
+        pass
+
+    def gd_func__check(self):
+        """GDScript function: _check(label: String, cond: bool) -> void"""
+        pass
+
+    def gd_func__ik_reaches(self):
+        """GDScript function: _ik_reaches(g: BodyGraph, st: Dictionary) -> bool"""
+        pass
+
+    def depends_on_BodyGraph(self):
+        """Relationship: references class BodyGraph."""
+        return BodyGraph
+
+    def depends_on_BodyMeasure(self):
+        """Relationship: references class BodyMeasure."""
+        return BodyMeasure
+
+    def depends_on_ChainIK(self):
+        """Relationship: references class ChainIK."""
+        return ChainIK
+
+    def depends_on_LocomotionZoo(self):
+        """Relationship: references class LocomotionZoo."""
+        return LocomotionZoo
+
+    def depends_on_StanceGenerator(self):
+        """Relationship: references class StanceGenerator."""
+        return StanceGenerator
+
+class TestImpact:
+    """Godot script: scripts/locomotion/test_impact.gd
+    class_name: none
+    extends: SceneTree
+    system: Supporting gameplay
+    """
+    source_file = 'scripts/locomotion/test_impact.gd'
+    godot_class_name = ''
+    godot_extends = 'SceneTree'
+    gameplay_system = 'Supporting gameplay'
+
+    def gd_func__initialize(self):
+        """GDScript function: _initialize() -> void"""
+        pass
+
+    def gd_func__kicked(self):
+        """GDScript function: _kicked(contact: Vector3, impulse: Vector3, com: Vector3, mass: float, inertia: float, frames: int) -> ImpactResponse"""
+        pass
+
+    def gd_func__v(self):
+        """GDScript function: _v(v: Vector3) -> String"""
+        pass
+
+    def gd_func__check(self):
+        """GDScript function: _check(label: String, cond: bool) -> void"""
+        pass
+
+    def depends_on_BodyMeasure(self):
+        """Relationship: references class BodyMeasure."""
+        return BodyMeasure
+
+    def depends_on_ImpactResponse(self):
+        """Relationship: references class ImpactResponse."""
+        return ImpactResponse
+
+    def depends_on_LocomotionZoo(self):
+        """Relationship: references class LocomotionZoo."""
+        return LocomotionZoo
+
+class TestRootPose:
+    """Godot script: scripts/locomotion/test_root_pose.gd
+    class_name: none
+    extends: SceneTree
+    system: Supporting gameplay
+    """
+    source_file = 'scripts/locomotion/test_root_pose.gd'
+    godot_class_name = ''
+    godot_extends = 'SceneTree'
+    gameplay_system = 'Supporting gameplay'
+
+    def gd_func__initialize(self):
+        """GDScript function: _initialize() -> void"""
+        pass
+
+    def gd_func__check(self):
+        """GDScript function: _check(label: String, cond: bool) -> void"""
+        pass
+
+    def depends_on_RootPoseSolver(self):
+        """Relationship: references class RootPoseSolver."""
+        return RootPoseSolver
+
+class TestStanceGenerator:
+    """Godot script: scripts/locomotion/test_stance_generator.gd
+    class_name: none
+    extends: SceneTree
+    system: Supporting gameplay
+    """
+    source_file = 'scripts/locomotion/test_stance_generator.gd'
+    godot_class_name = ''
+    godot_extends = 'SceneTree'
+    gameplay_system = 'Supporting gameplay'
+
+    def gd_func__initialize(self):
+        """GDScript function: _initialize() -> void"""
+        pass
+
+    def gd_func__check(self):
+        """GDScript function: _check(label: String, cond: bool) -> void"""
+        pass
+
+    def gd_func__test_stance_width(self):
+        """GDScript function: _test_stance_width() -> void"""
+        pass
+
+    def gd_func__spread(self):
+        """GDScript function: _spread(st: Dictionary) -> float"""
+        pass
+
+    def gd_func__leg(self):
+        """GDScript function: _leg(id: String, length: float, mass: float) -> BodyPart"""
+        pass
+
+    def gd_func__test_biped(self):
+        """GDScript function: _test_biped() -> float"""
+        pass
+
+    def gd_func__test_quadruped(self):
+        """GDScript function: _test_quadruped() -> float"""
+        pass
+
+    def gd_func__test_no_stance(self):
+        """GDScript function: _test_no_stance() -> void"""
+        pass
+
+    def gd_func__test_offcenter_instability(self):
+        """GDScript function: _test_offcenter_instability() -> void"""
+        pass
+
+    def depends_on_BodyGraph(self):
+        """Relationship: references class BodyGraph."""
+        return BodyGraph
+
+    def depends_on_BodyPart(self):
+        """Relationship: references class BodyPart."""
+        return BodyPart
+
+    def depends_on_LocomotionZoo(self):
+        """Relationship: references class LocomotionZoo."""
+        return LocomotionZoo
+
+    def depends_on_StanceGenerator(self):
+        """Relationship: references class StanceGenerator."""
+        return StanceGenerator
+
+class TestTerrain:
+    """Godot script: scripts/locomotion/test_terrain.gd
+    class_name: none
+    extends: SceneTree
+    system: Supporting gameplay
+    """
+    source_file = 'scripts/locomotion/test_terrain.gd'
+    godot_class_name = ''
+    godot_extends = 'SceneTree'
+    gameplay_system = 'Supporting gameplay'
+
+    def gd_func__ramp(self):
+        """GDScript function: _ramp(p: Vector3) -> float"""
+        pass
+
+    def gd_func__initialize(self):
+        """GDScript function: _initialize() -> void"""
+        pass
+
+    def gd_func__check(self):
+        """GDScript function: _check(label: String, cond: bool) -> void"""
+        pass
+
+    def depends_on_GaitController(self):
+        """Relationship: references class GaitController."""
+        return GaitController
+
+    def depends_on_GaitPattern(self):
+        """Relationship: references class GaitPattern."""
+        return GaitPattern
+
+    def depends_on_LocomotionZoo(self):
+        """Relationship: references class LocomotionZoo."""
+        return LocomotionZoo
+
+    def depends_on_RootPoseSolver(self):
+        """Relationship: references class RootPoseSolver."""
+        return RootPoseSolver
+
+    def depends_on_StanceGenerator(self):
+        """Relationship: references class StanceGenerator."""
+        return StanceGenerator
+
+class TestTurning:
+    """Godot script: scripts/locomotion/test_turning.gd
+    class_name: none
+    extends: SceneTree
+    system: Supporting gameplay
+    """
+    source_file = 'scripts/locomotion/test_turning.gd'
+    godot_class_name = ''
+    godot_extends = 'SceneTree'
+    gameplay_system = 'Supporting gameplay'
+
+    def gd_func__initialize(self):
+        """GDScript function: _initialize() -> void"""
+        pass
+
+    def gd_func__check(self):
+        """GDScript function: _check(label: String, cond: bool) -> void"""
+        pass
+
+    def depends_on_GaitController(self):
+        """Relationship: references class GaitController."""
+        return GaitController
+
+    def depends_on_GaitPattern(self):
+        """Relationship: references class GaitPattern."""
+        return GaitPattern
+
+    def depends_on_LocomotionZoo(self):
+        """Relationship: references class LocomotionZoo."""
+        return LocomotionZoo
+
+    def depends_on_StanceGenerator(self):
+        """Relationship: references class StanceGenerator."""
+        return StanceGenerator
+
+class LocomotionDemoLauncher:
+    """Godot script: scripts/locomotion_demo_launcher.gd
+    class_name: none
+    extends: Node
+    system: Supporting gameplay
+    """
+    source_file = 'scripts/locomotion_demo_launcher.gd'
+    godot_class_name = ''
+    godot_extends = 'Node'
+    gameplay_system = 'Supporting gameplay'
+
+    def gd_func__input(self):
+        """GDScript function: _input(event: InputEvent) -> void"""
+        pass
+
+    def gd_func__open(self):
+        """GDScript function: _open(path: String) -> void"""
+        pass
+
 class MainMenu:
     """Godot script: scripts/main_menu.gd
     class_name: none
@@ -3320,6 +5100,18 @@ class ProceduralPlayerAnimator:
         """GDScript function: _animate_limbs() -> void"""
         pass
 
+    def gd_func__idle_stance_blend(self):
+        """GDScript function: _idle_stance_blend() -> float"""
+        pass
+
+    def gd_func__update_idle_stance(self):
+        """GDScript function: _update_idle_stance(delta: float) -> void"""
+        pass
+
+    def gd_func__apply_idle_stance(self):
+        """GDScript function: _apply_idle_stance() -> void"""
+        pass
+
     def gd_func__animate_crawl_body(self):
         """GDScript function: _animate_crawl_body() -> void"""
         pass
@@ -3520,6 +5312,10 @@ class ProceduralPlayerAnimator:
         """GDScript function: _ik_foot_world(foot_key: String) -> Vector3"""
         pass
 
+    def gd_func__ik_snap_dip_for_landing(self):
+        """GDScript function: _ik_snap_dip_for_landing(foot_key: String) -> void"""
+        pass
+
     def gd_func__swing_forward_curve(self):
         """GDScript function: _swing_forward_curve(t: float) -> float"""
         pass
@@ -3528,8 +5324,16 @@ class ProceduralPlayerAnimator:
         """GDScript function: _ik_foot_normal(foot_key: String) -> Vector3"""
         pass
 
+    def gd_func__ik_magnet_foot(self):
+        """GDScript function: _ik_magnet_foot(foot_key: String, target: Vector3, delta: float) -> Vector3"""
+        pass
+
     def gd_func__ik_reachable_target(self):
         """GDScript function: _ik_reachable_target(foot_key: String) -> Vector3"""
+        pass
+
+    def gd_func__ik_hip_drop_now(self):
+        """GDScript function: _ik_hip_drop_now() -> float"""
         pass
 
     def gd_func__ik_update_pelvis(self):
@@ -4185,6 +5989,42 @@ class SceneGuideWisp:
     def contains_GuideWisp(self):
         """Scene relationship: uses script."""
         return GuideWisp
+
+class SceneLocomotionCombat:
+    """Godot scene: scenes/locomotion_combat.tscn"""
+    source_file = 'scenes/locomotion_combat.tscn'
+    nodes = ['LocomotionCombat']
+
+    def contains_LocomotionCombat(self):
+        """Scene relationship: uses script."""
+        return LocomotionCombat
+
+class SceneLocomotionGallery:
+    """Godot scene: scenes/locomotion_gallery.tscn"""
+    source_file = 'scenes/locomotion_gallery.tscn'
+    nodes = ['LocomotionGallery']
+
+    def contains_LocomotionGallery(self):
+        """Scene relationship: uses script."""
+        return LocomotionGallery
+
+class SceneLocomotionLab:
+    """Godot scene: scenes/locomotion_lab.tscn"""
+    source_file = 'scenes/locomotion_lab.tscn'
+    nodes = ['LocomotionLab']
+
+    def contains_LocomotionLab(self):
+        """Scene relationship: uses script."""
+        return LocomotionLab
+
+class SceneLocomotionWalk:
+    """Godot scene: scenes/locomotion_walk.tscn"""
+    source_file = 'scenes/locomotion_walk.tscn'
+    nodes = ['LocomotionWalk']
+
+    def contains_LocomotionWalk(self):
+        """Scene relationship: uses script."""
+        return LocomotionWalk
 
 class SceneMain:
     """Godot scene: scenes/main.tscn"""

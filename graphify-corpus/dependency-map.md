@@ -39,6 +39,108 @@
 - `scripts/equipment_rules_service.gd` depends on `scripts/drop_pickup_rules_service.gd` because it references class DropPickupRulesService.
 - `scripts/limb_bone_pickup.gd` depends on `scripts/bone_rules_service.gd` because it references class BoneRulesService.
 - `scripts/limb_bone_pickup.gd` depends on `scripts/drop_pickup_rules_service.gd` because it references class DropPickupRulesService.
+- `scripts/locomotion/attack_controller.gd` depends on `scripts/locomotion/body_measure.gd` because it references class BodyMeasure.
+- `scripts/locomotion/attack_controller.gd` depends on `scripts/locomotion/chain_ik.gd` because it references class ChainIK.
+- `scripts/locomotion/body_graph.gd` depends on `scripts/locomotion/body_part.gd` because it references class BodyPart.
+- `scripts/locomotion/body_measure.gd` depends on `scripts/locomotion/body_graph.gd` because it references class BodyGraph.
+- `scripts/locomotion/body_measure.gd` depends on `scripts/locomotion/body_part.gd` because it references class BodyPart.
+- `scripts/locomotion/chain_ik.gd` depends on `scripts/locomotion/body_graph.gd` because it references class BodyGraph.
+- `scripts/locomotion/contact_lock.gd` depends on `scripts/locomotion/body_graph.gd` because it references class BodyGraph.
+- `scripts/locomotion/contact_lock.gd` depends on `scripts/locomotion/body_measure.gd` because it references class BodyMeasure.
+- `scripts/locomotion/detachment.gd` depends on `scripts/locomotion/body_graph.gd` because it references class BodyGraph.
+- `scripts/locomotion/detachment.gd` depends on `scripts/locomotion/stance_generator.gd` because it references class StanceGenerator.
+- `scripts/locomotion/gait_controller.gd` depends on `scripts/locomotion/body_graph.gd` because it references class BodyGraph.
+- `scripts/locomotion/gait_controller.gd` depends on `scripts/locomotion/body_measure.gd` because it references class BodyMeasure.
+- `scripts/locomotion/gait_controller.gd` depends on `scripts/locomotion/chain_ik.gd` because it references class ChainIK.
+- `scripts/locomotion/gait_controller.gd` depends on `scripts/locomotion/gait_oscillator.gd` because it references class GaitOscillator.
+- `scripts/locomotion/gait_controller.gd` depends on `scripts/locomotion/root_pose_solver.gd` because it references class RootPoseSolver.
+- `scripts/locomotion/impact_response.gd` depends on `scripts/locomotion/body_measure.gd` because it references class BodyMeasure.
+- `scripts/locomotion/locomotion_combat.gd` depends on `scripts/locomotion/attack_controller.gd` because it references class AttackController.
+- `scripts/locomotion/locomotion_combat.gd` depends on `scripts/locomotion/body_graph.gd` because it references class BodyGraph.
+- `scripts/locomotion/locomotion_combat.gd` depends on `scripts/locomotion/body_measure.gd` because it references class BodyMeasure.
+- `scripts/locomotion/locomotion_combat.gd` depends on `scripts/locomotion/body_part.gd` because it references class BodyPart.
+- `scripts/locomotion/locomotion_combat.gd` depends on `scripts/locomotion/chain_ik.gd` because it references class ChainIK.
+- `scripts/locomotion/locomotion_combat.gd` depends on `scripts/locomotion/impact_response.gd` because it references class ImpactResponse.
+- `scripts/locomotion/locomotion_combat.gd` depends on `scripts/locomotion/locomotion_zoo.gd` because it references class LocomotionZoo.
+- `scripts/locomotion/locomotion_combat.gd` depends on `scripts/locomotion/stance_generator.gd` because it references class StanceGenerator.
+- `scripts/locomotion/locomotion_gallery.gd` depends on `scripts/locomotion/body_graph.gd` because it references class BodyGraph.
+- `scripts/locomotion/locomotion_gallery.gd` depends on `scripts/locomotion/body_measure.gd` because it references class BodyMeasure.
+- `scripts/locomotion/locomotion_gallery.gd` depends on `scripts/locomotion/body_part.gd` because it references class BodyPart.
+- `scripts/locomotion/locomotion_gallery.gd` depends on `scripts/locomotion/chain_ik.gd` because it references class ChainIK.
+- `scripts/locomotion/locomotion_gallery.gd` depends on `scripts/locomotion/geom2d.gd` because it references class Geom2d.
+- `scripts/locomotion/locomotion_gallery.gd` depends on `scripts/locomotion/locomotion_zoo.gd` because it references class LocomotionZoo.
+- `scripts/locomotion/locomotion_gallery.gd` depends on `scripts/locomotion/stance_generator.gd` because it references class StanceGenerator.
+- `scripts/locomotion/locomotion_lab.gd` depends on `scripts/locomotion/body_graph.gd` because it references class BodyGraph.
+- `scripts/locomotion/locomotion_lab.gd` depends on `scripts/locomotion/body_measure.gd` because it references class BodyMeasure.
+- `scripts/locomotion/locomotion_lab.gd` depends on `scripts/locomotion/body_part.gd` because it references class BodyPart.
+- `scripts/locomotion/locomotion_lab.gd` depends on `scripts/locomotion/gait_controller.gd` because it references class GaitController.
+- `scripts/locomotion/locomotion_lab.gd` depends on `scripts/locomotion/gait_pattern.gd` because it references class GaitPattern.
+- `scripts/locomotion/locomotion_lab.gd` depends on `scripts/locomotion/locomotion_zoo.gd` because it references class LocomotionZoo.
+- `scripts/locomotion/locomotion_lab.gd` depends on `scripts/locomotion/stance_generator.gd` because it references class StanceGenerator.
+- `scripts/locomotion/locomotion_walk.gd` depends on `scripts/locomotion/body_graph.gd` because it references class BodyGraph.
+- `scripts/locomotion/locomotion_walk.gd` depends on `scripts/locomotion/body_measure.gd` because it references class BodyMeasure.
+- `scripts/locomotion/locomotion_walk.gd` depends on `scripts/locomotion/body_part.gd` because it references class BodyPart.
+- `scripts/locomotion/locomotion_walk.gd` depends on `scripts/locomotion/chain_ik.gd` because it references class ChainIK.
+- `scripts/locomotion/locomotion_walk.gd` depends on `scripts/locomotion/gait_controller.gd` because it references class GaitController.
+- `scripts/locomotion/locomotion_walk.gd` depends on `scripts/locomotion/gait_pattern.gd` because it references class GaitPattern.
+- `scripts/locomotion/locomotion_walk.gd` depends on `scripts/locomotion/locomotion_zoo.gd` because it references class LocomotionZoo.
+- `scripts/locomotion/locomotion_walk.gd` depends on `scripts/locomotion/stance_generator.gd` because it references class StanceGenerator.
+- `scripts/locomotion/locomotion_zoo.gd` depends on `scripts/locomotion/body_graph.gd` because it references class BodyGraph.
+- `scripts/locomotion/locomotion_zoo.gd` depends on `scripts/locomotion/body_part.gd` because it references class BodyPart.
+- `scripts/locomotion/locomotion_zoo.gd` depends on `scripts/locomotion/geom2d.gd` because it references class Geom2d.
+- `scripts/locomotion/locomotion_zoo.gd` depends on `scripts/locomotion/stance_generator.gd` because it references class StanceGenerator.
+- `scripts/locomotion/stance_generator.gd` depends on `scripts/locomotion/body_graph.gd` because it references class BodyGraph.
+- `scripts/locomotion/stance_generator.gd` depends on `scripts/locomotion/body_measure.gd` because it references class BodyMeasure.
+- `scripts/locomotion/stance_generator.gd` depends on `scripts/locomotion/body_part.gd` because it references class BodyPart.
+- `scripts/locomotion/stance_generator.gd` depends on `scripts/locomotion/geom2d.gd` because it references class Geom2d.
+- `scripts/locomotion/test_attack.gd` depends on `scripts/locomotion/attack_controller.gd` because it references class AttackController.
+- `scripts/locomotion/test_attack.gd` depends on `scripts/locomotion/body_measure.gd` because it references class BodyMeasure.
+- `scripts/locomotion/test_attack.gd` depends on `scripts/locomotion/chain_ik.gd` because it references class ChainIK.
+- `scripts/locomotion/test_attack.gd` depends on `scripts/locomotion/locomotion_zoo.gd` because it references class LocomotionZoo.
+- `scripts/locomotion/test_attack.gd` depends on `scripts/locomotion/stance_generator.gd` because it references class StanceGenerator.
+- `scripts/locomotion/test_body_graph.gd` depends on `scripts/locomotion/body_graph.gd` because it references class BodyGraph.
+- `scripts/locomotion/test_body_graph.gd` depends on `scripts/locomotion/body_part.gd` because it references class BodyPart.
+- `scripts/locomotion/test_body_measure.gd` depends on `scripts/locomotion/body_graph.gd` because it references class BodyGraph.
+- `scripts/locomotion/test_body_measure.gd` depends on `scripts/locomotion/body_measure.gd` because it references class BodyMeasure.
+- `scripts/locomotion/test_body_measure.gd` depends on `scripts/locomotion/body_part.gd` because it references class BodyPart.
+- `scripts/locomotion/test_chain_ik.gd` depends on `scripts/locomotion/chain_ik.gd` because it references class ChainIK.
+- `scripts/locomotion/test_contact_lock.gd` depends on `scripts/locomotion/contact_lock.gd` because it references class ContactLock.
+- `scripts/locomotion/test_contact_lock.gd` depends on `scripts/locomotion/locomotion_zoo.gd` because it references class LocomotionZoo.
+- `scripts/locomotion/test_contact_lock.gd` depends on `scripts/locomotion/stance_generator.gd` because it references class StanceGenerator.
+- `scripts/locomotion/test_detachment.gd` depends on `scripts/locomotion/body_graph.gd` because it references class BodyGraph.
+- `scripts/locomotion/test_detachment.gd` depends on `scripts/locomotion/detachment.gd` because it references class Detachment.
+- `scripts/locomotion/test_detachment.gd` depends on `scripts/locomotion/locomotion_zoo.gd` because it references class LocomotionZoo.
+- `scripts/locomotion/test_gait.gd` depends on `scripts/locomotion/gait_controller.gd` because it references class GaitController.
+- `scripts/locomotion/test_gait.gd` depends on `scripts/locomotion/locomotion_zoo.gd` because it references class LocomotionZoo.
+- `scripts/locomotion/test_gait.gd` depends on `scripts/locomotion/stance_generator.gd` because it references class StanceGenerator.
+- `scripts/locomotion/test_gait_pattern.gd` depends on `scripts/locomotion/body_graph.gd` because it references class BodyGraph.
+- `scripts/locomotion/test_gait_pattern.gd` depends on `scripts/locomotion/gait_controller.gd` because it references class GaitController.
+- `scripts/locomotion/test_gait_pattern.gd` depends on `scripts/locomotion/gait_oscillator.gd` because it references class GaitOscillator.
+- `scripts/locomotion/test_gait_pattern.gd` depends on `scripts/locomotion/gait_pattern.gd` because it references class GaitPattern.
+- `scripts/locomotion/test_gait_pattern.gd` depends on `scripts/locomotion/locomotion_zoo.gd` because it references class LocomotionZoo.
+- `scripts/locomotion/test_gait_pattern.gd` depends on `scripts/locomotion/stance_generator.gd` because it references class StanceGenerator.
+- `scripts/locomotion/test_gallery.gd` depends on `scripts/locomotion/body_graph.gd` because it references class BodyGraph.
+- `scripts/locomotion/test_gallery.gd` depends on `scripts/locomotion/body_measure.gd` because it references class BodyMeasure.
+- `scripts/locomotion/test_gallery.gd` depends on `scripts/locomotion/chain_ik.gd` because it references class ChainIK.
+- `scripts/locomotion/test_gallery.gd` depends on `scripts/locomotion/locomotion_zoo.gd` because it references class LocomotionZoo.
+- `scripts/locomotion/test_gallery.gd` depends on `scripts/locomotion/stance_generator.gd` because it references class StanceGenerator.
+- `scripts/locomotion/test_impact.gd` depends on `scripts/locomotion/body_measure.gd` because it references class BodyMeasure.
+- `scripts/locomotion/test_impact.gd` depends on `scripts/locomotion/impact_response.gd` because it references class ImpactResponse.
+- `scripts/locomotion/test_impact.gd` depends on `scripts/locomotion/locomotion_zoo.gd` because it references class LocomotionZoo.
+- `scripts/locomotion/test_root_pose.gd` depends on `scripts/locomotion/root_pose_solver.gd` because it references class RootPoseSolver.
+- `scripts/locomotion/test_stance_generator.gd` depends on `scripts/locomotion/body_graph.gd` because it references class BodyGraph.
+- `scripts/locomotion/test_stance_generator.gd` depends on `scripts/locomotion/body_part.gd` because it references class BodyPart.
+- `scripts/locomotion/test_stance_generator.gd` depends on `scripts/locomotion/locomotion_zoo.gd` because it references class LocomotionZoo.
+- `scripts/locomotion/test_stance_generator.gd` depends on `scripts/locomotion/stance_generator.gd` because it references class StanceGenerator.
+- `scripts/locomotion/test_terrain.gd` depends on `scripts/locomotion/gait_controller.gd` because it references class GaitController.
+- `scripts/locomotion/test_terrain.gd` depends on `scripts/locomotion/gait_pattern.gd` because it references class GaitPattern.
+- `scripts/locomotion/test_terrain.gd` depends on `scripts/locomotion/locomotion_zoo.gd` because it references class LocomotionZoo.
+- `scripts/locomotion/test_terrain.gd` depends on `scripts/locomotion/root_pose_solver.gd` because it references class RootPoseSolver.
+- `scripts/locomotion/test_terrain.gd` depends on `scripts/locomotion/stance_generator.gd` because it references class StanceGenerator.
+- `scripts/locomotion/test_turning.gd` depends on `scripts/locomotion/gait_controller.gd` because it references class GaitController.
+- `scripts/locomotion/test_turning.gd` depends on `scripts/locomotion/gait_pattern.gd` because it references class GaitPattern.
+- `scripts/locomotion/test_turning.gd` depends on `scripts/locomotion/locomotion_zoo.gd` because it references class LocomotionZoo.
+- `scripts/locomotion/test_turning.gd` depends on `scripts/locomotion/stance_generator.gd` because it references class StanceGenerator.
 - `scripts/player.gd` depends on `scenes/attack_hitbox.tscn` because it loads resource.
 - `scripts/player.gd` depends on `scripts/arrow_projectile.gd` because it loads resource.
 - `scripts/player.gd` depends on `scripts/ballistics_service.gd` because it references class BallisticsService.
@@ -98,6 +200,10 @@
 - `scenes/enemy.tscn` uses script `scripts/rig/procedural_enemy_animator.gd`.
 - `scenes/exit_portal.tscn` uses script `scripts/exit_portal.gd`.
 - `scenes/guide_wisp.tscn` uses script `scripts/guide_wisp.gd`.
+- `scenes/locomotion_combat.tscn` uses script `scripts/locomotion/locomotion_combat.gd`.
+- `scenes/locomotion_gallery.tscn` uses script `scripts/locomotion/locomotion_gallery.gd`.
+- `scenes/locomotion_lab.tscn` uses script `scripts/locomotion/locomotion_lab.gd`.
+- `scenes/locomotion_walk.tscn` uses script `scripts/locomotion/locomotion_walk.gd`.
 - `scenes/main.tscn` uses script `scripts/arena_goal_manager.gd`.
 - `scenes/main.tscn` uses script `scripts/world_map_manager.gd`.
 - `scenes/main.tscn` uses script `scripts/tutorial_island_builder.gd`.

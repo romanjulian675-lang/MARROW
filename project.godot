@@ -17,6 +17,7 @@ config/features=PackedStringArray("4.7")
 [autoload]
 
 GameEvents="*res://scripts/game_events.gd"
+LocomotionDemoLauncher="*res://scripts/locomotion_demo_launcher.gd"
 
 [display]
 

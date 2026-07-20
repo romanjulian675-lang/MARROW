@@ -189,14 +189,41 @@ var _arm_sword_idle_timer := 0.0
 # It ASSIGNS rotation (stomping any other writer), its joint_bend_base 0.12 +
 # joint_bend_swing 0.7 would give the chest a permanent 0.12-0.82 rad flex every
 # step, and its bend_sign keys off the substring "arm". A waist is not an elbow.
-# Steady waist bend while moving. NEGATIVE = tilted BACK (author-directed
-# 2026-07-16: the leaping walk carries the torso tilted back, chest up), and it
-# stacks with the leap's pitch cycle. Split-player only — enemies have no waist.
-@export var waist_bend_lean := -0.08
+# RUNNING ARCH (author-directed 2026-07-16: "waist a little more vertical than
+# the chest so there is an arch, when moving/running"). This is the steady
+# chest-relative-to-waist pitch while moving — the waist joint IS that
+# differential (the body socket holds the vertical abdomen, the waist_joint holds
+# the chest). POSITIVE = chest forward over the upright waist, the sprinter's
+# forward arch. Supersedes the old waist_bend_lean back-tilt (now 0). Split-player
+# only — enemies have no waist joint.
+@export var run_arch_deg := 20.0
+@export var waist_bend_lean := 0.0        # legacy steady lean; the arch replaced it
 @export var waist_bend_step := 0.025      # slight pump at twice the stride
 @export var waist_bend_breath := 0.015    # idle only
-@export var waist_bend_limit := 0.35      # ~20 deg. A waist is not a hinge.
+@export var waist_bend_limit := 0.55      # ~31 deg — the arch needs headroom past 20
 @export var waist_response := 12.0        # smoothing rate
+
+# --- Idle combat stance (author-directed): standing still is a READY pose, not a
+# neutral stand — legs spread, CHEST (not the waist) pitched forward and breathing,
+# both arms up in a low guard. All of it fades out with speed_ratio, so it belongs
+# to the idle only and never fights the gait. Split player only: every value is
+# routed through _idle_stance_blend(), which is 0 unless the IK gate is on.
+@export_group("Idle combat stance")
+@export var idle_stance_enabled := true
+@export var idle_stance_width := 0.10       # legs spread while still (per foot, outboard)
+# Forward (+Z) offset of the STANDING feet from under the hips. NEGATIVE sets
+# them BEHIND the hip points: the torso's forward tilt shifts the visible mass
+# forward, so feet under the hip POINTS still read as forward of the BODY —
+# biasing them back makes them look planted under it (author-directed). Blends
+# to the socket's natural gait offset with speed, so moving is unchanged.
+@export var idle_foot_forward := -0.10
+@export var idle_chest_lean_deg := 14.0     # CHEST pitches forward — not a waist fold
+@export var idle_chest_breath_deg := 2.2    # chest lean oscillates: breathing
+@export var idle_breath_speed := 1.8
+@export var idle_guard_arm_raise_deg := 42.0  # shoulders forward — guard DOWN, not high
+@export var idle_guard_arm_tuck_deg := 13.0   # elbows drawn in toward the ribs
+@export var idle_guard_elbow_deg := 68.0      # forearms up into the guard
+@export var idle_guard_blend_speed := 9.0
 
 @export_group("Whole body")
 # Rotates the entire visible rig — every socket rides along — as a posture
@@ -219,13 +246,55 @@ var _arm_sword_idle_timer := 0.0
 # split player rig has the knee socket this needs — see _ik_active().
 @export_group("Foot IK")
 @export var ik_feet_enabled := true
+# CARTOON MAGNET FEET (author-directed): instead of nailing the foot to a fixed
+# world plant and dragging it when the body overruns (which skated), the foot is
+# a SPRING pulled toward its target like a magnet. It reaches the target when the
+# target is still and in range, but lags and overshoots in motion — a loose,
+# bouncy, cartoonish foot. When the target is out of reach (the body has bounced
+# up), the foot just stretches toward it to the leg's limit instead of dragging:
+# the reach problem becomes the cartoon look. Set false for the rigid-plant gait.
+@export var ik_foot_magnet := true
+@export var ik_magnet_stiffness := 500.0   # spring pull; higher = snappier to target
+@export var ik_magnet_damping := 20.0      # MOVING damping; lower = bouncier/looser (cartoon)
+@export var ik_magnet_damping_idle := 46.0 # NEAR-REST / mid-TRANSITION damping. The moving spring
+										   # is underdamped (bouncy), so a brake/turn/reversal
+										   # overshoots the target that just jumped — the "feet
+										   # adjust too much". Blending to ~critical damping when
+										   # slow OR mid-transition kills it while the walk keeps
+										   # its bounce.
+@export var ik_magnet_transition_thresh := 0.10 # move-velocity change/frame for full transition damp
+@export var ik_magnet_transition_decay := 7.0   # how long the damp holds after a change (lower=longer)
+@export var ik_foot_max_speed := 6.0            # m/s ceiling on how fast a foot may travel. A
+												# turn/reversal whips the target across; capping the
+												# spring's speed keeps the foot from snapping — it
+                                                # slides to the new spot at a walk-step pace instead.
+                                                # A normal swing sits under this, so it is untouched.
 # THE LEG RESTS AT 99.9% EXTENSION (hip->ankle 0.586 against a 0.587 reach), so a
 # standing pose has ~0.5 mm of slack and a foot more than ~6 cm from under its hip
 # is out of reach. Lowering the pelvis is what buys the knees room to bend; every
 # other tunable here is downstream of it. 0 disables stepping in all but name.
-@export var ik_hip_drop := 0.05           # shallow crouch; the step, not the hip, makes the reach
+@export var ik_hip_drop := 0.05           # STANDING crouch — near-straight legs, a normal stand
+# MOVING crouch. THE load-bearing number for a gait with a real stance, and pure
+# geometry: a planted foot 0.36 m from its hip on a 0.59 m leg forces the hip
+# below 0.455 m (sqrt(0.36² + h²) ≤ 0.58), yet a straight-legged rig stands at
+# 0.53 and the leap lift pushes it higher still — so every planted frame the foot
+# was out of reach and got dragged (measured 35%+ skate the moment a real stance
+# existed; the old zero-stance gait hid it by never planting). Real legs solve
+# this by being BENT: crouch, then extend the planted leg to push off. The value
+# is a HIP-HEIGHT vs SKATE trade — with the stride fixed by the 3-steps/m cap the
+# hips only rise ~2-3 cm before the planted legs straighten to their reach limit
+# and drag: 0.20 → hipY 0.428 / 0.3% skate, 0.17 → 0.447 (+2 cm) / 3.7%, 0.15 →
+# 0.458 (+3 cm) / 5.7% (author asked for higher hips, so 0.17 with more airtime).
+# Blended in by speed (see _ik_hip_drop_now) so standing stays tall.
+@export var ik_hip_drop_moving := 0.05
 @export var ik_step_trigger := 0.18       # world distance from the anchor before a step fires
-@export var ik_step_duration := 0.32      # ceiling; the live duration adapts to speed
+@export var ik_idle_step_trigger := 0.14  # settle deadzone at a standstill — with the settle
+										  # SLIDE below this can stay loose (no fussy steps)
+@export var ik_idle_settle_enabled := true
+@export var ik_idle_settle_speed := 0.22  # below this speed_ratio, planted feet slide (not step)
+@export var ik_idle_settle_rate := 5.0    # how fast the slide settles; lower = gentler brake
+@export var ik_step_duration := 0.48      # ceiling; the live duration adapts to speed.
+										  # Raised with the 1.4 walk so slow steps stay <=3/m
 # The longest stride one step may cover. THE LOAD-BEARING COUPLING: each step
 # must not let the capsule advance further than this, or the plants fall behind
 # faster than the legs can recover and the gait collapses into a trailing glide —
@@ -234,7 +303,7 @@ var _arm_sword_idle_timer := 0.0
 # above that is bought by ik_stride_dip lowering the pelvis when the legs
 # scissor apart. 0.32 measured cleanest (0.5% skate at 2.5 m/s); 0.34 costs ~3%
 # visible plant slide — the sweep table is in docs/rig_notes.md.
-@export var ik_step_reach := 0.32
+@export var ik_step_reach := 0.34
 @export var ik_step_duration_min := 0.06  # cadence floor: past ~4 m/s the feet scurry
 # Fraction of a swing still remaining when the NEXT swing may launch. Strict
 # one-at-a-time forced every swing to fit inside stride/speed — 8 frames at a
@@ -244,13 +313,33 @@ var _arm_sword_idle_timer := 0.0
 # 2.5 m/s): 0.15 -> punchier surge; 0.25 -> balanced; 0.35 -> smoothest, with
 # real double-flight windows — which the leap gait's pelvis arc and chest cycle
 # deliberately sell as a jump, so 0.35 is the default. 0 = one-foot-at-a-time.
-# 0.5 is the ZERO-STANCE LIMIT: each foot relaunches the moment it lands, the
-# swing gets 2x strict-alternation airtime, and the feet average exactly ground
-# speed during a swing — the mathematical floor for an alternating gait (a
-# foot's average over its whole cycle IS the ground speed; only the airborne
-# fraction can be tuned). Past 0.5 nothing more is gained: launches strictly
-# alternate, so the gate saturates. Lower toward 0.25 for a planted walk.
-@export var ik_step_overlap := 0.5
+# Each foot's planted fraction is (1 - 2*overlap) of its swing, so 0.5 is a
+# ZERO-STANCE degenerate: measured 0% planted frames, BOTH feet airborne 100% of
+# the time — the figure never plants, it just cycles its legs in the air, and no
+# leg can stay behind the hip while the body passes over it (author-reported).
+# It is the theoretical floor for foot speed, but a gait with no stance is not a
+# walk. 0.4 leaves each foot planted ~25% of its cycle: a real stance the body
+# rides over, with more swing airtime than 0.3 (author asked for more airtime for
+# smoothness) at a small cost to the planted fraction. 0 = strict alternation.
+@export var ik_step_overlap := 0.4
+
+# Mid-swing forward REACH (author-directed: "exaggerate the extension of the
+# legs when moving forward, really noticeable"). The swing foot bulges FORWARD
+# past its landing spot at mid-flight — the leg extends dramatically out front —
+# then draws back down to the same plant. It touches only the AIRBORNE arc, not
+# the plant, so it costs zero skate and cannot collapse the stride (cranking the
+# plant lead did both). Metres of overshoot at the peak; 0 = off. Big values
+# push the swing leg past its own reach, which just straightens it fully forward
+# — the maximal reach pose, and exactly the exaggeration asked for.
+@export var ik_stride_reach_boost := 0.34
+
+# Lateral STANCE WIDTH: pushes each foot's target OUTWARD from under its hip, so
+# the feet plant well apart instead of stacked under the pelvis (author: "both
+# legs separated / good distance between them, targets not under the hips").
+# Metres added to each foot's outboard offset — hips sit ±0.12, so 0.12 here
+# plants the feet ~0.48 apart. Widening also costs leg reach (the foot is
+# farther from its hip), which the stride dip pays for.
+@export var ik_stance_width := 0.08
 
 # --- Leap gait (author-directed): each stride is a little jump, feet strictly
 # one after the other. The NEWEST swing drives a whole-body cycle: at push-off
@@ -258,8 +347,9 @@ var _arm_sword_idle_timer := 0.0
 # the chest and waist COMPRESS — the pitch eases through to slightly looking
 # down at touchdown. The capsule is untouched; this is the visible body.
 @export_group("Leap gait")
-@export var ik_leap_height := 0.18          # pelvis lift at the top of each stride
-@export var ik_leap_pitch_up_deg := 32.0    # chest pitch at push-off (front face up)
+@export var ik_leap_height := 0.10          # pelvis lift at the top of each stride
+@export var ik_leap_pitch_up_deg := 20.0    # push-off chest bounce; gentled from 32 so the
+											# steady run_arch_deg forward lean reads through it
 @export var ik_leap_pitch_down_deg := 0.0   # settle to LEVEL at touchdown — the cycle
 											# never dips forward; the torso stays back
 # How quickly the chest follows the cycle. At walking cadence (~4 steps/s) the
@@ -271,14 +361,14 @@ var _arm_sword_idle_timer := 0.0
 # when a leg would otherwise be out of reach and released between strides. This
 # is the weight-transfer bob that makes long strides physically possible on
 # these leg proportions; without it any reach above ~0.24 just clamps.
-@export var ik_stride_dip := 0.16
-@export var ik_step_height := 0.14        # knee lifts forward+up at the top of the swing
+@export var ik_stride_dip := 0.06
+@export var ik_step_height := 0.20        # knee lifts forward+up at the top of the swing
 # Where a step lands, in units of ONE STEP'S capsule travel, measured ahead of
 # the under-hip anchor at launch time. 1.5 makes the plants STRADDLE the moving
 # capsule (land ~half a stride ahead, leave ~half a stride behind) instead of
 # permanently trailing it — that centring is what lets the body ride the feet
 # raw, without a bias filter eating the motion.
-@export var ik_stride_lead := 1.5
+@export var ik_stride_lead := 1.7
 @export var ik_run_lean := 0.07           # hips lean forward into the movement (rig faces +Z)
 # The body rides the MEAN OF THE FEET horizontally, not just vertically. The
 # capsule still owns gameplay motion (constant glide); this offset makes the
@@ -420,8 +510,13 @@ var _ik_step_to_normal: Dictionary = {}
 var _ik_step_t: Dictionary = {}
 var _ik_stepping := ""                # "" or the ONE foot currently in the air
 var _ik_next_foot := "right_foot"     # whose turn it is, so the legs alternate
+var _ik_foot_pos: Dictionary = {}     # MAGNET: the foot's actual world pos (spring state)
+var _ik_foot_vel: Dictionary = {}     # MAGNET: world velocity, for the springy overshoot
+var _ik_velocity_prev := Vector3.ZERO # last frame's move velocity, for the transition detector
+var _ik_transition := 0.0             # 0..1: how mid-brake/turn/reversal we are (decays)
 var _ik_ready := false
 var _ik_grounded_prev := false
+var _idle_blend := 0.0       # 0..1 smoothed: how much of the ready stance is showing
 var _ik_leap_pitch := 0.0    # smoothed chest pitch of the leap cycle (radians)
 var _ik_leap_lift := 0.0     # pelvis lift of the current stride's flight
 var _ik_pelvis_dy := 0.0
@@ -482,6 +577,10 @@ func update_from_player(delta: float, velocity: Vector3, max_speed: float, facin
 		_animate_body()
 		_animate_limbs()
 		_animate_joints()
+		# After the limbs' rest pose, before the attack/aim overlays — they must
+		# stay free to take the arms out of the guard.
+		_update_idle_stance(delta)
+		_apply_idle_stance()
 	_animate_wobble()
 	_apply_lizard_wall_climb_limb_pose()
 	_update_aim_overlay(delta)
@@ -556,10 +655,12 @@ func _waist_target_angle() -> float:
 	if _demo_mode != DemoMode.OFF:
 		return 0.0            # the demo owns the head socket
 
+	# The arch: chest pitched FORWARD of the vertical waist, growing with speed.
+	var arch: float = deg_to_rad(run_arch_deg) * speed_ratio
 	var lean: float = waist_bend_lean * speed_ratio
 	var step: float = sin(walk_time * 2.0) * waist_bend_step * speed_ratio
 	var breath: float = sin(_time * 1.8) * waist_bend_breath * (1.0 - speed_ratio)
-	return clampf(lean + step + breath, -waist_bend_limit, waist_bend_limit)
+	return clampf(arch + lean + step + breath, -waist_bend_limit, waist_bend_limit)
 
 
 func _animate_waist(delta: float) -> void:
@@ -1429,6 +1530,53 @@ func _animate_limbs() -> void:
 	_swing("left_leg", swing * leg_swing_amount)
 
 
+# How much of the idle ready-stance is showing. Gated on _ik_active() so it is the
+# split PLAYER only — every enemy, and the head-only/torso/crawl/demo modes, stay
+# bit-identical. Fades with movement, so the gait never has to fight it.
+func _idle_stance_blend() -> float:
+	if not idle_stance_enabled or not _ik_active():
+		return 0.0
+	return clampf(1.0 - speed_ratio * 2.5, 0.0, 1.0)
+
+
+func _update_idle_stance(delta: float) -> void:
+	_idle_blend = lerpf(_idle_blend, _idle_stance_blend(), 1.0 - exp(-idle_guard_blend_speed * delta))
+
+
+# The ready pose: CHEST pitched forward (author was explicit — the chest, not a
+# waist fold, so this rides the body socket's own rotation and leaves the waist
+# joint to the gait), breathing on top of that lean, and both arms in a LOW guard.
+# Runs after _animate_limbs/_animate_joints (so it overrides the idle rest pose)
+# but BEFORE the attack and aim overlays, which stay free to take the arms.
+func _apply_idle_stance() -> void:
+	if _idle_blend < 0.001:
+		return  # bit-identical when the stance is not showing
+	var b: float = _idle_blend
+	var breath: float = sin(_time * idle_breath_speed) * deg_to_rad(idle_chest_breath_deg)
+
+	# CHEST: lean forward, and let the breath ride the lean itself so the ribcage
+	# visibly swells and settles rather than just bobbing.
+	var body: Node3D = rig.get_socket("body")
+	if body != null:
+		body.rotation.x += (deg_to_rad(idle_chest_lean_deg) + breath) * b
+
+	# ARMS: shoulders forward and tucked in, elbows folded up — a guard held LOW.
+	# Mind the handedness: this rig faces +Z, so its right is -X and left is +X,
+	# which flips the sign of the inward tuck per side.
+	for key in ["right_arm", "left_arm"]:
+		var arm: Node3D = rig.get_socket(key)
+		if arm == null:
+			continue
+		var tuck: float = deg_to_rad(idle_guard_arm_tuck_deg) * b
+		arm.rotation.x += deg_to_rad(idle_guard_arm_raise_deg) * b
+		# +Z forward => right arm is at -X and tucks with +Z roll, left mirrors.
+		arm.rotation.z += tuck if key == "right_arm" else -tuck
+		var elbow: Node3D = rig.get_socket(key + "_lower")
+		if elbow != null:
+			# Elbows bend NEGATIVE on this rig (see _animate_joints' bend_sign).
+			elbow.rotation.x -= deg_to_rad(idle_guard_elbow_deg) * b
+
+
 func _animate_crawl_body() -> void:
 	var pull := sin(walk_time)
 	var shove := absf(pull) * body_bob_amount * 0.65 * speed_ratio
@@ -2230,9 +2378,20 @@ func _update_foot_ik(delta: float) -> void:
 		_ik_pelvis_follow = Vector3.ZERO
 		_ik_follow_fast = Vector3.ZERO
 		_ik_follow_slow = Vector3.ZERO
+		_ik_transition = 0.0
+		_ik_velocity_prev = _ik_velocity
 		return
 	if _body == null:
 		_body = _find_body()
+
+	# TRANSITION signal: how hard the movement just changed — a brake, a turn, a
+	# reversal all spike it. Held with a slow decay so it stays up through the
+	# feet's catch-up, and read by the magnet to damp its overshoot during any of
+	# them (the speed-only damping missed turns/reversals, which happen at speed).
+	var accel: float = (_ik_velocity - _ik_velocity_prev).length()
+	_ik_velocity_prev = _ik_velocity
+	_ik_transition = maxf(_ik_transition * exp(-ik_magnet_transition_decay * delta),
+		clampf(accel / maxf(ik_magnet_transition_thresh, 0.001), 0.0, 1.0))
 	for foot_key in FOOT_KEYS:
 		if rig.get_socket(foot_key) == null or rig.get_socket(IK_LEG_OF_FOOT[foot_key] + "_lower") == null:
 			return  # unsplit or mid-rebuild: leave the FK pose alone
@@ -2279,7 +2438,12 @@ func _update_foot_ik(delta: float) -> void:
 	# toward an unreachable target. Below it the clamp never bites and the foot is
 	# genuinely nailed down.
 	for foot_key in FOOT_KEYS:
-		_ik_solve_leg(foot_key, _ik_reachable_target(foot_key), _ik_foot_normal(foot_key), delta)
+		var goal: Vector3
+		if ik_foot_magnet:
+			goal = _ik_magnet_foot(foot_key, _ik_foot_world(foot_key), delta)
+		else:
+			goal = _ik_reachable_target(foot_key)
+		_ik_solve_leg(foot_key, goal, _ik_foot_normal(foot_key), delta)
 
 
 # Where a foot rides when there is no ground under it: straight down from its hip
@@ -2326,18 +2490,45 @@ func _ik_reset_plants() -> void:
 		_ik_step_from[foot_key] = _ik_plant[foot_key]
 		_ik_step_to[foot_key] = _ik_plant[foot_key]
 		_ik_step_to_normal[foot_key] = _ik_plant_normal[foot_key]
+		# Seed the magnet at the foot's CURRENT world spot, not the plant, so a
+		# re-activation (e.g. head-only → full body when the torso is equipped)
+		# springs the foot IN toward the plant at the capped speed instead of the
+		# leg snapping to it in one frame (measured 0.56 m jump when seeded at the
+		# plant). On a fresh spawn the socket already sits near the plant, so this
+		# is a no-op there.
+		var foot_node: Node3D = rig.get_socket(foot_key)
+		if foot_node != null and is_finite(foot_node.global_position.x) and is_finite(foot_node.global_position.y) and is_finite(foot_node.global_position.z):
+			_ik_foot_pos[foot_key] = foot_node.global_position
+		else:
+			_ik_foot_pos[foot_key] = _ik_plant[foot_key]
+		_ik_foot_vel[foot_key] = Vector3.ZERO
 	_ik_ready = true
 
 
-# Where this foot WANTS to be: straight under its hip's rest spot, in world space,
-# optionally thrown forward along the current velocity so a step lands ahead of
-# the body instead of under it. Reads the hip's REST, not its live position, so
-# the anchor does not inherit the wobble it is meant to be independent of.
+# Where this foot WANTS to be: OUTBOARD of its hip's rest spot by ik_stance_width
+# (deliberately not directly under the hip), in world space, optionally thrown
+# forward so a step lands ahead of the body. Reads the hip's REST, not its live
+# position, so the anchor does not inherit the wobble it is independent of.
 func _ik_anchor_world(foot_key: String, with_lead: bool) -> Vector3:
 	var chain: Dictionary = _ik_leg_chain(foot_key)
 	var leg_rest: Vector3 = _get_rest_pos(chain["leg"])
 	var rest_foot: Vector3 = _get_rest_pos(foot_key)
-	var anchor: Vector3 = rig.to_global(Vector3(leg_rest.x, float(chain["ankle_rest_y"]), leg_rest.z + rest_foot.z))
+	# Push outward along the hip's own side (right_leg sits at +X, left at −X), so
+	# each foot widens away from the centreline rather than toward it. The width
+	# BLENDS between two stances rather than fading to zero: idle_stance_width is
+	# the spread ready-stance the author asked for when still, ik_stance_width is
+	# the moving one. Changing speed re-aims the anchor, the old plants exceed the
+	# step trigger, and the feet re-settle on their own — no extra machinery.
+	var stance_engage: float = clampf(speed_ratio * 2.5, 0.0, 1.0)
+	var idle_w: float = idle_stance_width if (idle_stance_enabled and _ik_active()) else 0.0
+	var width: float = lerpf(idle_w, ik_stance_width, stance_engage)
+	var side: float = signf(leg_rest.x) if not is_zero_approx(leg_rest.x) else 1.0
+	var anchor_x: float = leg_rest.x + side * width
+	# Standing feet sit at idle_foot_forward (under the hips by default); moving
+	# feet keep the socket's natural forward offset. Blended by the same ramp so
+	# stopping re-settles the feet back under the body on its own.
+	var foot_fwd: float = lerpf(idle_foot_forward, rest_foot.z, stance_engage) if _ik_active() else rest_foot.z
+	var anchor: Vector3 = rig.to_global(Vector3(anchor_x, float(chain["ankle_rest_y"]), leg_rest.z + foot_fwd))
 	if with_lead and _ik_velocity.length() > 0.05:
 		# Ahead by ik_stride_lead LAUNCH-INTERVAL travels — what the capsule
 		# covers per step, NOT per swing. With overlap the swing lasts longer
@@ -2437,6 +2628,24 @@ func _ik_update_leap(delta: float) -> void:
 # the NEWEST swing (the follow weights key on it); the older one is always
 # further along and completes first.
 func _ik_update_steps(delta: float) -> void:
+	# BRAKE SETTLE. Near a standstill, gently SLIDE each planted foot to its idle
+	# anchor instead of letting the trigger fire a discrete adjustment step — the
+	# step-then-magnet-catch-up is what read as "feet adjust too much" when
+	# braking. The slide shrinks the step error, so no settle step fires; the
+	# magnet just follows the drifting plant. Only near rest, so a real stride is
+	# never slid (that would be skate).
+	if ik_idle_settle_enabled and speed_ratio < ik_idle_settle_speed:
+		var k: float = 1.0 - exp(-ik_idle_settle_rate * delta)
+		for foot_key in FOOT_KEYS:
+			if float(_ik_step_t[foot_key]) >= 1.0:
+				# Slide ONLY on the ground plane (XZ) — the anchor's Y is a rig-rest
+				# height, not the probed ground, so lerping Y too sank the foot ~8 mm
+				# on flat ground and would pull it to the wrong altitude on a slope/
+				# step. The plant keeps its own ground Y; only re-centres horizontally.
+				var cur: Vector3 = _ik_plant[foot_key]
+				var slid: Vector3 = cur.lerp(_ik_anchor_world(foot_key, false), k)
+				_ik_plant[foot_key] = Vector3(slid.x, cur.y, slid.z)
+
 	var dur: float = maxf(_ik_step_duration_now(), 0.001)
 	for foot_key in FOOT_KEYS:
 		if float(_ik_step_t[foot_key]) >= 1.0:
@@ -2457,20 +2666,23 @@ func _ik_update_steps(delta: float) -> void:
 
 	# Whoever is furthest from home goes first, but a foot may not go twice in a
 	# row while the other is also overdue, and a foot already in flight may not
-	# be picked again.
+	# be picked again. The trigger stays loose through the brake now (the settle
+	# SLIDE above centres the feet without a step); the idle floor is only a
+	# backstop for drift the slide has not caught.
+	var trigger: float = lerpf(ik_idle_step_trigger, ik_step_trigger, clampf(speed_ratio * 2.5, 0.0, 1.0))
 	var candidates: Array = []
 	for foot_key in FOOT_KEYS:
 		if float(_ik_step_t[foot_key]) < 1.0:
 			continue
 		var err: float = _ik_step_error(foot_key)
-		if err > ik_step_trigger:
+		if err > trigger:
 			candidates.append([err, foot_key])
 	if candidates.is_empty():
 		return
 	var pick: String = String(candidates[0][1])
 	if candidates.size() > 1:
 		pick = _ik_next_foot
-	elif pick != _ik_next_foot and float(_ik_step_t[_ik_next_foot]) >= 1.0 and _ik_step_error(_ik_next_foot) > ik_step_trigger * 0.5:
+	elif pick != _ik_next_foot and float(_ik_step_t[_ik_next_foot]) >= 1.0 and _ik_step_error(_ik_next_foot) > trigger * 0.5:
 		# The other leg is nearly overdue too — let it take its turn first so the
 		# alternation does not slip a beat.
 		pick = _ik_next_foot
@@ -2535,6 +2747,26 @@ func _ik_foot_world(foot_key: String) -> Vector3:
 	# single biggest per-frame jump in the whole gait (measured). The 0.6 exponent
 	# keeps the lift peaking early (t≈0.37) so the knee still leads up-and-forward.
 	var lift: float = sin(pow(smoothstep(0.0, 1.0, t), 0.6) * PI) * ik_step_height
+	# Forward reach overshoot: bulge the swing foot ahead along the rig's FACING
+	# (+Z for this rig, which _animate_facing keeps aimed at the movement), scaled
+	# by speed so it only appears when actually moving. Zero at both ends of the
+	# swing, so the plant is untouched: no skate, no collapse.
+	#
+	# THE CURVE MATTERS MORE THAN THE MAGNITUDE. The first version used
+	# sin(pow(t,0.8)*PI), and pow with an exponent BELOW 1 has an INFINITE
+	# derivative at t=0 — the reach snapped on ~0.12 m in a single frame at every
+	# swing start, which measured as a 3x-body-speed spike and read as the feet
+	# teleporting (author-reported). Same trap as the old pow(t,0.7) lift. Fix:
+	# feed a smoothstep (zero slope at both ends) and use an exponent ABOVE 1,
+	# which both keeps the start smooth AND skews the peak LATE (~t=0.55, so the
+	# leg is at full forward extension on the way DOWN into the plant — 0.8
+	# actually peaked EARLY, at 0.42, the opposite of what was wanted).
+	if ik_stride_reach_boost > 0.0001 and speed_ratio > 0.05:
+		var fwd: Vector3 = rig.global_basis.z
+		fwd.y = 0.0
+		if fwd.length() > 0.01:
+			var u: float = pow(smoothstep(0.0, 1.0, t), 1.3)
+			flat += fwd.normalized() * (sin(u * PI) * ik_stride_reach_boost * speed_ratio)
 	return flat + Vector3.UP * lift
 
 
@@ -2556,7 +2788,7 @@ func _ik_snap_dip_for_landing(foot_key: String) -> void:
 	var span: float = leg_rest.y - foot_l.y
 	var needed: float = vert_avail - span - _ik_leap_lift
 	if needed < _ik_pelvis_dy:
-		_ik_pelvis_dy = maxf(needed, -(ik_hip_drop + ik_stride_dip + ik_max_drop))
+		_ik_pelvis_dy = maxf(needed, -(ik_hip_drop_moving + ik_stride_dip + ik_max_drop))
 
 
 # Trapezoid velocity for the swing, slightly back-loaded: ease in 25% (the foot
@@ -2581,6 +2813,52 @@ func _ik_foot_normal(foot_key: String) -> Vector3:
 	if t >= 1.0:
 		return _ik_plant_normal[foot_key]
 	return (_ik_plant_normal[foot_key] as Vector3).lerp(_ik_step_to_normal[foot_key], t).normalized()
+
+
+# MAGNET: the foot is a critically-ish-damped spring chasing `target`. It reaches
+# a still, in-range target (so a planted foot touches the ground and holds) but
+# lags and overshoots while moving — the loose cartoon foot. The result is then
+# clamped to the leg's reach: an out-of-reach target leaves the foot stretched to
+# the limit REACHING toward it, never dragging a plant, so there is no skate to
+# fight — the reach shortfall just reads as a stretch. Returns the world position
+# the leg should solve to.
+func _ik_magnet_foot(foot_key: String, target: Vector3, delta: float) -> Vector3:
+	var pos: Vector3 = _ik_foot_pos.get(foot_key, target)
+	var vel: Vector3 = _ik_foot_vel.get(foot_key, Vector3.ZERO)
+	# Semi-implicit spring: a = k*(target - pos) - c*vel. Integrate at a capped
+	# sub-step so a spike in delta (a stall) cannot blow the spring up. Damping
+	# rises toward critical as the character slows, so the stop does not overshoot.
+	var h: float = minf(delta, 1.0 / 60.0)
+	# Damp toward critical when SLOW (brake settle) OR mid-TRANSITION (turn/
+	# reversal), so the spring never overshoots a target that just jumped; stays
+	# bouncy only in steady motion.
+	var settle: float = maxf(clampf(1.0 - speed_ratio * 2.0, 0.0, 1.0), _ik_transition)
+	var damp: float = lerpf(ik_magnet_damping, ik_magnet_damping_idle, settle)
+	var accel: Vector3 = (target - pos) * ik_magnet_stiffness - vel * damp
+	vel += accel * h
+	vel = vel.limit_length(ik_foot_max_speed)  # ceiling so a whipped target can't snap the foot
+	pos += vel * h
+	# Reach clamp: keep the ankle within the leg of the hip. Kill only the OUTWARD
+	# velocity at the limit so the spring can still slide the foot along the reach
+	# sphere toward the target instead of jamming.
+	var chain: Dictionary = _ik_leg_chain(foot_key)
+	var hip: Node3D = rig.get_socket(chain["leg"])
+	if hip != null:
+		var reach: float = (float(chain["thigh"]) + float(chain["shin"])) * 0.99
+		var d: Vector3 = pos - hip.global_position
+		var dist: float = d.length()
+		if dist > reach and dist > 0.0001:
+			var n: Vector3 = d / dist
+			pos = hip.global_position + n * reach
+			var outward: float = vel.dot(n)
+			if outward > 0.0:
+				vel -= n * outward
+	if not (is_finite(pos.x) and is_finite(pos.y) and is_finite(pos.z)):
+		pos = target
+		vel = Vector3.ZERO
+	_ik_foot_pos[foot_key] = pos
+	_ik_foot_vel[foot_key] = vel
+	return pos
 
 
 # The foot's world target, pulled back onto ground the leg can actually reach. A
@@ -2616,8 +2894,16 @@ func _ik_reachable_target(foot_key: String) -> Vector3:
 # absolute world height, which would pin the torso to a fixed altitude and leave
 # it on the ground during a jump. ik_hip_drop is folded in here because it is the
 # same quantity: how far the pelvis sits below its straight-legged rest.
+# The crouch the gait is currently using: tall when standing (legs near-straight,
+# a normal stand — author-directed), sinking to ik_hip_drop_moving once moving so
+# the legs have the bend a real stance needs. Same quick ramp as the stance width
+# and the leap, so all three engage together.
+func _ik_hip_drop_now() -> float:
+	return lerpf(ik_hip_drop, ik_hip_drop_moving, clampf(speed_ratio * 2.5, 0.0, 1.0))
+
+
 func _ik_update_pelvis(delta: float, grounded: bool) -> void:
-	var target: float = -ik_hip_drop
+	var target: float = -_ik_hip_drop_now()
 	var lean_target := 0.0
 	var follow_target := Vector3.ZERO
 	if grounded:
@@ -2645,7 +2931,7 @@ func _ik_update_pelvis(delta: float, grounded: bool) -> void:
 			feet_flat += w * Vector3(foot_now.x, 0.0, foot_now.z)
 			rest_flat += w * Vector3(leg_rest.x, 0.0, leg_rest.z + _get_rest_pos(foot_key).z)
 		var mean_offset: float = (sum - rest_sum) / float(FOOT_KEYS.size())
-		target = clampf(mean_offset, -ik_max_drop, 0.0) - ik_hip_drop
+		target = clampf(mean_offset, -ik_max_drop, 0.0) - _ik_hip_drop_now()
 		# Lean the hips forward into the movement so the reaching foot can plant
 		# ahead of the body — the "movement comes from the feet, not the hips" read.
 		lean_target = ik_run_lean * speed_ratio
@@ -2784,7 +3070,12 @@ func _ik_solve_leg(foot_key: String, target_world: Vector3, ground_normal: Vecto
 		foot.rotation = _get_rest_rot(foot_key)
 		return
 	var up: Vector3 = ground_normal.normalized()
-	if up.length_squared() < 0.5:
+	# Reject normals that are not walkable-ground-up: a spherecast at a step EDGE
+	# or off a ledge returns the vertical FACE normal (up.y ~0), and feeding that
+	# to the basis below built a degenerate/non-rotation Basis that crashed
+	# get_quaternion in the slerp (only ever hit on uneven ground). Keep the foot
+	# level in those cases.
+	if up.length_squared() < 0.5 or up.y < 0.5:
 		up = Vector3.UP
 	var forward: Vector3 = rig.global_basis.z  # THIS RIG FACES +Z, not Godot's -Z
 	forward -= up * forward.dot(up)
@@ -2793,8 +3084,23 @@ func _ik_solve_leg(foot_key: String, target_world: Vector3, ground_normal: Vecto
 	if forward.length() < 0.001:
 		return
 	forward = forward.normalized()
-	var aligned := Basis(up.cross(forward).normalized(), up, forward)
-	foot.global_basis = foot.global_basis.orthonormalized().slerp(aligned, clampf(1.0 - exp(-ik_foot_response * delta), 0.0, 1.0))
+	var right: Vector3 = up.cross(forward)
+	if right.length() < 0.001:
+		return
+	right = right.normalized()
+	# Re-derive forward from right×up so the three axes are EXACTLY orthonormal —
+	# a hair of non-orthogonality from float error is enough to make the Basis a
+	# non-rotation and fail the slerp.
+	forward = right.cross(up).normalized()
+	var aligned := Basis(right, up, forward).orthonormalized()
+	# Slerp on the rotation quaternion, preserving the foot's own scale, so any
+	# non-uniform/negative scale accumulated down the chain can never hand the
+	# slerp a non-rotation basis.
+	var t: float = clampf(1.0 - exp(-ik_foot_response * delta), 0.0, 1.0)
+	var scale: Vector3 = foot.global_basis.get_scale()
+	var cur_q: Quaternion = foot.global_basis.orthonormalized().get_rotation_quaternion()
+	var new_q: Quaternion = cur_q.slerp(aligned.get_rotation_quaternion(), t)
+	foot.global_transform = Transform3D(Basis(new_q).scaled(scale), foot.global_position)
 
 
 func _find_body() -> Node3D:
