@@ -10,7 +10,7 @@ extends Node3D
 # Open scenes/detach_experiment.tscn and run it (F6 in the editor), or press H in
 # a running build. Drag to orbit, wheel to zoom, right-drag to pan.
 
-const SKELETON: PackedScene = preload("res://assets/godot_skeleton_experiment.glb")
+const SKELETON: PackedScene = preload("res://assets/main_character.glb")
 
 # key -> [root bone name, label]. Major anatomical joints only; twist/share/finger
 # bones ride along inside each limb's sub-tree.

@@ -282,7 +282,7 @@ func _add_border(border: Dictionary, seg_id: String, a: int, b: int) -> void:
 # Detach the limb rooted at `bone_name`: reparent every segment below the cut
 # into a RigidBody3D and fling it. `launch` overrides the default outward toss.
 func sever(bone_name: String, launch: Vector3 = Vector3.INF) -> Dictionary:
-	var idx := skeleton.find_bone(bone_name)
+	var idx := _fb(bone_name)
 	if idx < 0 or _severed.has(idx) or _ancestor_severed(idx):
 		return {}
 	var sub := _subtree(idx)
@@ -290,7 +290,7 @@ func sever(bone_name: String, launch: Vector3 = Vector3.INF) -> Dictionary:
 	# Which segments live below the cut? (Their cut-root bone is in the sub-tree.)
 	var take: Array = []
 	for seg_id in CUT_ROOTS.values():
-		var root_bone := skeleton.find_bone(_cut_root_name(seg_id))
+		var root_bone := _fb(_cut_root_name(seg_id))
 		if root_bone in sub and segments.has(seg_id):
 			take.append(seg_id)
 	if take.is_empty():
@@ -325,8 +325,17 @@ func sever(bone_name: String, launch: Vector3 = Vector3.INF) -> Dictionary:
 
 
 func is_severed(bone_name: String) -> bool:
-	var idx := skeleton.find_bone(bone_name)
+	var idx := _fb(bone_name)
 	return idx >= 0 and _severed.has(idx)
+
+
+# Resolve a CC bone name with or without the "CC_Base_" prefix, so the segmenter
+# drives both the CC_Base_* skeleton and the prefix-less main character.
+func _fb(name: String) -> int:
+	var b := skeleton.find_bone(name)
+	if b < 0:
+		b = skeleton.find_bone(name.trim_prefix("CC_Base_"))
+	return b
 
 
 # ---- helpers --------------------------------------------------------------
@@ -337,8 +346,9 @@ func _map_bones_to_segments() -> void:
 		var found := CORE
 		while cur >= 0:
 			var nm := skeleton.get_bone_name(cur)
-			if CUT_ROOTS.has(nm):
-				found = CUT_ROOTS[nm]
+			var key := nm if CUT_ROOTS.has(nm) else "CC_Base_" + nm
+			if CUT_ROOTS.has(key):
+				found = CUT_ROOTS[key]
 				break
 			cur = skeleton.get_bone_parent(cur)
 		_seg_of_bone[b] = found
