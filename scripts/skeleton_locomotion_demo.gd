@@ -24,6 +24,7 @@ var _char: Node3D
 var _speed_ratio := 0.0
 var _facing_yaw := 0.0
 var _jump_launch_speed := 0.0   # gait speed at takeoff, held through the jump
+var _base_forward := Vector3(0, 0, 1)   # the character's own forward (from its rig)
 
 # orbit follow camera
 var _cam: Camera3D
@@ -51,6 +52,8 @@ func _ready() -> void:
 	var cc_skel := _skel(cc_model)
 
 	if cc_skel != null:
+		_base_forward = _forward_of(cc_skel)
+		_cam_yaw = atan2(-_base_forward.x, -_base_forward.z)   # start behind the character
 		_loco = RetargetedLocomotion.new(CLIPS, cc_skel, self)
 		_loco.time_scale = 1.0        # normal pace (not agile)
 		_loco.jump_lift_scale = 1.4   # a touch floatier
@@ -81,9 +84,10 @@ func _process(delta: float) -> void:
 	_loco.ground(_char, delta)
 
 	_char.rotation.y = _facing_yaw
-	# The CC model's own forward is +X, so move along the character's basis X —
-	# not a hand-rolled +Z vector, which slid the body 90° off its stride.
-	var fwd := _char.global_transform.basis.x
+	# Move along the character's OWN forward (derived from its rig), rotated by the
+	# current facing — so it walks where it faces regardless of which axis the model
+	# was authored to point down.
+	var fwd := (Basis(Vector3.UP, _facing_yaw) * _base_forward)
 	fwd.y = 0.0
 	_char.position += fwd.normalized() * _speed_ratio * WALK_SPEED * delta
 
@@ -218,6 +222,41 @@ func _skel(n: Node) -> Skeleton3D:
 		if f != null:
 			return f
 	return null
+
+
+# The character's forward in world space (at rest): the toe points forward, so
+# use foot->toe. Falls back to lateral x up if there's no toe bone.
+func _forward_of(skel: Skeleton3D) -> Vector3:
+	var foot := _bone(skel, "L_Foot")
+	var toe := _bone(skel, "L_ToeBase")
+	if foot >= 0 and toe >= 0:
+		var f := _wp(skel, toe) - _wp(skel, foot)
+		f.y = 0.0
+		if f.length() > 0.01:
+			return f.normalized()
+	var hip := _bone(skel, "Hip")
+	var head := _bone(skel, "Head")
+	var lt := _bone(skel, "L_Thigh")
+	var rt := _bone(skel, "R_Thigh")
+	if hip >= 0 and head >= 0 and lt >= 0 and rt >= 0:
+		var up := (_wp(skel, head) - _wp(skel, hip)).normalized()
+		var lat := (_wp(skel, lt) - _wp(skel, rt)).normalized()
+		var f := lat.cross(up)
+		f.y = 0.0
+		if f.length() > 0.01:
+			return f.normalized()
+	return Vector3(0, 0, 1)
+
+
+func _wp(skel: Skeleton3D, bone: int) -> Vector3:
+	return (skel.global_transform * skel.get_bone_global_pose(bone)).origin
+
+
+func _bone(skel: Skeleton3D, name: String) -> int:
+	var b := skel.find_bone(name)
+	if b < 0:
+		b = skel.find_bone("CC_Base_" + name)
+	return b
 
 
 func _aabb(node: Node) -> AABB:
