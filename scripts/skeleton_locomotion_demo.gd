@@ -31,7 +31,6 @@ var _facing_yaw := 0.0
 var _jump_launch_speed := 0.0   # gait speed at takeoff, held through the jump
 var _base_forward := Vector3(0, 0, 1)   # the character's own forward (from its rig)
 var _backward := 0.0
-var _cam_orbit := 0.0   # user orbit offset on top of the auto follow-behind
 
 # orbit follow camera
 var _cam: Camera3D
@@ -111,13 +110,11 @@ func _process(delta: float) -> void:
 	_update_follow_camera(delta)
 
 
-# Third-person: the camera trails behind the character's facing and follows it,
-# with the mouse adding an orbit offset.
+# Like the proc_walk demo (OrbitControls): the camera TARGET follows the character
+# but the angle stays FIXED — it does not auto-rotate behind the facing. The mouse
+# orbits it manually.
 func _update_follow_camera(delta: float) -> void:
 	_cam_target = _cam_target.lerp(_char.global_position + Vector3(0, 0.6, 0), 1.0 - exp(-9.0 * delta))
-	var fwd := Basis(Vector3.UP, _facing_yaw) * _base_forward
-	var behind := atan2(-fwd.x, -fwd.z)
-	_cam_yaw = lerp_angle(_cam_yaw, behind + _cam_orbit, 1.0 - exp(-4.0 * delta))
 	_update_camera()
 
 
@@ -221,7 +218,7 @@ func _handle_camera_input(event: InputEvent) -> bool:
 		return false
 	var mm := event as InputEventMouseMotion
 	if mm != null and _orbiting:
-		_cam_orbit -= mm.relative.x * ORBIT_SENS   # offset on top of the follow-behind
+		_cam_yaw -= mm.relative.x * ORBIT_SENS
 		_cam_pitch = clampf(_cam_pitch - mm.relative.y * ORBIT_SENS, -1.4, 1.4)
 		return true
 	return false
