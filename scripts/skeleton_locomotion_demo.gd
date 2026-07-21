@@ -1,13 +1,19 @@
 extends Node3D
 
-# Retargeted locomotion demo: the Quaternius animation library drives the CC
-# skeleton. Hold W to walk (idle<->walk blends by speed and the character moves),
-# A/D to turn. Drag/wheel to orbit the follow camera.
+# Retargeted locomotion demo: Mixamo mutant clips drive the CC skeleton.
+#   W walk · A/D turn · SPACE jump · E / click attack · drag/wheel orbit camera.
 #
 # Open scenes/skeleton_locomotion.tscn and run it (F6), or press K in a build.
 
 const CC_SCENE: PackedScene = preload("res://assets/godot_skeleton_experiment.glb")
-const LIB_SCENE: PackedScene = preload("res://assets/walking.fbx")
+const CLIPS := {
+	"idle": "res://assets/mutant_breathing_idle.fbx",
+	"walk": "res://assets/walking.fbx",
+	"turn_l": "res://assets/mutant_left_turn.fbx",
+	"turn_r": "res://assets/mutant_right_turn.fbx",
+	"jump": "res://assets/mutant_jumping.fbx",
+	"attack": "res://assets/mutant_swiping.fbx",
+}
 const WALK_SPEED := 1.4
 const TURN_RATE := 2.2
 
@@ -41,13 +47,8 @@ func _ready() -> void:
 			mi.visible = false          # hide the static duplicate
 	var cc_skel := _skel(cc_model)
 
-	var lib := LIB_SCENE.instantiate()
-	add_child(lib)
-	for mi in _meshes(lib):
-		mi.visible = false              # source only drives bones
 	if cc_skel != null:
-		_loco = RetargetedLocomotion.new(lib, cc_skel, self, "mixamo_com", "mixamo_com")
-		_loco.natural_arms = false   # the Mixamo walk already has proper arm swing
+		_loco = RetargetedLocomotion.new(CLIPS, cc_skel, self)
 
 	var span := _frame_camera(cc_model)
 	_cam_target = _char.global_position + Vector3(0, span * 0.45, 0)
@@ -89,6 +90,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_tree().change_scene_to_file("res://scenes/main_menu.tscn")
 	elif key.keycode == KEY_R:
 		get_tree().reload_current_scene()
+	elif key.keycode == KEY_SPACE:
+		_loco.trigger_jump()
+	elif key.keycode == KEY_E:
+		_loco.trigger_attack()
+	elif key.keycode == KEY_A and _speed_ratio < 0.25:
+		_loco.trigger_turn(true)
+	elif key.keycode == KEY_D and _speed_ratio < 0.25:
+		_loco.trigger_turn(false)
 
 
 # ---- scaffolding ----------------------------------------------------------
@@ -222,6 +231,7 @@ func _setup_ui() -> void:
 	panel.position = Vector2(16, 12)
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_theme_color_override("font_color", Color.WHITE)
-	panel.text = "SKELETON LOCOMOTION — retargeted (Quaternius UAL2)\n" + \
-		"W walk · A/D turn · drag orbit · wheel zoom · R rebuild · ESC exit"
+	panel.text = "SKELETON LOCOMOTION — retargeted Mixamo mutant clips\n" + \
+		"W walk · A/D turn · SPACE jump · E attack\n" + \
+		"drag orbit · wheel zoom · R rebuild · ESC exit"
 	layer.add_child(panel)
