@@ -56,7 +56,7 @@ func _ready() -> void:
 		_cam_yaw = atan2(-_base_forward.x, -_base_forward.z)   # start behind the character
 		_loco = RetargetedLocomotion.new(CLIPS, cc_skel, self)
 		_loco.time_scale = 1.0        # normal pace (not agile)
-		_loco.jump_lift_scale = 1.4   # a touch floatier
+		_loco.jump_lift_scale = 3.5   # boost the small character's hop to read well
 		_loco.uprightness = 0.3       # unhunch the heavy mutant posture
 
 	var span := _frame_camera(cc_model)
