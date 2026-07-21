@@ -13,7 +13,7 @@ const CLIPS := {
 	"walk": "res://assets/mutant_walking.fbx",
 	"turn_l": "res://assets/mutant_left_turn.fbx",
 	"turn_r": "res://assets/mutant_right_turn.fbx",
-	"jump": "res://assets/mutant_jumping.fbx",
+	"jump": "res://assets/running_jump.fbx",
 	"attack": "res://assets/mutant_swiping.fbx",
 }
 const WALK_SPEED := 1.5
@@ -23,6 +23,7 @@ var _loco: RetargetedLocomotion
 var _char: Node3D
 var _speed_ratio := 0.0
 var _facing_yaw := 0.0
+var _jump_launch_speed := 0.0   # gait speed at takeoff, held through the jump
 
 # orbit follow camera
 var _cam: Camera3D
@@ -69,10 +70,15 @@ func _process(delta: float) -> void:
 	if Input.is_key_pressed(KEY_D):
 		_facing_yaw -= delta * TURN_RATE
 	var walking := Input.is_key_pressed(KEY_W)
-	_speed_ratio = lerpf(_speed_ratio, 1.0 if walking else 0.0, 1.0 - exp(-8.0 * delta))
+	var target_speed := 1.0 if walking else 0.0
+	# Hold the takeoff gait through the jump so the base stays walk (never dips to
+	# idle) and forward momentum carries — a smooth walk -> running-jump -> walk.
+	if _loco.is_jumping():
+		target_speed = maxf(target_speed, _jump_launch_speed)
+	_speed_ratio = lerpf(_speed_ratio, target_speed, 1.0 - exp(-8.0 * delta))
 
 	_loco.update(delta, _speed_ratio)
-	_loco.ground(_char)
+	_loco.ground(_char, delta)
 
 	_char.rotation.y = _facing_yaw
 	# The CC model's own forward is +X, so move along the character's basis X —
@@ -96,6 +102,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif key.keycode == KEY_R:
 		get_tree().reload_current_scene()
 	elif key.keycode == KEY_SPACE:
+		_jump_launch_speed = _speed_ratio
 		_loco.trigger_jump()
 	elif key.keycode == KEY_E:
 		_loco.trigger_attack()

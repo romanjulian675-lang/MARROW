@@ -96,8 +96,14 @@ func _build_tree(ap: AnimationPlayer, tree_parent: Node) -> void:
 			continue
 		bt.add_node("clip_" + shot, _clip(shot))
 		var os := AnimationNodeOneShot.new()
-		os.fadein_time = 0.07
-		os.fadeout_time = 0.12
+		# Jump crossfades longer so walk->jump->walk is smooth (no snap to a
+		# neutral pose); turns/attacks stay snappy.
+		if shot == "jump":
+			os.fadein_time = 0.22
+			os.fadeout_time = 0.3
+		else:
+			os.fadein_time = 0.07
+			os.fadeout_time = 0.12
 		bt.add_node("os_" + shot, os)
 		bt.connect_node("os_" + shot, 0, base)
 		bt.connect_node("os_" + shot, 1, "clip_" + shot)
@@ -164,29 +170,36 @@ func is_busy() -> bool:
 	return false
 
 
+func is_jumping() -> bool:
+	return _states.has("jump") and bool(tree.get("parameters/os_jump/active"))
+
+
 func _fire(shot: String) -> void:
 	if _states.has(shot):
 		tree.set("parameters/os_%s/request" % shot, AnimationNodeOneShot.ONE_SHOT_REQUEST_FIRE)
 
 
 # Snap the character down so its lowest foot rests on the floor (+ small lift).
-func ground(character_root: Node3D, ground_y: float = 0.0, foot_lift: float = 0.06) -> void:
+func ground(character_root: Node3D, delta: float = 0.0166667, ground_y: float = 0.0, foot_lift: float = 0.06) -> void:
 	if _dst == null or not _dst.is_inside_tree():
 		return
-	# Airborne during a jump: lift by the source hips' root motion instead of
-	# pinning a foot to the floor.
+	var target_y := character_root.position.y
 	if _jump_timer > 0.0 and _src_hips >= 0:
+		# Airborne: lift by the source hips' root motion instead of pinning a foot.
 		var lift: float = (_src.get_bone_global_pose(_src_hips).origin.y - _src_hips_rest_y) * _root_scale
-		character_root.position.y = ground_y + maxf(0.0, lift) * jump_lift_scale
-		return
-	var lowest := INF
-	for b in [_foot_l, _foot_r]:
-		if b < 0:
-			continue
-		var wy: float = (_dst.global_transform * _dst.get_bone_global_pose(b)).origin.y
-		lowest = minf(lowest, wy)
-	if lowest < INF:
-		character_root.position.y -= (lowest - ground_y - foot_lift)
+		target_y = ground_y + maxf(0.0, lift) * jump_lift_scale
+	else:
+		var lowest := INF
+		for b in [_foot_l, _foot_r]:
+			if b < 0:
+				continue
+			var wy: float = (_dst.global_transform * _dst.get_bone_global_pose(b)).origin.y
+			lowest = minf(lowest, wy)
+		if lowest < INF:
+			target_y = character_root.position.y - (lowest - ground_y - foot_lift)
+	# Ease toward the target so the airborne<->grounded handoff (takeoff/landing)
+	# blends instead of snapping.
+	character_root.position.y = lerpf(character_root.position.y, target_y, 1.0 - exp(-22.0 * delta))
 
 
 # ---- helpers --------------------------------------------------------------
