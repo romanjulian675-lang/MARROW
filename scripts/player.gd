@@ -118,8 +118,10 @@ var _torso_assembled: bool = false
 var _head_follower: Node3D = null
 var _head_socket: Node3D = null
 @export var swirl_spin_speed: float = 9.0   # tornado spin rate (rad/s) mid-jump
-var _swirl_w: float = 0.0        # 0 grounded .. 1 airborne (whirling apart)
+@export var swirl_duration: float = 2.2     # how long the whole tornado runs (s)
+var _swirl_w: float = 0.0        # 0 assembled .. 1 whirling apart
 var _swirl_phase: float = 0.0    # advancing tornado spin angle
+var _swirl_timer: float = 0.0    # counts down the tornado's fixed duration
 
 # These are the active stats the movement and attack code actually use.
 # They start from the base stats, then equipped bones can modify them.
@@ -445,6 +447,8 @@ func _physics_process(delta: float) -> void:
 		velocity.y = jump_velocity
 		if retargeted_body != null:
 			retargeted_body.trigger_jump()
+		if _torso_assembled:
+			_swirl_timer = swirl_duration   # run the tornado for its full length
 
 	# If the player is in the air, build up downward speed over time.
 	# delta means "how much time passed since the last physics frame."
@@ -501,13 +505,22 @@ func _physics_process(delta: float) -> void:
 		_head_follower.global_transform = _head_socket.global_transform
 		_head_follower.global_position.y += head_follower_lift   # rest the skull on the ground
 
-	# Head+torso jump: the whole body whirls apart in a cartoon tornado while airborne
-	# and spirals back into place on landing.
+	# Head+torso jump: the whole body whirls apart in a cartoon tornado and spirals
+	# back into place, over a fixed duration (independent of the short airtime).
 	if _torso_assembled and retargeted_body != null:
-		var target_whirl := 1.0 if not is_on_floor() else 0.0
-		_swirl_w = lerpf(_swirl_w, target_whirl, 1.0 - exp(-6.0 * delta))
-		if _swirl_w > 0.01:
+		if _swirl_timer > 0.0:
+			_swirl_timer = maxf(0.0, _swirl_timer - delta)
+			var prog := 1.0 - _swirl_timer / maxf(swirl_duration, 0.01)
+			# fly out (rise) -> hold the tornado -> spiral back in (fall)
+			if prog < 0.18:
+				_swirl_w = smoothstep(0.0, 1.0, prog / 0.18)
+			elif prog < 0.7:
+				_swirl_w = 1.0
+			else:
+				_swirl_w = smoothstep(0.0, 1.0, (1.0 - prog) / 0.3)
 			_swirl_phase += swirl_spin_speed * delta
+		elif _swirl_w > 0.001:
+			_swirl_w = lerpf(_swirl_w, 0.0, 1.0 - exp(-8.0 * delta))
 		retargeted_body.set_body_swirl(_swirl_w, _swirl_phase)
 
 
