@@ -40,7 +40,7 @@ extends Node3D
 @export var head_only_hop_amount := 0.0
 @export var head_only_roll_amount := 0.24
 @export var head_only_roll_radius := 0.16
-@export var head_only_roll_speed_scale := 0.42
+@export var head_only_roll_speed_scale := 0.85
 @export var head_only_ground_socket_y := -0.85
 @export var torso_spring_hop_amount := 0.34
 @export var torso_spring_compress_amount := 0.16
