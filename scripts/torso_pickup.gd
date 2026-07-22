@@ -7,7 +7,7 @@ extends Area3D
 const CHARACTER: PackedScene = preload("res://assets/main_character.glb")
 
 @export var body_scale: float = 1.6
-@export var ground_y: float = -0.55    # drop so the hips rest on the floor
+@export var ground_y: float = -0.85    # drop so the hips rest on the floor
 @export var spin_speed: float = 0.6    # slow idle spin so it reads as a pickup
 
 var _model: Node3D
@@ -34,6 +34,20 @@ func _ready() -> void:
 	col.position = Vector3(0, 0.3, 0)
 	add_child(col)
 	body_entered.connect(_on_body_entered)
+	call_deferred("_snap_to_ground")
+
+
+# Drop onto the actual floor so the torso rests ON the ground, wherever it spawned
+# (the spawner may hand us the player's capsule-centre height).
+func _snap_to_ground() -> void:
+	if not is_inside_tree():
+		return
+	var space := get_world_3d().direct_space_state
+	var q := PhysicsRayQueryParameters3D.create(global_position + Vector3.UP * 2.0, global_position + Vector3.DOWN * 12.0)
+	q.collide_with_areas = false
+	var hit := space.intersect_ray(q)
+	if hit:
+		global_position.y = (hit.position as Vector3).y
 
 
 func _process(delta: float) -> void:
