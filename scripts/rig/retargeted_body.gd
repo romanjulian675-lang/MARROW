@@ -51,6 +51,7 @@ var _disabled := false
 var _head_meshes: Array = []
 var _torso_meshes: Array = []
 var _limb_meshes: Array = []
+var _head_follower_active := false
 
 
 func _ready() -> void:
@@ -80,8 +81,8 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	if _loco == null or _disabled:
-		return
+	if _loco == null or _disabled or _head_follower_active:
+		return   # while a detached head is driving the visual, skip gait posing
 	var v := Vector3.ZERO
 	if _body != null:
 		var vv: Variant = _body.get("velocity")
@@ -166,6 +167,43 @@ func show_all_parts() -> void:
 	_set_visible(_torso_meshes, true)
 	_set_visible(_limb_meshes, true)
 	position.y = foot_offset_y
+
+
+# Head-only mode: hide the skinned body and hand back a RIGID copy of the head
+# meshes, centred on their own centre so a caller can roll it like a ball by
+# driving its transform from the old rig's rolling head socket.
+func enter_head_follower_mode(follower_scale: float = 1.0) -> Node3D:
+	_head_follower_active = true
+	if _model != null:
+		_model.visible = false
+	var follower := Node3D.new()
+	follower.name = "HeadFollower"
+	# Centre offset: the head meshes' combined bind-pose centre (mesh-local space).
+	var combined := AABB()
+	var seeded := false
+	for mi in _head_meshes:
+		var m := (mi as MeshInstance3D).mesh
+		if m == null:
+			continue
+		var a := m.get_aabb()
+		combined = a if not seeded else combined.merge(a)
+		seeded = true
+	var center := combined.position + combined.size * 0.5 if seeded else Vector3.ZERO
+	for mi in _head_meshes:
+		var src := mi as MeshInstance3D
+		var dup := MeshInstance3D.new()
+		dup.mesh = src.mesh
+		dup.material_override = src.material_override
+		dup.scale = Vector3.ONE * follower_scale
+		dup.position = -center * follower_scale   # centre the skull on the follower origin
+		follower.add_child(dup)
+	return follower
+
+
+func exit_head_follower_mode() -> void:
+	_head_follower_active = false
+	if _model != null:
+		_model.visible = true
 
 
 # The head/torso meshes only (used to build the floor pickup's visual).

@@ -95,10 +95,15 @@ const ARROW_PROJECTILE_SCRIPT: Script = preload("res://scripts/arrow_projectile.
 # a pickup that assembles onto the head when collected.
 @export var start_as_head: bool = true
 @export var torso_pickup_offset: Vector3 = Vector3(0, 0, 2.5)
+@export var head_follower_scale: float = 2.6   # match the new skull to the rolling head socket
 @export_group("")
 
 const TORSO_PICKUP_SCRIPT: Script = preload("res://scripts/torso_pickup.gd")
 var _torso_assembled: bool = false
+# The new skull, driven by the old rig's rolling head socket, so it keeps ALL the
+# original head animations (roll/hop/attack) while the player is head-only.
+var _head_follower: Node3D = null
+var _head_socket: Node3D = null
 
 # These are the active stats the movement and attack code actually use.
 # They start from the base stats, then equipped bones can modify them.
@@ -215,7 +220,15 @@ func _ready() -> void:
 	_setup_procedural_character()
 	_update_mouse_mode()
 	if start_as_head and retargeted_body != null:
-		retargeted_body.show_only_head()
+		# Drive the new skull from the old rig's rolling head socket, so it keeps
+		# the original head roll/hop/attack animations while head-only.
+		if rig != null and rig.has_method("get_socket"):
+			_head_socket = rig.get_socket("head")
+		if _head_socket != null:
+			_head_follower = retargeted_body.enter_head_follower_mode(head_follower_scale)
+			visual_root.add_child(_head_follower)
+		else:
+			retargeted_body.show_only_head()   # fallback: static skull, no roll
 		call_deferred("_spawn_torso_pickup")
 
 
@@ -236,7 +249,13 @@ func assemble_torso() -> void:
 	if _torso_assembled:
 		return
 	_torso_assembled = true
+	# Retire the rolling-head follower and show the assembled head+torso body.
+	if _head_follower != null:
+		_head_follower.queue_free()
+		_head_follower = null
 	if retargeted_body != null:
+		retargeted_body.exit_head_follower_mode()
+		retargeted_body.show_only_head()
 		retargeted_body.reveal_torso()
 
 
@@ -362,6 +381,10 @@ func _physics_process(delta: float) -> void:
 	# move_and_slide moves the body, checks collisions, and slides along walls/floors instead of passing through them.
 	move_and_slide()
 	_update_procedural_animation(delta, current_move_speed)
+	# Mirror the old rig's rolling head socket onto the new skull (after the
+	# animator posed it this frame), so the new head keeps all the old animations.
+	if _head_follower != null and _head_socket != null and is_instance_valid(_head_socket):
+		_head_follower.global_transform = _head_socket.global_transform
 
 
 func _get_camera_relative_move_direction(input_vector: Vector2) -> Vector3:
