@@ -52,6 +52,10 @@ var _head_meshes: Array = []
 var _torso_meshes: Array = []
 var _limb_meshes: Array = []
 var _head_follower_active := false
+@export var spine_detach_spread: float = 0.04   # per-segment gap when fully detached
+var _spine_meshes: Array = []
+var _spine_rest: Array = []
+var _spine_dir: Array = []
 
 
 func _ready() -> void:
@@ -148,6 +152,34 @@ func _categorize_parts(model: Node) -> void:
 			_head_meshes.append(mi)
 		else:
 			_limb_meshes.append(mi)
+	_build_spine_detach()
+
+
+# Cache the spine vertebrae (bottom-to-top) so they can be spread apart mid-jump.
+func _build_spine_detach() -> void:
+	_spine_meshes.clear(); _spine_rest.clear(); _spine_dir.clear()
+	var items: Array = []
+	for mi in _torso_meshes:
+		var n := String(mi.name).to_lower()
+		if ("spine" in n or "neck" in n) and mi.mesh != null:
+			items.append({"mi": mi, "y": mi.mesh.get_aabb().get_center().y})
+	items.sort_custom(func(a, b): return a["y"] < b["y"])
+	for i in range(items.size()):
+		var mi := items[i]["mi"] as MeshInstance3D
+		_spine_meshes.append(mi)
+		_spine_rest.append(mi.position)
+		# Higher segments fly up further; alternate a little sideways for a scatter.
+		var lat := (0.05 if i % 2 == 0 else -0.05) * (1.0 + i * 0.15)
+		var fwd := (0.03 if i % 3 == 0 else -0.03)
+		_spine_dir.append(Vector3(lat, 0.02 + i * spine_detach_spread, fwd))
+
+
+# 0 = assembled, 1 = fully flown apart. Drives the spine's mid-jump disassembly.
+func set_spine_detach(w: float) -> void:
+	for i in range(_spine_meshes.size()):
+		var mi := _spine_meshes[i] as MeshInstance3D
+		if is_instance_valid(mi):
+			mi.position = (_spine_rest[i] as Vector3) + (_spine_dir[i] as Vector3) * clampf(w, 0.0, 1.0)
 
 
 func show_only_head() -> void:

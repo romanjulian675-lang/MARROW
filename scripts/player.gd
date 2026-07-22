@@ -117,6 +117,7 @@ var _torso_assembled: bool = false
 # original head animations (roll/hop/attack) while the player is head-only.
 var _head_follower: Node3D = null
 var _head_socket: Node3D = null
+var _spine_detach: float = 0.0   # 0 grounded .. 1 airborne (spine flown apart)
 
 # These are the active stats the movement and attack code actually use.
 # They start from the base stats, then equipped bones can modify them.
@@ -497,6 +498,12 @@ func _physics_process(delta: float) -> void:
 	if _head_follower != null and _head_socket != null and is_instance_valid(_head_socket):
 		_head_follower.global_transform = _head_socket.global_transform
 		_head_follower.global_position.y += head_follower_lift   # rest the skull on the ground
+
+	# Head+torso jump: spring the spine apart while airborne, reassemble on landing.
+	if _torso_assembled and retargeted_body != null:
+		var target_detach := 1.0 if not is_on_floor() else 0.0
+		_spine_detach = lerpf(_spine_detach, target_detach, 1.0 - exp(-7.0 * delta))
+		retargeted_body.set_spine_detach(_spine_detach)
 
 
 func _get_camera_relative_move_direction(input_vector: Vector2) -> Vector3:
