@@ -163,7 +163,8 @@ func _categorize_parts(model: Node) -> void:
 # body and, as the whirl eases off, they spiral back to rest.
 func _build_body_swirl() -> void:
 	_swirl_meshes.clear(); _swirl_rest.clear(); _swirl_angle.clear(); _swirl_rad.clear(); _swirl_lift.clear()
-	var parts: Array = _head_meshes + _torso_meshes
+	# Only the TORSO parts whirl (ribs, spine, hips); the head stays put on top.
+	var parts: Array = _torso_meshes
 	const GOLDEN := 2.399963   # spreads the parts evenly around the tornado
 	for i in range(parts.size()):
 		var mi := parts[i] as MeshInstance3D
