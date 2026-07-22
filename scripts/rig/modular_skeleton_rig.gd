@@ -195,6 +195,13 @@ const ENEMY_HITBOX_ACCURACY_SCALE := {
 @export var socket_marker_radius := 0.035
 @export var socket_marker_color := Color(1.0, 0.25, 0.85, 1.0)
 
+@export_group("Hurtboxes")
+# Live-tunable multiplier on every body-part hurtbox size (the volumes that TAKE
+# damage: head, body, arms, legs, feet). Change it in the Inspector — even on the
+# running scene via the remote tree — and all hurtboxes resize immediately. Turn on
+# Debug > Visible Collision Shapes to see them.
+@export var body_hitbox_scale := 1.0: set = _set_body_hitbox_scale
+
 @export_group("")
 # Show/hide body parts. Used for the "limbs only" placeholder while a real rigged
 # skeleton is being made in Blender — leave the torso/head out, keep arms + legs.
@@ -860,9 +867,17 @@ func _apply_body_hitbox_shape(socket_key: String, size_value: Vector3, offset_va
 		box = BoxShape3D.new()
 		shape_node.shape = box
 
-	box.size = _positive_vector3(_enemy_adjusted_hitbox_size(socket_key, size_value), MIN_HITBOX_SIZE)
+	box.size = _positive_vector3(_enemy_adjusted_hitbox_size(socket_key, size_value) * body_hitbox_scale, MIN_HITBOX_SIZE)
 	shape_node.position = offset_value
 	shape_node.rotation = rotation_value
+
+
+# Re-apply every hurtbox at the new scale (works live via the remote inspector).
+func _set_body_hitbox_scale(v: float) -> void:
+	body_hitbox_scale = maxf(v, 0.05)
+	for socket_key in body_hitbox_configs:
+		var cfg: Dictionary = body_hitbox_configs[socket_key]
+		_apply_body_hitbox_shape(str(socket_key), cfg["size"], cfg["offset"], cfg["rotation"])
 
 
 func _refresh_body_hitbox_shapes() -> void:
